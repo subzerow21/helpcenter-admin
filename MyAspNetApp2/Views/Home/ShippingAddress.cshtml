@@ -1,0 +1,148 @@
+﻿@{
+    ViewData["Title"] = "Shipping Address";
+}
+
+<div class="profile-layout-container">
+    
+        <partial name="_ProfileSideBar" />
+   
+
+    <div class="main-content-wrapper">
+        <div class="account-details-full-width">
+
+            <div class="info-group-card">
+                <div class="info-row">
+                    <span class="info-label">Region, Province, City, Barangay</span>
+                    <span class="info-value text-muted">
+                        <i class="bi bi-pencil"></i>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Postal Code</span>
+                    <span class="info-value text-muted">
+                        <i class="bi bi-pencil"></i>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Street Name, Building, House No.</span>
+                    <span class="info-value text-muted">
+                        <i class="bi bi-pencil"></i>
+                    </span>
+                </div>
+                <div class="info-row no-border">
+                    <span class="info-label">Default Address</span>
+                </div>
+            </div>
+
+            <button class="btn-add-address">
+                <i class="bi bi-plus-lg"></i> Add Another Shipping Address
+            </button>
+        </div>
+
+        <!-- div class="footer-spacer">
+                <partial name="_Footer" />
+            </div-->
+    </div>
+</div>
+
+<style>
+    /* Reuse core layout from Profile View */
+    .profile-layout-container {
+        display: flex;
+        width: 100%;
+        min-height: 100vh;
+        background-color: #fff;
+    }
+
+    .sidebar-wrapper {
+        width: 280px;
+        flex-shrink: 0;
+        border-right: 1px solid #e0e0e0;
+    }
+
+    /* --- THE SPACE FIX: Eliminating the large top gap --- */
+    .main-content-wrapper {
+        flex: 1;
+        background-color: #ffffff;
+        padding: 10px 60px 40px 60px; /* Reduced top padding to 10px */
+        margin-top: 10px; /* Reduced from 85px to pull content up to header */
+    }
+
+    .account-details-full-width {
+        width: 100%;
+    }
+
+    /* Address Card Styling */
+    .info-group-card {
+        background-color: #e0e0e0;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 30px; /* Slightly thicker for modern feel */
+        border-bottom: 1px solid #c0c0c0;
+    }
+
+        .info-row.no-border {
+            border-bottom: none;
+        }
+
+    .info-label {
+        font-weight: 500;
+        color: #333;
+        font-size: 1rem;
+    }
+
+    .info-value i {
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #555;
+    }
+
+    /* ADD ADDRESS BUTTON */
+    .btn-add-address {
+        width: 100%;
+        background-color: #000;
+        color: #fff;
+        border: none;
+        padding: 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        transition: transform 0.2s, background-color 0.2s;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+        .btn-add-address:hover {
+            background-color: #222;
+            transform: translateY(-2px);
+        }
+
+    .footer-spacer {
+        margin-top: 80px;
+        width: 100%;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .sidebar-wrapper {
+            display: none;
+        }
+
+        .main-content-wrapper {
+            padding: 20px;
+            margin-top: 100px; /* Adjusted for mobile toggle gap */
+        }
+    }
+</style>

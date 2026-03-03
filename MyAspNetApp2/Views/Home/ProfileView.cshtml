@@ -1,0 +1,129 @@
+﻿@{
+    ViewData["Title"] = "Profile Page";
+}
+
+<div class="profile-layout-container">
+    <partial name="_ProfileSideBar" />
+
+    <div class="main-content-wrapper">
+        <div class="user-dashboard-header">
+            <div class="header-content">
+                <div class="profile-avatar">
+                    <div class="avatar-circle">
+                        <i class="bi bi-person-fill"></i>
+                        <div class="camera-icon-badge">
+                            <i class="bi bi-camera"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-details">
+                    <h1>USERNAME01 <i class="bi bi-pencil edit-icon"></i></h1>
+                    <p>Be the change you wish to see in the world.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="overview-box">
+                <div class="rank-section">
+                    <p class="section-label">Your Global Rank</p>
+                    <div class="rank-pill">
+                        <div class="rank-icon-circle">
+                            <i class="bi bi-award"></i>
+                        </div>
+                        <div class="rank-info">
+                            <span class="rank-number">1st</span>
+                            <a href="#" class="lb-link">See LeaderBoard</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <a asp-controller="Home" asp-action="FitnessOverview" class="stat-card-link">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span><i class="bi bi-geo-alt-fill"></i> Distance</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                            <div class="stat-card-body">
+                                <small>Today</small>
+                                <p>42.2 KM</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a asp-controller="Home" asp-action="FitnessOverview" class="stat-card-link">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span><i class="bi bi-clock-fill"></i> Time</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                            <div class="stat-card-body">
+                                <small>Today</small>
+                                <p>04:35:20</p>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a asp-controller="Home" asp-action="FitnessOverview" class="stat-card-link">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span><i class="bi bi-lightning-fill"></i> Steps</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                            <div class="stat-card-body">
+                                <small>Today</small>
+                                <p>3,581</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="activity-section">
+                <div class="section-title-row">
+                    <h3>RECENT UPLOADED ACTIVITY</h3>
+                    <a href="#" class="see-all">SEE ALL</a>
+                </div>
+
+                <div class="activity-grid">
+                    <div class="activity-card">
+                        <div class="activity-main">
+                            <div class="img-placeholder">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            <div class="activity-info">
+                                <p><i class="bi bi-geo-alt-fill"></i> 40 KM</p>
+                                <p><i class="bi bi-clock-fill"></i> 03:40:07 HR/S</p>
+                                <p><i class="bi bi-lightning-fill"></i> 1,539 Steps</p>
+                            </div>
+                        </div>
+                        <div class="activity-pill-footer">
+                            <i class="bi bi-star-fill"></i> Rank 14 || January 12, 2026
+                        </div>
+                    </div>
+
+                    <div class="activity-card">
+                        <div class="activity-main">
+                            <div class="img-placeholder">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            <div class="activity-info">
+                                <p><i class="bi bi-geo-alt-fill"></i> 40 KM</p>
+                                <p><i class="bi bi-clock-fill"></i> 03:40:07 HR/S</p>
+                                <p><i class="bi bi-lightning-fill"></i> 1,539 Steps</p>
+                            </div>
+                        </div>
+                        <div class="activity-pill-footer">
+                            <i class="bi bi-star-fill"></i> Rank 12 || January 02, 2026
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/profile.css" asp-append-version="true" />
+}
