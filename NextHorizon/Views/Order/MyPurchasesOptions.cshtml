@@ -3,7 +3,7 @@
 @model List<OrderViewModel>
 
 @{
-    ViewData["Title"] = "My Purchases";
+    ViewData["Title"] = "My Purchases Options";
 
     // 1. Get current status from Query String (matches your MyPurchases pattern)
     var currentStatus = Context.Request.Query["status"].ToString();
@@ -80,33 +80,33 @@
 
                             <div class="order-card-footer">
                                 <button class="btn-action btn-outline"
-                                        onclick="viewOrderDetails(
-                                                    '@order.OrderNumber',
-                                                    '@order.Status',
-                                                    '@order.PaymentMethod',
-                                                    '@order.SellerName',
-                                                    '@order.ReceiverName',
-                                                    '@order.PhoneNumber',
-                                                    '@Html.Raw(order.ShippingAddress?.Replace("'", "\\'"))',
-                                                    '₱@order.TotalAmount.ToString("N2")',
-                                                    '@order.Color',
-                                                    '@(order.Size ?? "N/A")',
-                                                    '@order.Quantity')">
+                                        onclick="viewOrderDetails('@order.OrderNumber','@order.Status','@order.PaymentMethod','@order.SellerName','@order.ReceiverName','@order.PhoneNumber','@Html.Raw(order.ShippingAddress?.Replace("'", "\\'"))','₱@order.TotalAmount.ToString("N2")','@order.Color','@(order.Size ?? "N/A")','@order.Quantity')">
                                     VIEW DETAILS
                                 </button>
 
                                 @if (order.Status == "To Pay")
                                 {
-                                    <button class="btn-action btn-black">PAY NOW</button>
+                                    <button class="btn-action btn-black">COMPLETE PAYMENT</button>
                                 }
-                                else if (order.Status == "To Receive")
+                                else if (order.Status == "To Ship" || order.Status == "To Receive")
                                 {
-                                    <button class="btn-action btn-black">ORDER RECEIVED</button>
+                                    <button class="btn-action btn-black"><i class="bi bi-truck"></i> TRACK ORDER</button>
+                                    @if (order.Status == "To Receive")
+                                    {
+                                        <button class="btn-action btn-outline ms-2">CONFIRM RECEIVE</button>
+                                    }
                                 }
                                 else if (order.Status == "Completed")
                                 {
                                     <button class="btn-action btn-black">BUY AGAIN</button>
+                                    <button class="btn-action btn-outline">CONFIRM RECEIVE</button>
+                                    <button class="btn-action btn-outline text-danger">REQUEST REFUND</button>
                                 }
+                                else if (order.Status == "To Review")
+                                {
+                                    <button class="btn-action btn-black">ADD A REVIEW</button>
+                                }
+                                @* Returns and Cancelled only show View Details (handled by default) *@
                             </div>
                         </div>
                     }

@@ -1,142 +1,190 @@
-﻿/**
- * Opens the Modal and Populates Data
- * Extended to handle Payment, Color, Size, and Qty display
- */
-function viewOrderDetails(orderNo, status, payment, seller, receiver, phone, address, total, color, size, qty) {
-    // 1. Populate Text Display Data (Delivery Section)
-    document.getElementById('modalOrderNumber').innerText = orderNo;
-    document.getElementById('modalStatusText').innerText = status.toUpperCase();
+﻿/* --- MY PURCHASES JAVASCRIPT --- */
+
+// 1. OPEN MODAL AND POPULATE DATA
+function viewOrderDetails(orderId, status, payment, seller, receiver, phone, address, total, color, size, qty, orderDate) {
+    const overlay = document.getElementById('customOrderOverlay');
+
+    // Ensure we are showing the Details view (not tracking or edit) when opening
+    resetModalViews();
+
+    // Set Header/Status
+    document.getElementById('modalOrderNumber').innerText = orderId;
+    document.getElementById('modalStatusText').innerText = status;
+    document.getElementById('modalStatusSubtext').innerText = `Seller: ${seller}`;
+
+    // Set Display Info
     document.getElementById('displayReceiver').innerText = receiver;
     document.getElementById('displayPhone').innerText = phone;
     document.getElementById('displayAddress').innerText = address;
-    document.getElementById('displayPayment').innerText = "Payment: " + payment;
+    document.getElementById('displayPayment').innerText = `Payment: ${payment}`;
+    document.getElementById('displayColor').innerText = color;
+    document.getElementById('displaySize').innerText = size;
+    document.getElementById('displayQty').innerText = qty;
     document.getElementById('modalTotalAmount').innerText = total;
 
-    // 2. Populate Product Display Data (Product Details Section)
-    document.getElementById('displayColor').innerText = color || "N/A";
-    document.getElementById('displaySize').innerText = size || "N/A";
-    document.getElementById('displayQty').innerText = qty || "1";
-
-    // 3. Pre-fill Edit Inputs (Form Section)
+    // Set Input values (for editing mode)
     document.getElementById('inputReceiver').value = receiver;
     document.getElementById('inputPhone').value = phone;
     document.getElementById('inputAddress').value = address;
-    document.getElementById('inputPayment').value = payment;
-    document.getElementById('inputColor').value = color || "";
-    document.getElementById('inputSize').value = size || "";
-    document.getElementById('inputQty').value = qty;
 
-    // 4. Status Restriction: Only allow editing for "TO PAY"
+    // --- LOCK EDITING LOGIC ---
     const editBtn = document.getElementById('editOrderBtn');
     const lockNote = document.getElementById('editLockNote');
 
-    if (status.toUpperCase() === "TO PAY") {
-        editBtn.classList.remove('d-none');
-        lockNote.classList.add('d-none');
-    } else {
-        editBtn.classList.add('d-none');
+    // Disable editing if the order is "To Receive", "Completed", or "Cancelled"
+    if (status === "To Ship" || status === "To Receive" || status === "Completed" || status === "Cancelled") {
+        editBtn.style.display = 'none';
         lockNote.classList.remove('d-none');
-    }
-
-    // 5. Reset UI State: Always show display mode first
-    document.getElementById('orderDetailsDisplay').classList.remove('d-none');
-    document.getElementById('productDetailsDisplay').classList.remove('d-none'); // Show product info
-    document.getElementById('orderEditForm').classList.add('d-none');
-    editBtn.innerText = "Edit";
-
-    // 6. Show Overlay
-    document.getElementById('customOrderOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-/**
- * Toggles between Info Display and Edit Inputs
- */
-function toggleOrderEdit() {
-    const displayDetails = document.getElementById('orderDetailsDisplay');
-    const displayProduct = document.getElementById('productDetailsDisplay');
-    const form = document.getElementById('orderEditForm');
-    const btn = document.getElementById('editOrderBtn');
-
-    if (form.classList.contains('d-none')) {
-        displayDetails.classList.add('d-none');
-        displayProduct.classList.add('d-none'); // Hide info when editing
-        form.classList.remove('d-none');
-        btn.innerText = "Cancel";
     } else {
-        displayDetails.classList.remove('d-none');
-        displayProduct.classList.remove('d-none'); // Show info when cancelled
-        form.classList.add('d-none');
-        btn.innerText = "Edit";
-    }
-}
-
-/**
- * Saves Changes and Updates Display Labels
- */
-function saveOrderChanges() {
-    // Get values from inputs/selects
-    const newName = document.getElementById('inputReceiver').value;
-    const newPhone = document.getElementById('inputPhone').value;
-    const newAddr = document.getElementById('inputAddress').value;
-    const newPay = document.getElementById('inputPayment').value;
-    const newColor = document.getElementById('inputColor').value;
-    const newSize = document.getElementById('inputSize').value;
-    const newQty = document.getElementById('inputQty').value;
-
-    // Basic Validation
-    if (!newName || !newPhone || !newAddr || !newQty) {
-        showToast("Please fill in all required fields", "error");
-        return;
+        editBtn.style.display = 'block';
+        lockNote.classList.add('d-none');
     }
 
-    // Update the display text in the modal (Delivery)
-    document.getElementById('displayReceiver').innerText = newName;
-    document.getElementById('displayPhone').innerText = newPhone;
-    document.getElementById('displayAddress').innerText = newAddr;
-    document.getElementById('displayPayment').innerText = "Payment: " + newPay;
+    // Prepare Timeline dates if tracking is accessed later
+    if (orderDate) {
+        document.getElementById('date-placed').innerText = orderDate;
+    }
 
-    // Update the display text in the modal (Product Details)
-    document.getElementById('displayColor').innerText = newColor || "N/A";
-    document.getElementById('displaySize').innerText = newSize || "N/A";
-    document.getElementById('displayQty').innerText = newQty;
-
-    // Switch back to display mode
-    toggleOrderEdit();
-    showToast("Order details updated successfully!");
+    overlay.classList.add('active');
 }
 
-/**
- * Closes the Modal
- */
+// 2. CLOSE MODAL & RESET STATE
 function closeOrderDetails() {
     const overlay = document.getElementById('customOrderOverlay');
-    if (overlay) {
-        overlay.classList.remove('active');
-        document.body.style.overflow = 'auto';
+    overlay.classList.remove('active');
+
+    // Delay reset slightly to prevent flickering during close animation
+    setTimeout(resetModalViews, 300);
+}
+
+function resetModalViews() {
+    // Show standard sections
+    document.getElementById('deliverySection').classList.remove('d-none');
+    document.getElementById('orderDetailsDisplay').classList.remove('d-none');
+    document.getElementById('productDetailsDisplay').classList.remove('d-none');
+
+    // Hide specialized sections
+    document.getElementById('orderEditForm').classList.add('d-none');
+    document.getElementById('trackingSection').classList.add('d-none');
+
+    // Reset Timeline classes to prevent style carry-over
+    const items = document.querySelectorAll('.timeline-item');
+    items.forEach(item => {
+        item.classList.remove('completed', 'active', 'pending');
+        // Reset subtexts to "Pending" by default
+        const dateEl = item.querySelector('.timeline-date');
+        if (dateEl && !dateEl.id) dateEl.innerText = "Pending";
+    });
+}
+
+// 3. TOGGLE EDIT MODE
+function toggleOrderEdit() {
+    const displayDiv = document.getElementById('orderDetailsDisplay');
+    const formDiv = document.getElementById('orderEditForm');
+
+    if (formDiv.classList.contains('d-none')) {
+        formDiv.classList.remove('d-none');
+        displayDiv.classList.add('d-none');
+    } else {
+        formDiv.classList.add('d-none');
+        displayDiv.classList.remove('d-none');
     }
 }
 
-/**
- * Toast Notification System
- */
-function showToast(message, type = "success") {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+// 4. COPY ORDER ID TO CLIPBOARD
+function copyOrderId() {
+    const orderId = document.getElementById('modalOrderNumber').innerText;
+    navigator.clipboard.writeText(orderId).then(() => {
+        showToast("Order ID copied to clipboard!", "success");
+    }).catch(err => {
+        showToast("Failed to copy ID", "error");
+    });
+}
 
+// 5. SAVE CHANGES (MOCKUP)
+function saveOrderChanges() {
+    const newName = document.getElementById('inputReceiver').value;
+    const newPhone = document.getElementById('inputPhone').value;
+    const newAddress = document.getElementById('inputAddress').value;
+
+    document.getElementById('displayReceiver').innerText = newName;
+    document.getElementById('displayPhone').innerText = newPhone;
+    document.getElementById('displayAddress').innerText = newAddress;
+
+    showToast("Shipping details updated successfully!", "success");
+    toggleOrderEdit();
+}
+
+// 6. TRACK ORDER LOGIC
+function trackOrder(orderId, status, payment, seller, receiver, phone, address, total, color, size, qty, orderDate) {
+    // 1. Populate all data into the modal first
+    viewOrderDetails(orderId, status, payment, seller, receiver, phone, address, total, color, size, qty, orderDate);
+
+    // 2. Adjust visibility for Tracking Mode
+    document.getElementById('deliverySection').classList.add('d-none');      // Hide "Delivery & Payment"
+    document.getElementById('productDetailsDisplay').classList.add('d-none'); // Hide "Product Specs"
+    document.getElementById('trackingSection').classList.remove('d-none');   // Show "Shipping Journey"
+    document.getElementById('editOrderBtn').style.display = 'none';           // Ensure Edit is hidden
+
+    // 3. Update the timeline dots and lines
+    updateTimeline(status, orderDate);
+}
+
+function updateTimeline(status, orderDate) {
+    const items = document.querySelectorAll('.timeline-item');
+
+    // Always mark "Order Placed" as completed
+    items[0].classList.add('completed');
+    document.getElementById('date-placed').innerText = orderDate;
+
+    if (status === "To Ship") {
+        // Step 2 is Active
+        items[1].classList.add('active');
+        document.getElementById('date-shipped').innerText = "Packed and ready for pickup";
+
+        // Future steps are pending
+        items[2].classList.add('pending');
+        items[3].classList.add('pending');
+    }
+    else if (status === "To Receive") {
+        // Step 2 is now Finished
+        items[1].classList.add('completed');
+        document.getElementById('date-shipped').innerText = "Arrived at sorting facility";
+
+        // Step 3 is Active (In Transit)
+        items[2].classList.add('active');
+        items[2].querySelector('.timeline-date').innerText = "In transit to local hub";
+
+        // Final step is pending
+        items[3].classList.add('pending');
+    }
+    else if (status === "Completed") {
+        // All steps are finished
+        items[1].classList.add('completed');
+        items[2].classList.add('completed');
+        items[3].classList.add('completed');
+        items[3].querySelector('.timeline-date').innerText = "Delivered successfully";
+    }
+}
+
+// 7. TOAST SYSTEM
+function showToast(message, type) {
+    const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `mono-toast ${type}`;
-    const icon = type === "success" ? "bi-check-circle-fill" : "bi-exclamation-circle-fill";
-    toast.innerHTML = `<i class="bi ${icon}"></i><span>${message}</span>`;
+
+    const icon = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+
+    toast.innerHTML = `
+        <i class="bi ${icon}"></i>
+        <span>${message}</span>
+    `;
 
     container.appendChild(toast);
 
     setTimeout(() => {
-        toast.classList.add('hide');
-        setTimeout(() => {
-            if (toast.parentNode === container) {
-                container.removeChild(toast);
-            }
-        }, 400);
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => toast.remove(), 500);
     }, 3000);
 }

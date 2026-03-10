@@ -1,22 +1,30 @@
 ﻿
 function viewOrderDetails(orderNo, status, payment, seller, receiver, phone, address, total, color, size, qty) {
+    const s = status.toUpperCase();
+
     // 1. Set ID and Status Header
     document.getElementById('modalOrderNumber').innerText = orderNo;
-    document.getElementById('modalStatusText').innerText = status.toUpperCase();
+    document.getElementById('modalStatusText').innerText = s;
 
-    // 2. Dynamic Banner Logic
+    // 2. Dynamic Banner & Icon Logic
     const subtext = document.getElementById('modalStatusSubtext');
     const icon = document.getElementById('modalStatusIcon');
 
-    if (status.toUpperCase() === "TO PAY") {
-        subtext.innerText = "Awaiting payment confirmation..";
-        icon.className = "bi bi-wallet2"; // Changes icon to wallet
+    if (s === "TO PAY") {
+        subtext.innerText = "Awaiting payment from buyer.";
+        icon.className = "bi bi-wallet2";
+    } else if (s === "TO SHIP" || s === "TO RECEIVE") {
+        subtext.innerText = "Order is being processed and cannot be edited.";
+        icon.className = "bi bi-box-seam";
+    } else if (s === "COMPLETED") {
+        subtext.innerText = "Transaction successfully finished.";
+        icon.className = "bi bi-check-circle";
     } else {
         subtext.innerText = "Awaiting updates...";
-        icon.className = "bi bi-box-seam"; // Default box icon
+        icon.className = "bi bi-info-circle";
     }
 
-    // 3. Populate Display Section
+    // 3. Populate Display (as before...)
     document.getElementById('displayReceiver').innerText = receiver;
     document.getElementById('displayPhone').innerText = phone;
     document.getElementById('displayAddress').innerText = address;
@@ -26,36 +34,28 @@ function viewOrderDetails(orderNo, status, payment, seller, receiver, phone, add
     document.getElementById('displaySize').innerText = size || "-";
     document.getElementById('displayQty').innerText = qty;
 
-    // 4. Pre-fill Input Form
-    document.getElementById('inputReceiver').value = receiver;
-    document.getElementById('inputPhone').value = phone;
-    document.getElementById('inputAddress').value = address;
-    document.getElementById('inputPayment').value = payment;
-    document.getElementById('inputColor').value = color || "Black";
-    document.getElementById('inputSize').value = size || "Medium";
-    document.getElementById('inputQty').value = qty;
-
-    // 5. Status Check for Editing Permissions
+    // 4. --- EDIT PERMISSIONS LOGIC ---
     const editBtn = document.getElementById('editOrderBtn');
     const lockNote = document.getElementById('editLockNote');
 
-    if (status.toUpperCase() === "TO PAY") {
+    // ONLY "To Pay" allows editing. Everything else is locked.
+    if (s === "TO PAY") {
         editBtn.classList.remove('d-none');
         lockNote.classList.add('d-none');
     } else {
-        editBtn.classList.add('d-none');
-        lockNote.classList.remove('d-none');
+        editBtn.classList.add('d-none'); // Hide the "Edit" button
+        lockNote.classList.remove('d-none'); // Show the "Locked" note
     }
 
-    // 6. Reset UI to Default Display View
+    // 5. Reset UI View
     document.getElementById('orderDetailsDisplay').classList.remove('d-none');
     document.getElementById('productDetailsDisplay').classList.remove('d-none');
     document.getElementById('orderEditForm').classList.add('d-none');
     editBtn.innerText = "Edit";
 
-    // 7. Open Overlay
+    // 6. Open Overlay
     document.getElementById('customOrderOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
 }
 
 /**

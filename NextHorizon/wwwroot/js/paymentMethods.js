@@ -1,322 +1,286 @@
 ﻿/* =============================================================
-   PAYMENT METHODS - COMPLETE UPDATED LOGIC
+   PAYMENT METHODS - FINAL SYNCHRONIZED LOGIC
    ============================================================= */
 
 let editingCardId = null;
+let currentPaymentType = 'Card';
+let addressData = {};
+let nextId = 100;
+
+const regionNames = {
+    "01": "Region I", "02": "Region II", "03": "Region III", "4A": "Region IV-A",
+    "4B": "Region IV-B", "05": "Region V", "06": "Region VI", "07": "Region VII",
+    "08": "Region VIII", "09": "Region IX", "10": "Region X", "11": "Region XI",
+    "12": "Region XII", "13": "Region XIII", "ARMM": "ARMM", "CAR": "CAR", "NCR": "NCR", "NIR": "NIR"
+};
 
 document.addEventListener('DOMContentLoaded', async function () {
-    const elements = {
-        regionInput: document.getElementById('billingRegionInput'),
-        regionList: document.getElementById('billingRegionList'),
-        provinceInput: document.getElementById('billingProvinceInput'),
-        provinceList: document.getElementById('billingProvinceList'),
-        cityInput: document.getElementById('billingCityInput'),
-        cityList: document.getElementById('billingCityList'),
-        barangayInput: document.getElementById('billingBarangayInput'),
-        barangayList: document.getElementById('billingBarangayList'),
-        postalInput: document.getElementById('billingPostalInput'),
-        streetInput: document.getElementById('billingStreetInput'),
-        houseInput: document.getElementById('billingHouseInput'),
-        // Matches the ID in your HTML: billingBuildingInput
-        buildingInput: document.getElementById('billingBuildingInput'),
-        cardNumber: document.getElementById('cardNumber'),
-        cardHolder: document.getElementById('cardHolderName'),
-        cvv: document.getElementById('cardCvv'),
-        expMonth: document.getElementById('expiryMonth'),
-        expYear: document.getElementById('expiryYear'),
-        submitBtn: document.getElementById('mainSubmitBtn'),
-        paymentForm: document.getElementById('paymentForm')
-    };
-
-    let addressData = {};
-    const regionNames = {
-        "01": "Region I", "02": "Region II", "03": "Region III", "4A": "Region IV-A",
-        "4B": "Region IV-B", "05": "Region V", "06": "Region VI", "07": "Region VII",
-        "08": "Region VIII", "09": "Region IX", "10": "Region X", "11": "Region XI",
-        "12": "Region XII", "13": "Region XIII", "ARMM": "ARMM", "CAR": "CAR", "NCR": "NCR", "NIR": "NIR"
-    };
-
-    async function loadData() {
-        try {
-            const response = await fetch('/philippine_provinces_cities_municipalities_and_barangays_2016.json');
-            addressData = await response.json();
-            populateDatalist(elements.regionList, Object.keys(addressData), regionNames);
-        } catch (e) { console.error("Error loading address data", e); }
-    }
-
-    // --- Cascading Logic for Datalists ---
-    elements.regionInput.addEventListener('change', function () {
-        const code = getCodeByValue(this.value, regionNames);
-        const provinces = addressData[code] ? Object.keys(addressData[code].province_list) : [];
-        populateDatalist(elements.provinceList, provinces);
-        elements.provinceInput.value = '';
-    });
-
-    elements.provinceInput.addEventListener('change', function () {
-        const rCode = getCodeByValue(elements.regionInput.value, regionNames);
-        const pName = this.value;
-        const cities = addressData[rCode]?.province_list[pName]?.municipality_list ?
-            Object.keys(addressData[rCode].province_list[pName].municipality_list) : [];
-        populateDatalist(elements.cityList, cities);
-        elements.cityInput.value = '';
-    });
-
-    elements.cityInput.addEventListener('change', function () {
-        const rCode = getCodeByValue(elements.regionInput.value, regionNames);
-        const pName = elements.provinceInput.value;
-        const cName = this.value;
-        const barangays = addressData[rCode]?.province_list[pName]?.municipality_list[cName]?.barangay_list || [];
-        populateDatalist(elements.barangayList, barangays);
-        elements.barangayInput.value = '';
-    });
-
-    // --- Form Submission ---
-    if (elements.submitBtn) {
-        elements.submitBtn.addEventListener('click', function (e) {
+    await loadAddressData();
+    const form = document.getElementById('paymentForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
             e.preventDefault();
-
-            // Monochrome Validation Logic
-            let isValid = true;
-            const requiredFields = [elements.cardNumber, elements.cardHolder, elements.regionInput, elements.cvv];
-
-            requiredFields.forEach(el => {
-                if (!el.value || !el.value.trim() || el.value === "MM" || el.value === "YYYY") {
-                    el.style.borderColor = "#000";
-                    isValid = false;
-                } else {
-                    el.style.borderColor = "#ccc";
-                }
-            });
-
-            if (!isValid) {
-                Swal.fire({
-                    title: 'REQUIRED FIELDS',
-                    text: 'Please fill in all card and address details.',
-                    icon: 'warning',
-                    iconColor: '#000',
-                    confirmButtonColor: '#000',
-                    confirmButtonText: 'RETRY'
-                });
-                return;
-            }
-
-            const cardData = {
-                id: editingCardId || Date.now(),
-                brand: elements.cardNumber.value.startsWith('4') ? "Visa" : "Mastercard",
-                last4: elements.cardNumber.value.replace(/\s+/g, '').slice(-4),
-                expiry: `${elements.expMonth.value}/${elements.expYear.value.slice(-2)}`,
-                name: elements.cardHolder.value,
-                region: elements.regionInput.value,
-                province: elements.provinceInput.value,
-                city: elements.cityInput.value,
-                barangay: elements.barangayInput.value,
-                postal: elements.postalInput.value,
-                house: elements.houseInput.value,
-                building: elements.buildingInput ? elements.buildingInput.value : '',
-                street: elements.streetInput.value
-            };
-
-            if (editingCardId) {
-                updateExistingCardUI(cardData);
-            } else {
-                addNewCardToUI(cardData);
-            }
-
-            Swal.fire({
-                title: editingCardId ? 'CARD UPDATED' : 'CARD SAVED',
-                text: 'Your payment information has been secured.',
-                icon: 'success',
-                iconColor: '#000',
-                confirmButtonColor: '#000',
-                confirmButtonText: 'DONE'
-            });
-
-            editingCardId = null;
-            togglePaymentForm();
-            elements.paymentForm.reset();
+            handleFormSubmit();
         });
     }
-    loadData();
 });
 
-/* =============================================================
-   UI RENDER LOGIC (MONOCHROME DISTINCTION)
-   ============================================================= */
+/* --- CORE FUNCTIONS --- */
 
-function addNewCardToUI(card) {
-    const viewSection = document.getElementById('payment-view-section');
-    const emptyState = viewSection.querySelector('.empty-state-container');
+async function loadAddressData() {
+    try {
+        const response = await fetch('/philippine_provinces_cities_municipalities_and_barangays_2016.json');
+        addressData = await response.json();
+    } catch (e) { console.error("Error loading address data", e); }
+}
 
-    const cardHtml = `
-        <div class="saved-card-item non-default" id="card-${card.id}" data-card='${JSON.stringify(card).replace(/'/g, "&apos;")}'>
+function toggleView() {
+    const v = document.getElementById('payment-view-section');
+    const f = document.getElementById('payment-form-section');
+    const isShowingForm = (f.style.display === 'none' || f.style.display === '');
+
+    v.style.display = isShowingForm ? 'none' : 'block';
+    f.style.display = isShowingForm ? 'block' : 'none';
+
+    if (isShowingForm) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/**
+ * UPDATED: Optimized to remove layout gaps by toggling display correctly
+ */
+function setPaymentType(type) {
+    currentPaymentType = type;
+    document.getElementById('selectedPaymentType').value = type;
+
+    const cardCol = document.getElementById('card-left-column');
+    const walletFields = document.getElementById('ewallet-fields');
+    const billingSection = document.getElementById('billing-address-section');
+
+    if (type === 'Card') {
+        // Show Card Left Column and Billing Right Column
+        if (cardCol) cardCol.style.display = 'block';
+        if (billingSection) billingSection.style.display = 'block';
+        if (walletFields) walletFields.style.display = 'none';
+    } else {
+        // Hide both standard columns, Show E-Wallet (which spans full width via CSS)
+        if (cardCol) cardCol.style.display = 'none';
+        if (billingSection) billingSection.style.display = 'none';
+        if (walletFields) walletFields.style.display = 'block';
+    }
+
+    document.getElementById('type-card').classList.toggle('active', type === 'Card');
+    document.getElementById('type-ewallet').classList.toggle('active', type === 'EWallet');
+}
+
+/* --- CRUD ACTIONS --- */
+
+function prepareAddForm() {
+    editingCardId = null;
+    const form = document.getElementById('paymentForm');
+    form.reset();
+    document.getElementById('methodId').value = "";
+
+    // Reset border colors
+    form.querySelectorAll('input, select').forEach(el => el.style.borderColor = "#ccc");
+
+    setPaymentType('Card');
+    form.querySelector('.btn-submit').innerText = "SAVE PAYMENT METHOD";
+    toggleView();
+}
+
+function prepareEditForm(data) {
+    editingCardId = data.id || data.Id;
+    const type = data.type || data.Type;
+    toggleView();
+    setPaymentType(type);
+
+    const form = document.getElementById('paymentForm');
+    form.querySelector('[name="Id"]').value = editingCardId;
+
+    if (type === 'Card') {
+        form.querySelector('[name="HolderName"]').value = data.holderName || data.HolderName || "";
+        const last4 = data.last4 || data.Last4 || "";
+        form.querySelector('[name="CardNumber"]').value = last4 ? "**** **** **** " + last4 : "";
+
+        const exp = data.expiry || data.Expiry || "";
+        if (exp && exp.includes('/')) {
+            const parts = exp.split('/');
+            form.querySelector('[name="ExpiryMonth"]').value = parts[0];
+            form.querySelector('[name="ExpiryYear"]').value = parts[1].length === 2 ? "20" + parts[1] : parts[1];
+        }
+
+        // Billing Address
+        form.querySelector('[name="Region"]').value = data.region || data.Region || "";
+        form.querySelector('[name="Province"]').value = data.province || data.Province || "";
+        form.querySelector('[name="City"]').value = data.city || data.City || "";
+        form.querySelector('[name="Barangay"]').value = data.barangay || data.Barangay || "";
+        form.querySelector('[name="Postal"]').value = data.postal || data.Postal || "";
+        form.querySelector('[name="Street"]').value = data.street || data.Street || "";
+    } else {
+        form.querySelector('[name="Brand"]').value = data.brand || data.Brand || "GCash";
+        form.querySelector('[name="Account"]').value = data.account || data.Account || "";
+        // Mapping the unique E-wallet holder name field
+        form.querySelector('[name="HolderNameEwallet"]').value = data.holderName || data.HolderName || "";
+    }
+    form.querySelector('.btn-submit').innerText = "UPDATE PAYMENT METHOD";
+}
+
+function handleFormSubmit() {
+    const form = document.getElementById('paymentForm');
+    const formData = new FormData(form);
+    const type = formData.get('Type');
+    let isValid = true;
+
+    // Validation Helper
+    const check = (name, required = true) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (!el) return true;
+        const val = el.value.trim();
+        const isInvalid = required && (!val || val === "MM" || val === "YYYY" || val === "Select");
+        el.style.borderColor = isInvalid ? "black" : "#ccc";
+        if (isInvalid) isValid = false;
+        return !isInvalid;
+    };
+
+    if (type === 'Card') {
+        check("HolderName");
+        ["CardNumber", "ExpiryMonth", "ExpiryYear", "Region", "Province", "City", "Postal"].forEach(f => check(f));
+    } else {
+        check("HolderNameEwallet");
+        check("Brand");
+        check("Account");
+    }
+
+    if (!isValid) {
+        Swal.fire({ title: 'REQUIRED FIELDS', icon: 'error', iconColor: '#000', confirmButtonColor: '#000' });
+        return;
+    }
+
+    const cardNum = formData.get('CardNumber');
+    const newMethod = {
+        id: editingCardId || nextId++,
+        type: type,
+        brand: type === 'Card' ? "Visa" : formData.get('Brand'),
+        last4: type === 'Card' ? (cardNum.includes('*') ? cardNum.slice(-4) : cardNum.slice(-4)) : null,
+        expiry: type === 'Card' ? `${formData.get('ExpiryMonth')}/${formData.get('ExpiryYear').slice(-2)}` : null,
+        account: type === 'EWallet' ? formData.get('Account') : null,
+        holderName: type === 'Card' ? formData.get('HolderName') : formData.get('HolderNameEwallet'),
+        isDefault: false,
+        region: formData.get('Region'),
+        province: formData.get('Province'),
+        city: formData.get('City'),
+        postal: formData.get('Postal'),
+        barangay: formData.get('Barangay'),
+        street: formData.get('Street')
+    };
+
+    if (editingCardId) {
+        const existingItem = document.getElementById(`method-${editingCardId}`);
+        if (existingItem) existingItem.outerHTML = renderPaymentMethodCard(newMethod);
+    } else {
+        const container = document.getElementById('payment-view-section');
+        if (container.querySelector('.empty-state-container')) {
+            location.reload();
+            return;
+        }
+        container.insertAdjacentHTML('beforeend', renderPaymentMethodCard(newMethod));
+    }
+
+    Swal.fire({
+        title: editingCardId ? 'UPDATED' : 'SAVED',
+        icon: 'success',
+        iconColor: '#000',
+        confirmButtonColor: '#000'
+    }).then(() => toggleView());
+}
+
+function renderPaymentMethodCard(method) {
+    const icon = method.type === 'Card' ? 'bi-credit-card-2-front' : 'bi-wallet2';
+    const detailTitle = method.type === 'Card' ? `${method.brand} Ending in ${method.last4}` : `${method.brand} Account`;
+    const detailSub = method.type === 'Card' ? `Expires ${method.expiry}` : method.account;
+
+    return `
+        <div class="saved-card-item ${method.isDefault ? 'active-selection' : ''}" id="method-${method.id}">
             <div class="card-info-left">
-                <i class="bi bi-credit-card-2-front" style="color: #000;"></i>
+                <i class="bi ${icon}"></i>
                 <div class="card-details">
-                    <span class="card-brand">${card.brand} Ending in ${card.last4}</span>
-                    <span class="card-expiry">Expires ${card.expiry}</span>
+                    <span class="card-brand">${detailTitle}</span>
+                    <span class="card-expiry">${detailSub}</span>
                 </div>
             </div>
             <div class="card-actions-right">
-                <button class="btn-edit-card" title="Edit" onclick="editCard(this)">
-                    <i class="bi bi-pencil" style="color: #000;"></i>
+                <button class="btn-edit-card" onclick='prepareEditForm(${JSON.stringify(method)})'>
+                    <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn-set-default" onclick="setDefault(event, ${card.id})">SET DEFAULT</button>
-                <button class="btn-remove" onclick="removeCard(event, ${card.id})">Remove</button>
+                ${method.isDefault ? '<span class="badge-default">DEFAULT</span>' : `<button class="btn-set-default" onclick="setDefault(${method.id})">SET DEFAULT</button>`}
+                <button class="btn-remove" onclick="removeCard(${method.id})">Remove</button>
             </div>
         </div>`;
-
-    if (emptyState) {
-        viewSection.innerHTML = `
-            <div class="section-header-row mb-4">
-                <h2 class="section-title">SAVED PAYMENT METHODS</h2>
-                <button class="btn-primary-action" onclick="prepareAddForm()">
-                    <i class="bi bi-plus-lg"></i> ADD PAYMENT METHOD
-                </button>
-            </div>
-            ${cardHtml}`;
-        setDefault(null, card.id);
-    } else {
-        viewSection.insertAdjacentHTML('beforeend', cardHtml);
-    }
 }
 
-function updateExistingCardUI(card) {
-    const cardElem = document.getElementById(`card-${card.id}`);
-    if (cardElem) {
-        cardElem.setAttribute('data-card', JSON.stringify(card).replace(/'/g, "&apos;"));
-        cardElem.querySelector('.card-brand').innerText = `${card.brand} Ending in ${card.last4}`;
-        cardElem.querySelector('.card-expiry').innerText = `Expires ${card.expiry}`;
-    }
-}
+/* --- UI HELPERS --- */
 
-function editCard(btn) {
-    const cardItem = btn.closest('.saved-card-item');
-    const data = JSON.parse(cardItem.getAttribute('data-card'));
-    editingCardId = data.id;
-
-    togglePaymentForm();
-
-    document.getElementById('cardNumber').value = "**** **** **** " + data.last4;
-    document.getElementById('cardHolderName').value = data.name;
-    document.getElementById('expiryMonth').value = data.expiry.split('/')[0];
-    document.getElementById('expiryYear').value = "20" + data.expiry.split('/')[1];
-    document.getElementById('billingRegionInput').value = data.region;
-    document.getElementById('billingProvinceInput').value = data.province;
-    document.getElementById('billingCityInput').value = data.city;
-    document.getElementById('billingBarangayInput').value = data.barangay;
-    document.getElementById('billingPostalInput').value = data.postal;
-    document.getElementById('billingStreetInput').value = data.street;
-    document.getElementById('billingHouseInput').value = data.house || '';
-    document.getElementById('billingBuildingInput').value = data.building || '';
-
-    document.getElementById('mainSubmitBtn').innerText = "UPDATE PAYMENT METHOD";
-}
-
-function setDefault(event, id) {
-    if (event) event.stopPropagation();
-
-    document.querySelectorAll('.saved-card-item').forEach(el => {
-        el.classList.remove('is-default');
-        el.classList.add('non-default');
-
-        const actions = el.querySelector('.card-actions-right');
-        const badge = actions.querySelector('.badge-default');
-
+function applyDefaultUI(id) {
+    document.querySelectorAll('.saved-card-item').forEach(item => {
+        item.classList.remove('active-selection');
+        const badge = item.querySelector('.badge-default');
         if (badge) {
+            const actionDiv = item.querySelector('.card-actions-right');
             badge.remove();
             const btn = document.createElement('button');
             btn.className = 'btn-set-default';
             btn.innerText = 'SET DEFAULT';
-            const cardId = el.id.replace('card-', '');
-            btn.onclick = (e) => setDefault(e, cardId);
-            actions.insertBefore(btn, actions.querySelector('.btn-remove'));
+            const itemId = item.id.replace('method-', '');
+            btn.onclick = function () { setDefault(itemId); };
+            actionDiv.insertBefore(btn, actionDiv.querySelector('.btn-remove'));
         }
     });
 
-    const current = document.getElementById('card-' + id);
-    if (current) {
-        current.classList.remove('non-default');
-        current.classList.add('is-default');
+    const target = document.getElementById(`method-${id}`);
+    if (!target) return;
+    target.classList.add('active-selection');
+    const actionDiv = target.querySelector('.card-actions-right');
+    const setBtn = actionDiv.querySelector('.btn-set-default');
+    if (setBtn) setBtn.remove();
 
-        const actions = current.querySelector('.card-actions-right');
-        const btn = actions.querySelector('.btn-set-default');
-        if (btn) btn.remove();
-
-        const badge = document.createElement('span');
-        badge.className = 'badge-default';
-        badge.innerText = 'DEFAULT';
-        actions.insertBefore(badge, actions.querySelector('.btn-remove'));
-    }
+    const badge = document.createElement('span');
+    badge.className = 'badge-default';
+    badge.innerText = 'DEFAULT';
+    actionDiv.insertBefore(badge, actionDiv.querySelector('.btn-remove'));
 }
 
-function removeCard(event, id) {
-    if (event) event.stopPropagation();
-
+function setDefault(id) {
     Swal.fire({
-        title: 'REMOVE CARD?',
-        text: "Are you sure you want to delete this payment method?",
+        title: 'SET AS DEFAULT?',
+        icon: 'info',
+        iconColor: '#000',
+        showCancelButton: true,
+        confirmButtonColor: '#000'
+    }).then((result) => {
+        if (result.isConfirmed) applyDefaultUI(id);
+    });
+}
+
+function removeCard(id) {
+    Swal.fire({
+        title: 'REMOVE?',
         icon: 'warning',
         iconColor: '#000',
         showCancelButton: true,
-        confirmButtonColor: '#000',
-        cancelButtonColor: '#fff',
-        confirmButtonText: 'YES, DELETE',
-        cancelButtonText: 'CANCEL',
-        reverseButtons: true,
-        customClass: {
-            cancelButton: 'swal-cancel-custom'
-        }
+        confirmButtonColor: '#000'
     }).then((result) => {
         if (result.isConfirmed) {
-            const cardElem = document.getElementById('card-' + id);
-            const wasDefault = cardElem.classList.contains('is-default');
-            cardElem.remove();
+            const itemToRemove = document.getElementById(`method-${id}`);
+            const wasDefault = itemToRemove.classList.contains('active-selection');
+            itemToRemove.remove();
 
-            const remaining = document.querySelectorAll('.saved-card-item');
-            if (remaining.length === 0) {
+            const remainingItems = document.querySelectorAll('.saved-card-item');
+            if (remainingItems.length === 0) {
                 location.reload();
-            } else if (wasDefault) {
-                setDefault(null, remaining[0].id.replace('card-', ''));
+            } else if (remainingItems.length === 1 || (wasDefault && remainingItems.length > 0)) {
+                const nextId = remainingItems[0].id.replace('method-', '');
+                applyDefaultUI(nextId);
             }
-
-            Swal.fire({
-                title: 'DELETED',
-                icon: 'success',
-                iconColor: '#000',
-                confirmButtonColor: '#000',
-                confirmButtonText: 'OK'
-            });
         }
     });
-}
-
-function togglePaymentForm() {
-    const v = document.getElementById('payment-view-section'),
-        f = document.getElementById('payment-form-section');
-    const isHidden = (f.style.display === 'none' || f.style.display === '');
-
-    v.style.display = isHidden ? 'none' : 'block';
-    f.style.display = isHidden ? 'block' : 'none';
-
-    document.querySelector('.profile-card-content').scrollIntoView({ behavior: 'smooth' });
-}
-
-function prepareAddForm() {
-    editingCardId = null;
-    document.getElementById('paymentForm').reset();
-    document.getElementById('mainSubmitBtn').innerText = "SAVE PAYMENT METHOD";
-    togglePaymentForm();
-}
-
-function populateDatalist(list, items, mapping = null) {
-    list.innerHTML = '';
-    items.sort().forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = mapping ? mapping[item] : item;
-        list.appendChild(opt);
-    });
-}
-
-function getCodeByValue(val, mapping) {
-    return Object.keys(mapping).find(key => mapping[key] === val) || val;
 }

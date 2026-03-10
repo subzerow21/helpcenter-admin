@@ -7,16 +7,16 @@
     width: 100%;
     display: flex;
     justify-content: stretch;
-    background-color: #f9f9f9; /* Subtle contrast to the white card */
+    background-color: #f9f9f9;
 }
 
 .page-title {
     font-size: 1.75rem;
-    font-weight: 900; /* Bold branding from sidebar */
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: -0.5px;
     margin: 0;
-    color: var(--black);
+    color: #000;
 }
 
 .main-content-wrapper {
@@ -24,28 +24,25 @@
     width: 100%;
     padding: 10px;
     display: flex;
-    justify-content: flex-start; /* Aligns to left sidebar naturally */
+    justify-content: flex-start;
 }
 
-/* Container that centers the card and controls width on large screens */
 .account-details-full-width {
-    width: 95%; /* Increase from 900px to a percentage */
-    max-width: 1400px; /* Sets a much higher upper limit for ultra-wide screens */
+    width: 95%;
+    max-width: 1400px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-}
-.bi bi-lock-fill{
-    color: black;
 }
 
 .profile-card-content {
     background-color: #ffffff;
     border: 1px solid #eeeeee;
     border-radius: 12px;
-    padding: 40px 60px; /* Increased horizontal padding for the wider look */
+    padding: 40px 60px;
     box-shadow: 0 2px 15px rgba(0, 0, 0, 0.03);
-    width: 100%; /* Ensure it fills the container */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* ==========================================================================
@@ -67,13 +64,12 @@
     margin: 0;
 }
 
-/* ADD PAYMENT METHOD BUTTON */
 .btn-primary-action {
     background-color: #000 !important;
     color: #fff !important;
     border: 1px solid #000 !important;
     padding: 12px 28px !important;
-    border-radius: 8px !important; /* Sharp corners like screenshot */
+    border-radius: 8px !important;
     font-weight: 600;
     font-size: 0.85rem;
     display: flex;
@@ -86,13 +82,12 @@
     transition: all 0.2s ease;
 }
 
-    .btn-primary-action:hover {
-        background-color: #333 !important;
-        border-color: #333 !important;
-        transform: translateY(-1px);
-    }
+.btn-primary-action:hover {
+    background-color: #333 !important;
+    border-color: #333 !important;
+    transform: translateY(-1px);
+}
 
-/* SUBMIT BUTTON AT THE BOTTOM */
 .btn-submit {
     background-color: #000;
     color: #fff;
@@ -107,12 +102,11 @@
     margin-top: 20px;
 }
 
-    .btn-submit:hover {
-        background-color: #222;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
+.btn-submit:hover {
+    background-color: #222;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
 
-/* EDIT BUTTON BOX */
 .btn-edit-card {
     background-color: #fff !important;
     border: 1px solid black !important;
@@ -123,13 +117,10 @@
     transition: all 0.2s ease;
 }
 
-    .btn-edit-card:hover {
-        opacity: 0.9;
-        color: floralwhite !important;
-        border-color: dimgrey !important;
-    }
+.btn-edit-card:hover {
+    background-color: #f0f0f0 !important;
+}
 
-/* REMOVE BUTTON TEXT LINK */
 .btn-remove {
     background: transparent !important;
     border: 1px solid black !important;
@@ -144,14 +135,13 @@
     transition: all 0.2s ease;
 }
 
-    .btn-remove:hover {
-        background-color: black !important;
-        color: floralwhite !important;
-        border-color: dimgrey !important;
-    }
+.btn-remove:hover {
+    background-color: black !important;
+    color: white !important;
+}
 
 /* ==========================================================================
-   3. SAVED CARD STYLING & SELECTION
+   3. SAVED ITEM STYLING (CARD & WALLET)
    ========================================================================== */
 .saved-card-item {
     display: flex;
@@ -165,18 +155,26 @@
     transition: all 0.3s ease;
 }
 
-    .saved-card-item:hover {
-        border-color: #000;
-    }
+.saved-card-item:hover {
+    border-color: #000;
+}
 
-    .saved-card-item.active-selection {
-        border: 2px solid #000;
-        background-color: #fafafa;
-    }
+.saved-card-item.active-selection {
+    border: 2px solid #000;
+    background-color: #fafafa;
+}
+
+.card-info-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
 
 .card-info-left i {
     font-size: 2.2rem;
     color: #000;
+    width: 45px;
+    text-align: center;
 }
 
 .card-details {
@@ -200,16 +198,15 @@
     align-items: center;
     gap: 15px;
 }
+
 .badge-default {
-    background-color: #000; /* Matching your black & white theme */
+    background-color: #000;
     color: #fff;
-    padding: 2px 8px;
+    padding: 4px 10px;
     font-size: 10px;
     font-weight: bold;
     border-radius: 4px;
     text-transform: uppercase;
-    margin-left: 10px;
-    vertical-align: middle;
 }
 
 .btn-set-default {
@@ -225,19 +222,59 @@
     transition: 0.2s;
 }
 
-    .btn-set-default:hover {
-        background: #000;
-        color: #fff;
-    }
+.btn-set-default:hover {
+    background: #000;
+    color: #fff;
+}
 
 /* ==========================================================================
-   4. FORM STYLES & GRID (MONOCHROME REDESIGN)
+   4. FORM STYLES & E-WALLET TOGGLE
    ========================================================================== */
+
+.payment-type-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 40px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: fit-content;
+}
+
+.btn-toggle {
+    background: #fff;
+    border: none;
+    padding: 12px 30px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.btn-toggle:not(:last-child) {
+    border-right: 1px solid #ccc;
+}
+
+.btn-toggle.active {
+    background-color: #000;
+    color: #fff;
+}
+
+.btn-toggle i {
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+/* Grid Layout */
 .payment-form-grid {
     display: grid;
-    grid-template-columns: 1fr 1.2fr; /* Give Billing Address slightly more room */
-    gap: 80px; /* Wider gap between the two columns */
-    align-items: start;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    transition: all 0.3s ease;
+    width: 100%;
 }
 
 .form-section-header {
@@ -263,39 +300,36 @@
     font-family: 'Poppins', sans-serif;
 }
 
+.input-group {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
 .input-group input,
 .form-select-custom {
-    width: 100%;
+    width: 100% !important;
     padding: 14px 18px;
     background-color: #fff;
     border: 1px solid #ccc;
-    border-radius: 4px; /* Minimalist sharp corners */
+    border-radius: 4px;
     font-size: 0.95rem;
     transition: all 0.2s ease;
     color: #000;
     font-family: 'Poppins', sans-serif;
+    box-sizing: border-box; /* Ensures padding doesn't break 100% width */
 }
 
-    .input-group input:focus {
-        outline: none;
-        border-color: #000;
-        background-color: #fafafa;
-    }
+.input-group input:focus {
+    outline: none;
+    border-color: #000;
+    background-color: #fafafa;
+}
 
-    .input-group input::placeholder {
-        color: #bbb;
-    }
-
-/* Side-by-Side Flex logic for MM/YYYY and balanced Billing Address */
 .input-row-split {
     display: flex;
     gap: 15px;
     width: 100%;
 }
-
-    .input-row-split .input-group {
-        flex: 1;
-    }
 
 .expiry-dropdown-container {
     display: flex;
@@ -303,25 +337,26 @@
     width: 100%;
 }
 
-    .expiry-dropdown-container select {
-        flex: 1;
-    }
-
-.expiry-container {
-    display: flex;
-    gap: 10px;
-}
-
-/* Custom select dropdown styling */
 .form-select-custom {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 18px center;
-    background-size: 14px;
-    padding-right: 45px;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 18px center !important;
+    background-size: 14px !important;
+    padding-right: 45px !important; /* Space for arrow icon */
+    position: relative;
 }
 
+.expiry-dropdown-container .form-select-custom {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ==========================================================================
+   5. MISC & EMPTY STATE
+   ========================================================================== */
 .security-notice {
     display: flex;
     gap: 12px;
@@ -333,17 +368,10 @@
     align-items: center;
 }
 
-    .security-notice i {
-        color: #27ae60;
-        font-size: 1.2rem;
-    }
-
-    .security-notice p {
-        font-size: 0.8rem;
-        color: #666;
-        margin: 0;
-        font-family: 'Poppins', sans-serif;
-    }
+.security-notice i {
+    color: #000;
+    font-size: 1.2rem;
+}
 
 .back-link {
     color: #000;
@@ -358,16 +386,9 @@
     text-transform: uppercase;
 }
 
-    .back-link:hover {
-        text-decoration: underline;
-    }
-
-/* ==========================================================================
-   5. EMPTY STATE (FIXED DASHED BOX)
-   ========================================================================== */
 .empty-state-container {
     width: 100%;
-    padding: 10px 20px;
+    padding: 60px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -377,80 +398,38 @@
     background: #fafafa;
 }
 
-/* FADED Credit Card Icon Preservation */
 .empty-state-icon {
     font-size: 4rem;
-    color: #d0d0d0; /* Faded/Muted icon color from original */
+    color: #d0d0d0;
     margin-bottom: 20px;
     opacity: 0.6;
 }
 
-.empty-state-title {
-    font-weight: 800;
-    text-transform: uppercase;
-    font-family: 'Poppins', sans-serif;
-    margin-bottom: 10px;
-    color: #000;
-}
-
-.empty-state-text {
-    font-size: 0.9rem;
-    color: #666;
-    margin-bottom: 30px;
-    max-width: 400px;
-    text-align: center;
-    font-family: 'Poppins', sans-serif;
-}
-
 /* ==========================================================================
-   6. SWEETALERT MONOCHROME OVERRIDES (NO LOCALHOST)
+   6. RESPONSIVENESS & E-WALLET FULL WIDTH
    ========================================================================== */
-/* Force SweetAlert to use Poppins Font */
-.swal2-popup {
-    font-family: 'Poppins', sans-serif !important;
-    border-radius: 12px !important;
+
+/* FORCE E-WALLET TO OCCUPY ENTIRE WIDTH OF WHITE CARD */
+#ewallet-fields {
+    grid-column: 1 / -1 !important; 
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
-.swal2-title {
-    font-weight: 800 !important;
-    text-transform: uppercase !important;
-    font-size: 1.2rem !important;
-}
-
-/* Monochrome Buttons for SweetAlert */
-.swal2-confirm {
-    background-color: #000 !important; /* Black button */
-    color: #fff !important;
-    border-radius: 6px !important;
-}
-
-.swal2-cancel {
-    background-color: #fff !important;
-    color: #000 !important;
-    border: 1px solid #000 !important; /* Outlined button */
-    border-radius: 6px !important;
-}
-
-/* ==========================================================================
-   7. RESPONSIVENESS
-   ========================================================================== */
-@media (max-width: 1100px) {
-    .payment-form-grid {
-        gap: 40px;
-    }
-
-    .profile-card-content {
-        padding: 30px;
-    }
+#ewallet-fields .input-group {
+    width: 100% !important;
 }
 
 @media (max-width: 992px) {
-    .main-content-wrapper {
-        padding: 20px 10px;
-    }
-
     .payment-form-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+    #ewallet-fields {
+        grid-column: auto !important;
+    }
+    .profile-card-content {
+        padding: 30px;
     }
 }
 
@@ -460,47 +439,19 @@
         align-items: flex-start;
         gap: 20px;
     }
-
-    .btn-primary-action {
-        width: 100% !important;
-    }
-
     .saved-card-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        transition: all 0.2s ease;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
     }
-
-        /* Non-Default Card: Subtle & Clean */
-        .saved-card-item.non-default {
-            background-color: #ffffff;
-            border: 1px solid #e0e0e0;
-        }
-
-        /* Default Card: Bold & High Contrast */
-        .saved-card-item.is-default {
-            background-color: #fafafa;
-            border: 2px solid #000000;
-        }
-
     .card-actions-right {
         width: 100%;
+        justify-content: space-between;
         border-top: 1px solid #eee;
         padding-top: 15px;
-        margin-top: 10px;
     }
-
-    .input-row-split {
-        flex-direction: column;
-        gap: 0;
-    }
-
     .btn-submit {
         width: 100%;
-        padding: 16px;
+        padding: 18px 0;
     }
 }
