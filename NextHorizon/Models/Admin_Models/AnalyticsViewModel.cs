@@ -3,29 +3,30 @@ using System.Linq;
 
 namespace NextHorizon.Models.Admin_Models
 {
-    // --- ANALYTICS MODELS ---
     public class AnalyticsViewModel
     {
-        public double ChallengeToSaleConversionRate { get; set; }
+        // --- Growth Stats ---
+        public int TotalConsumers { get; set; }
+        public int TotalSellers { get; set; }
+        public double AverageOrderValue { get; set; } // Added missing definition
         public double AvgKmPerPurchase { get; set; }
+        public double ChallengeToSaleConversionRate { get; set; }
         public int TotalSocialInteractions { get; set; }
-        public decimal AverageOrderValue { get; set; }
 
-        public List<AnalyticsChartData> PerformanceTrends { get; set; } = new();
-        public List<RewardMetric> TopChallengeRewards { get; set; } = new();
-        public List<SegmentMetric> SegmentScores { get; set; } = new();
-
+        // --- Funnel Stats ---
         public int UsersStartedChallenge { get; set; }
         public int UsersCompletedGoal { get; set; }
         public int UsersClaimedReward { get; set; }
         public int UsersPurchased { get; set; }
 
-        // New: Peak Activity Data (Hour 0-23)
-        public List<int> ActivityByHour { get; set; } = new();
-
-        // New: Seller Performance
+        // --- Lists (Renamed to match Controller metrics) ---
+        public List<SegmentMetric> SegmentScores { get; set; } = new();
+        public List<AnalyticsChartData> PerformanceTrends { get; set; } = new();
+        public List<RewardMetric> TopChallengeRewards { get; set; } = new();
         public List<SellerMetric> TopSellers { get; set; } = new();
     }
+
+    // --- Supporting Metric Classes ---
 
     public class AnalyticsChartData
     {
@@ -48,19 +49,19 @@ namespace NextHorizon.Models.Admin_Models
         public double ProgressPercentage { get; set; }
     }
 
-    
-
-    public class LeaderboardEntry
-    {
-        public string UserName { get; set; } = string.Empty;
-        public double StravaKM { get; set; }
-    }
-
     public class SellerMetric
     {
         public string SellerName { get; set; } = string.Empty;
+        public string ShopName { get; set; } = string.Empty; // Fixed: Added ShopName
         public int OrdersFulfilled { get; set; }
         public decimal RevenueGenerated { get; set; }
     }
 
+    public class LeaderboardEntry
+    {
+        public int Rank { get; set; } // Added Rank for Dashboard usage
+        public string UserName { get; set; } = string.Empty;
+        public double StravaKM { get; set; }
+        public string Pace { get; set; } = "0:00"; // Added Pace
+    }
 }

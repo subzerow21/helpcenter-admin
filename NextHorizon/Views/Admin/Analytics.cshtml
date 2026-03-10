@@ -33,28 +33,35 @@
 </div>
 
 <div class="row g-3 mb-5">
-    <div class="col-md-4">
-        <div class="analytics-card card-dark">
-            <p class="text-white-50 small fw-bold mb-1">CHALLENGE-TO-SALE CONVERSION</p>
+    <div class="col-md-3">
+        <div class="analytics-card bg-white border shadow-sm h-100">
+            <p class="text-muted small fw-bold mb-1">TOTAL CONSUMERS</p>
+            <h2 class="fw-800 text-dark">@Model.TotalConsumers.ToString("N0")</h2>
+            <p class="text-success small fw-bold mb-0"><i class="bi bi-graph-up-arrow"></i> +12% Growth</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="analytics-card bg-white border shadow-sm h-100">
+            <p class="text-muted small fw-bold mb-1">TOTAL SELLERS</p>
+            <h2 class="fw-800 text-dark">@Model.TotalSellers.ToString("N0")</h2>
+            <p class="text-primary small fw-bold mb-0">Active Brands</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="analytics-card bg-white border shadow-sm h-100">
+            <p class="text-muted small fw-bold mb-1">AVG. KM PER PURCHASE</p>
+            <h2 class="fw-800 text-dark">@Model.AvgKmPerPurchase.ToString("F1") KM</h2>
+            <p class="text-muted tiny mb-0">Activity Engagement</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="analytics-card card-dark h-100">
+            <p class="text-white-50 small fw-bold mb-1">CONVERSION RATE</p>
             <h2 class="text-white fw-800">@Model.ChallengeToSaleConversionRate.ToString("F1")%</h2>
             <div class="progress bg-secondary" style="height: 4px;">
                 <div class="progress-bar bg-white" style="width: @Model.ChallengeToSaleConversionRate%"></div>
             </div>
-            <p class="text-white-50 tiny mt-2 mb-0">+5.2% vs last month performance</p>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="analytics-card bg-white border shadow-sm">
-            <p class="text-muted small fw-bold mb-1">AVG. KM PER PURCHASE</p>
-            <h2 class="fw-800 text-dark">@Model.AvgKmPerPurchase.ToString("F1") KM</h2>
-            <p class="text-success small fw-bold mb-0"><i class="bi bi-arrow-up-short"></i> Engagement depth is increasing</p>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="analytics-card bg-white border shadow-sm">
-            <p class="text-muted small fw-bold mb-1">TOTAL SOCIAL INTERACTIONS</p>
-            <h2 class="fw-800 text-dark">@(Model.TotalSocialInteractions >= 1000000 ? (Model.TotalSocialInteractions / 1000000.0).ToString("F1") + "M" : Model.TotalSocialInteractions.ToString("N0"))</h2>
-            <p class="text-muted small mb-0">Shares, comments, and leaderboard hits</p>
+            <p class="text-white-50 tiny mt-2 mb-0">+5.2% vs last month</p>
         </div>
     </div>
 </div>
@@ -132,23 +139,23 @@
 
                 <div class="funnel-stage bg-secondary text-white p-2 mb-2 rounded text-center" style="width: 85%"
                      data-bs-toggle="tooltip" data-bs-placement="right"
-                     title="Users who successfully logged enough Strava activity to meet the challenge goal.">
+                     title="Users who successfully logged enough Strava activity.">
                     Completed: @Model.UsersCompletedGoal
                 </div>
 
                 <div class="funnel-stage bg-primary text-white p-2 mb-2 rounded text-center" style="width: 65%"
                      data-bs-toggle="tooltip" data-bs-placement="right"
-                     title="Users who visited the reward page and generated their unique discount code.">
+                     title="Users who generated a discount code.">
                     Claimed: @Model.UsersClaimedReward
                 </div>
 
                 <div class="funnel-stage bg-success text-white p-2 mb-2 rounded text-center" style="width: 45%"
                      data-bs-toggle="tooltip" data-bs-placement="right"
-                     title="Users who completed a transaction using a challenge-earned reward code.">
+                     title="Users who completed a purchase.">
                     Purchased: @Model.UsersPurchased
                 </div>
             </div>
-            <p class="text-muted tiny mt-3 text-center italic">Measures user journey from Strava activity to Checkout</p>
+            <p class="text-muted tiny mt-3 text-center italic">User journey from Strava activity to Checkout</p>
         </div>
     </div>
     <div class="col-md-7">

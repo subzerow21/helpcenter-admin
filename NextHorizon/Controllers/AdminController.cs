@@ -20,50 +20,58 @@ namespace NextHorizon.Controllers
         {
             var viewModel = new AnalyticsViewModel
             {
-                // Existing Summary Metrics
+                // Growth Metrics (Moved from Dashboard)
+                TotalConsumers = 12450,
+                TotalSellers = 84,
+
+                // Summary Metrics
                 ChallengeToSaleConversionRate = 32.8,
                 AvgKmPerPurchase = 12.4,
                 TotalSocialInteractions = 4200000,
-                AverageOrderValue = 4850.00m,
 
-                // Funnel Data (New)
+                // Ensure this is double or decimal based on your ViewModel definition
+                AverageOrderValue = 4850.00,
+
+                // Funnel Data
                 UsersStartedChallenge = 5000,
                 UsersCompletedGoal = 3200,
                 UsersClaimedReward = 2100,
                 UsersPurchased = 1640,
 
-                // Performance Trends (Chart 1)
+                // Performance Trends (Chart 1 - Line Chart)
                 PerformanceTrends = new List<AnalyticsChartData>
         {
-            new AnalyticsChartData { DateLabel = "Mar 04", TotalKm = 1500, TotalRevenue = 160000 },
-            new AnalyticsChartData { DateLabel = "Mar 05", TotalKm = 1800, TotalRevenue = 210000 },
-            new AnalyticsChartData { DateLabel = "Mar 06", TotalKm = 1650, TotalRevenue = 195000 },
-            new AnalyticsChartData { DateLabel = "Mar 07", TotalKm = 2100, TotalRevenue = 240000 }
+            new AnalyticsChartData { DateLabel = "Mar 04", TotalKm = 1500, TotalRevenue = 160000m },
+            new AnalyticsChartData { DateLabel = "Mar 05", TotalKm = 1800, TotalRevenue = 210000m },
+            new AnalyticsChartData { DateLabel = "Mar 06", TotalKm = 1650, TotalRevenue = 195000m },
+            new AnalyticsChartData { DateLabel = "Mar 07", TotalKm = 2100, TotalRevenue = 240000m }
         },
 
-                // Top Performing Sellers (New)
+                // Top Performing Sellers (Table)
                 TopSellers = new List<SellerMetric>
         {
-            new SellerMetric { SellerName = "Elite Strides Ph", OrdersFulfilled = 452, RevenueGenerated = 1254000.50m },
-            new SellerMetric { SellerName = "Mountain Peak Gear", OrdersFulfilled = 310, RevenueGenerated = 890600.00m },
-            new SellerMetric { SellerName = "Urban Runner Co.", OrdersFulfilled = 285, RevenueGenerated = 412000.75m },
-            new SellerMetric { SellerName = "Velocity Sports", OrdersFulfilled = 198, RevenueGenerated = 356000.00m },
-            new SellerMetric { SellerName = "HydroFlow Official", OrdersFulfilled = 156, RevenueGenerated = 98000.25m }
+            new SellerMetric { SellerName = "Elite Strides Ph", ShopName = "Elite Strides Ph", OrdersFulfilled = 452, RevenueGenerated = 1254000.50m },
+            new SellerMetric { SellerName = "Mountain Peak Gear", ShopName = "Mountain Peak Gear", OrdersFulfilled = 310, RevenueGenerated = 890600.00m },
+            new SellerMetric { SellerName = "Urban Runner Co.", ShopName = "Urban Runner Co.", OrdersFulfilled = 285, RevenueGenerated = 412000.75m },
+            new SellerMetric { SellerName = "Velocity Sports", ShopName = "Velocity Sports", OrdersFulfilled = 198, RevenueGenerated = 356000.00m },
+            new SellerMetric { SellerName = "HydroFlow Official", ShopName = "HydroFlow Official", OrdersFulfilled = 156, RevenueGenerated = 98000.25m }
         },
 
-                // Reward Metrics
+                // Reward Metrics (Right Sidebar)
                 TopChallengeRewards = new List<RewardMetric>
         {
             new RewardMetric { ProductName = "Ultra Boost Z", LinkedChallengeName = "Ironman Monthly", UnitsSold = 842 },
-            new RewardMetric { ProductName = "Pro GPS Watch", LinkedChallengeName = "Summit Climbers", UnitsSold = 520 }
+            new RewardMetric { ProductName = "Pro GPS Watch", LinkedChallengeName = "Summit Climbers", UnitsSold = 520 },
+            new RewardMetric { ProductName = "Hydration Vest", LinkedChallengeName = "Trail Blazers", UnitsSold = 315 }
         },
 
-                // Segment Engagement
+                // Segment Engagement (Progress Bars)
                 SegmentScores = new List<SegmentMetric>
         {
             new SegmentMetric { CategoryName = "Elite Runners", ProgressPercentage = 94 },
             new SegmentMetric { CategoryName = "Urban Commuters", ProgressPercentage = 78 },
-            new SegmentMetric { CategoryName = "Trail Explorers", ProgressPercentage = 56 }
+            new SegmentMetric { CategoryName = "Trail Explorers", ProgressPercentage = 56 },
+            new SegmentMetric { CategoryName = "Casual Walkers", ProgressPercentage = 42 }
         }
             };
 
