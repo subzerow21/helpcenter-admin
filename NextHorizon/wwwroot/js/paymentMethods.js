@@ -1,18 +1,13 @@
 ﻿/* =============================================================
-   PAYMENT METHODS - FINAL SYNCHRONIZED LOGIC
+   PAYMENT METHODS - FINAL CLEAN VERSION
    ============================================================= */
 
 let editingCardId = null;
 let currentPaymentType = 'Card';
 let addressData = {};
-let nextId = 100;
 
-const regionNames = {
-    "01": "Region I", "02": "Region II", "03": "Region III", "4A": "Region IV-A",
-    "4B": "Region IV-B", "05": "Region V", "06": "Region VI", "07": "Region VII",
-    "08": "Region VIII", "09": "Region IX", "10": "Region X", "11": "Region XI",
-    "12": "Region XII", "13": "Region XIII", "ARMM": "ARMM", "CAR": "CAR", "NCR": "NCR", "NIR": "NIR"
-};
+// Generates a unique ID to prevent collisions without using a global counter
+const generateId = () => `pm_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
 document.addEventListener('DOMContentLoaded', async function () {
     await loadAddressData();
@@ -31,7 +26,9 @@ async function loadAddressData() {
     try {
         const response = await fetch('/philippine_provinces_cities_municipalities_and_barangays_2016.json');
         addressData = await response.json();
-    } catch (e) { console.error("Error loading address data", e); }
+    } catch (e) {
+        console.warn("Address data not found, manual entry enabled.");
+    }
 }
 
 function toggleView() {
@@ -46,30 +43,29 @@ function toggleView() {
 }
 
 /**
- * UPDATED: Optimized to remove layout gaps by toggling display correctly
+ * Optimized to remove layout gaps by toggling display correctly
  */
 function setPaymentType(type) {
     currentPaymentType = type;
-    document.getElementById('selectedPaymentType').value = type;
+    const typeInput = document.getElementById('selectedPaymentType');
+    if (typeInput) typeInput.value = type;
 
     const cardCol = document.getElementById('card-left-column');
     const walletFields = document.getElementById('ewallet-fields');
     const billingSection = document.getElementById('billing-address-section');
 
     if (type === 'Card') {
-        // Show Card Left Column and Billing Right Column
         if (cardCol) cardCol.style.display = 'block';
         if (billingSection) billingSection.style.display = 'block';
         if (walletFields) walletFields.style.display = 'none';
     } else {
-        // Hide both standard columns, Show E-Wallet (which spans full width via CSS)
         if (cardCol) cardCol.style.display = 'none';
         if (billingSection) billingSection.style.display = 'none';
         if (walletFields) walletFields.style.display = 'block';
     }
 
-    document.getElementById('type-card').classList.toggle('active', type === 'Card');
-    document.getElementById('type-ewallet').classList.toggle('active', type === 'EWallet');
+    document.getElementById('type-card')?.classList.toggle('active', type === 'Card');
+    document.getElementById('type-ewallet')?.classList.toggle('active', type === 'EWallet');
 }
 
 /* --- CRUD ACTIONS --- */
@@ -80,7 +76,7 @@ function prepareAddForm() {
     form.reset();
     document.getElementById('methodId').value = "";
 
-    // Reset border colors
+    // Reset all borders
     form.querySelectorAll('input, select').forEach(el => el.style.borderColor = "#ccc");
 
     setPaymentType('Card');
@@ -98,29 +94,25 @@ function prepareEditForm(data) {
     form.querySelector('[name="Id"]').value = editingCardId;
 
     if (type === 'Card') {
-        form.querySelector('[name="HolderName"]').value = data.holderName || data.HolderName || "";
-        const last4 = data.last4 || data.Last4 || "";
+        form.querySelector('[name="HolderName"]').value = data.holderName || "";
+        const last4 = data.last4 || "";
         form.querySelector('[name="CardNumber"]').value = last4 ? "**** **** **** " + last4 : "";
 
-        const exp = data.expiry || data.Expiry || "";
+        const exp = data.expiry || "";
         if (exp && exp.includes('/')) {
             const parts = exp.split('/');
             form.querySelector('[name="ExpiryMonth"]').value = parts[0];
             form.querySelector('[name="ExpiryYear"]').value = parts[1].length === 2 ? "20" + parts[1] : parts[1];
         }
 
-        // Billing Address
-        form.querySelector('[name="Region"]').value = data.region || data.Region || "";
-        form.querySelector('[name="Province"]').value = data.province || data.Province || "";
-        form.querySelector('[name="City"]').value = data.city || data.City || "";
-        form.querySelector('[name="Barangay"]').value = data.barangay || data.Barangay || "";
-        form.querySelector('[name="Postal"]').value = data.postal || data.Postal || "";
-        form.querySelector('[name="Street"]').value = data.street || data.Street || "";
+        ["Region", "Province", "City", "Barangay", "Postal", "Street"].forEach(field => {
+            const el = form.querySelector(`[name="${field}"]`);
+            if (el) el.value = data[field.toLowerCase()] || "";
+        });
     } else {
-        form.querySelector('[name="Brand"]').value = data.brand || data.Brand || "GCash";
-        form.querySelector('[name="Account"]').value = data.account || data.Account || "";
-        // Mapping the unique E-wallet holder name field
-        form.querySelector('[name="HolderNameEwallet"]').value = data.holderName || data.HolderName || "";
+        form.querySelector('[name="Brand"]').value = data.brand || "GCash";
+        form.querySelector('[name="Account"]').value = data.account || "";
+        form.querySelector('[name="HolderNameEwallet"]').value = data.holderName || "";
     }
     form.querySelector('.btn-submit').innerText = "UPDATE PAYMENT METHOD";
 }
@@ -128,28 +120,23 @@ function prepareEditForm(data) {
 function handleFormSubmit() {
     const form = document.getElementById('paymentForm');
     const formData = new FormData(form);
-    const type = formData.get('Type');
+    const type = formData.get('Type') || currentPaymentType;
+
+    // Dynamic Validation: Only check visible fields
     let isValid = true;
+    form.querySelectorAll('input, select').forEach(el => {
+        if (el.offsetParent !== null) { // If visible
+            const val = el.value.trim();
+            const isMissing = !val || val === "MM" || val === "YYYY" || val === "Select";
 
-    // Validation Helper
-    const check = (name, required = true) => {
-        const el = form.querySelector(`[name="${name}"]`);
-        if (!el) return true;
-        const val = el.value.trim();
-        const isInvalid = required && (!val || val === "MM" || val === "YYYY" || val === "Select");
-        el.style.borderColor = isInvalid ? "black" : "#ccc";
-        if (isInvalid) isValid = false;
-        return !isInvalid;
-    };
-
-    if (type === 'Card') {
-        check("HolderName");
-        ["CardNumber", "ExpiryMonth", "ExpiryYear", "Region", "Province", "City", "Postal"].forEach(f => check(f));
-    } else {
-        check("HolderNameEwallet");
-        check("Brand");
-        check("Account");
-    }
+            if (isMissing && el.hasAttribute('required')) {
+                el.style.borderColor = "black";
+                isValid = false;
+            } else {
+                el.style.borderColor = "#ccc";
+            }
+        }
+    });
 
     if (!isValid) {
         Swal.fire({ title: 'REQUIRED FIELDS', icon: 'error', iconColor: '#000', confirmButtonColor: '#000' });
@@ -158,10 +145,10 @@ function handleFormSubmit() {
 
     const cardNum = formData.get('CardNumber');
     const newMethod = {
-        id: editingCardId || nextId++,
+        id: editingCardId || generateId(),
         type: type,
         brand: type === 'Card' ? "Visa" : formData.get('Brand'),
-        last4: type === 'Card' ? (cardNum.includes('*') ? cardNum.slice(-4) : cardNum.slice(-4)) : null,
+        last4: type === 'Card' ? cardNum.slice(-4) : null,
         expiry: type === 'Card' ? `${formData.get('ExpiryMonth')}/${formData.get('ExpiryYear').slice(-2)}` : null,
         account: type === 'EWallet' ? formData.get('Account') : null,
         holderName: type === 'Card' ? formData.get('HolderName') : formData.get('HolderNameEwallet'),
@@ -173,16 +160,13 @@ function handleFormSubmit() {
         barangay: formData.get('Barangay'),
         street: formData.get('Street')
     };
-
+    a
     if (editingCardId) {
         const existingItem = document.getElementById(`method-${editingCardId}`);
         if (existingItem) existingItem.outerHTML = renderPaymentMethodCard(newMethod);
     } else {
         const container = document.getElementById('payment-view-section');
-        if (container.querySelector('.empty-state-container')) {
-            location.reload();
-            return;
-        }
+        container.querySelector('.empty-state-container')?.remove();
         container.insertAdjacentHTML('beforeend', renderPaymentMethodCard(newMethod));
     }
 
@@ -195,9 +179,10 @@ function handleFormSubmit() {
 }
 
 function renderPaymentMethodCard(method) {
-    const icon = method.type === 'Card' ? 'bi-credit-card-2-front' : 'bi-wallet2';
-    const detailTitle = method.type === 'Card' ? `${method.brand} Ending in ${method.last4}` : `${method.brand} Account`;
-    const detailSub = method.type === 'Card' ? `Expires ${method.expiry}` : method.account;
+    const isCard = method.type === 'Card';
+    const icon = isCard ? 'bi-credit-card-2-front' : 'bi-wallet2';
+    const detailTitle = isCard ? `${method.brand} Ending in ${method.last4}` : `${method.brand} Account`;
+    const detailSub = isCard ? `Expires ${method.expiry}` : method.account;
 
     return `
         <div class="saved-card-item ${method.isDefault ? 'active-selection' : ''}" id="method-${method.id}">
@@ -212,8 +197,8 @@ function renderPaymentMethodCard(method) {
                 <button class="btn-edit-card" onclick='prepareEditForm(${JSON.stringify(method)})'>
                     <i class="bi bi-pencil"></i>
                 </button>
-                ${method.isDefault ? '<span class="badge-default">DEFAULT</span>' : `<button class="btn-set-default" onclick="setDefault(${method.id})">SET DEFAULT</button>`}
-                <button class="btn-remove" onclick="removeCard(${method.id})">Remove</button>
+                ${method.isDefault ? '<span class="badge-default">DEFAULT</span>' : `<button class="btn-set-default" onclick="setDefault('${method.id}')">SET DEFAULT</button>`}
+                <button class="btn-remove" onclick="removeCard('${method.id}')">Remove</button>
             </div>
         </div>`;
 }
@@ -277,7 +262,7 @@ function removeCard(id) {
             const remainingItems = document.querySelectorAll('.saved-card-item');
             if (remainingItems.length === 0) {
                 location.reload();
-            } else if (remainingItems.length === 1 || (wasDefault && remainingItems.length > 0)) {
+            } else if (wasDefault && remainingItems.length > 0) {
                 const nextId = remainingItems[0].id.replace('method-', '');
                 applyDefaultUI(nextId);
             }
