@@ -18,8 +18,8 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Users" ? "active" : "")"
-               href="@Url.Action("Users", "Admin")"> <i class="bi bi-people-fill me-3"></i>USERS</a>
+            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Consumers" ? "active" : "")"
+               href="@Url.Action("Consumers", "Admin")"> <i class="bi bi-people-fill me-3"></i>USERS</a>
         </li>
         <li class="nav-item">
             <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Sellers" ? "active" : "")"

@@ -24,7 +24,7 @@
     <div class="col-md-3">
         <div class="stat-card d-flex align-items-center justify-content-between p-3">
             <div>
-                <p class="stat-label mb-1">Active Users</p>
+                <p class="stat-label mb-1">Total Consumers</p>
                 <h2 class="stat-value mb-0">@Model.Stats.TotalConsumers.ToString("N0")</h2>
             </div>
             <div class="stat-icon-wrapper">
@@ -122,61 +122,6 @@
             </div>
         </div>
     </div>
-
-   
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="stat-card p-0 overflow-hidden">
-            <div class="p-3 border-bottom"><h6 class="m-0 fw-bold small">TOP 5 SELLERS (MOST PURCHASED)</h6></div>
-            <table class="table table-hover align-middle m-0" style="font-size: 13px;">
-                <thead class="table-light">
-                    <tr>
-                        <th>Rank</th>
-                        <th>Shop Name</th>
-                        <th>Total Purchases</th>
-                        <th>Products Sold</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @{
-                        int rank = 1;
-                    }
-                    @foreach (var seller in Model.TopSellers)
-                    {
-                        <tr>
-                            <td>@(rank++)</td>
-                            <td class="fw-bold">@seller.ShopName</td>
-                            <td>@seller.MostPurchasedCount.ToString("N0")</td>
-                            <td>@seller.TotalProductsSold.ToString("N0")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="side-card">
-            <h6 class="fw-bold small text-uppercase mb-3 text-muted">Segment Performance</h6>
-            <label class="small fw-bold mb-1 d-flex justify-content-between">SHOES <span>136 Kudos</span></label>
-            <div class="progress mb-3"><div class="progress-bar" style="width: 85%"></div></div>
-
-            <label class="small fw-bold mb-1 d-flex justify-content-between">TECH <span>202 Kudos</span></label>
-            <div class="progress mb-3"><div class="progress-bar" style="width: 95%"></div></div>
-
-            <label class="small fw-bold mb-1 d-flex justify-content-between">APPAREL <span>280 Kudos</span></label>
-            <div class="progress mb-3"><div class="progress-bar" style="width: 70%"></div></div>
-
-            <label class="small fw-bold mb-1 d-flex justify-content-between">TOTEBAGS <span>220 Kudos</span></label>
-            <div class="progress mb-3"><div class="progress-bar" style="width: 60%"></div></div>
-
-            <label class="small fw-bold mb-1 d-flex justify-content-between">SPORTS BRA <span>200 Kudos</span></label>
-            <div class="progress mb-3"><div class="progress-bar" style="width: 55%"></div></div>
-        </div>
-    </div>
-</div>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin_css/dashboard.css" asp-append-version="true" />

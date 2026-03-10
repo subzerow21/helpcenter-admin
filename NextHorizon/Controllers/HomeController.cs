@@ -10,11 +10,11 @@ namespace NextHorizon.Controllers
         public IActionResult Index()
         {
             // Redirects the user to /Admin/Dashboard  for testing
-            //return RedirectToAction("Dashboard", "Admin");
+            return RedirectToAction("Dashboard", "Admin");
 
 
             //for consumer UI
-            return View();
+            //return View();
         }
 
         public IActionResult Privacy()
