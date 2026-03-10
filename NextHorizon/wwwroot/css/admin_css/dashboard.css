@@ -1,128 +1,140 @@
-﻿body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #f4f4f4;
-    color: #111;
+﻿/* --- Root Variables & Base Styling --- */
+:root {
+    --primary-dark: #1a1a1a;
+    --accent-success: #2ecc71;
+    --accent-danger: #e74c3c;
+    --accent-warning: #f1c40f;
+    --text-muted: #6c757d;
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --border-radius-lg: 1rem;
 }
 
-
-.stat-value {
-    font-weight: 700;
-    letter-spacing: -1px;
-}
-
-/* Leaderboard Dark Style */
-.leaderboard-container {
-    background: #1a1a1a;
-    color: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.leaderboard-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #333;
-}
-
-.table-dark-custom {
-    width: 100%;
-    color: #ccc;
-    font-size: 13px;
-}
-
-    .table-dark-custom th {
-        background: #1a1a1a;
-        padding: 12px;
-        color: #888;
-        text-transform: uppercase;
-        font-size: 11px;
-    }
-
-    .table-dark-custom td {
-        padding: 12px;
-        border-bottom: 1px solid #262626;
-        vertical-align: middle;
-    }
-
-.badge-verified {
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
-    font-size: 10px;
-    padding: 4px 8px;
-}
-
-/* Small Cards */
-.side-card {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.progress {
-    height: 8px;
-    background-color: #eee;
-    border-radius: 0;
-    margin-bottom: 15px;
-}
-
-.progress-bar {
-    background-color: #111;
-}
-
-.btn-verify {
-    background: #111;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: none;
-}
-
-/* The Gray Circle for the Icon */
-.stat-icon-wrapper {
-    width: 48px;
-    height: 48px;
+body {
     background-color: #f8f9fa;
-    border-radius: 50%;
-    /* THE CRITICAL FIX */
-    display: flex !important;
-    align-items: center !important; /* Vertical center */
-    justify-content: center !important; /* Horizontal center */
-    /* Reset any inherited spacing */
-    padding: 0 !important;
-    margin: 0;
-    line-height: 1 !important;
-    overflow: hidden;
+    color: var(--primary-dark);
 }
 
-    /* If you are using an <i> tag or <span> for the Peso */
-    .stat-icon-wrapper i,
-    .stat-icon-wrapper span {
-        display: block;
-        line-height: 1;
-        font-style: normal;
-    }
-
-/* Ensure the card content aligns correctly */
+/* --- Stat Cards (Top Row) --- */
 .stat-card {
-    background: #fff;
-    border: 1px solid #eee;
-    border-radius: 12px; /* Matches the rounded look in your screenshots */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    transition: transform 0.2s ease;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: var(--border-radius-lg);
+    transition: all 0.3s ease;
+    min-height: 110px;
 }
 
     .stat-card:hover {
-        transform: translateY(-2px);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
     }
 
 .stat-label {
     font-size: 0.75rem;
-    color: #6c757d;
+    font-weight: 700;
     text-transform: uppercase;
-    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
 }
 
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.stat-icon-wrapper {
+    background: #f8f9fa;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    color: var(--primary-dark);
+}
+
+/* --- Dark Custom Leaderboard --- */
+.leaderboard-container {
+    background: var(--primary-dark);
+    border-radius: var(--border-radius-lg);
+}
+
+.leaderboard-header {
+    background: #242424;
+    padding: 1.25rem;
+}
+
+/* Table overrides to fit the dark aesthetic */
+.table-dark-custom {
+    width: 100%;
+    border-collapse: collapse;
+    color: #ffffff;
+}
+
+    .table-dark-custom thead th {
+        background: #2d2d2d;
+        color: rgba(255,255,255,0.6);
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        padding: 1rem;
+        font-weight: 600;
+        border: none;
+    }
+
+    .table-dark-custom tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #333;
+        font-size: 0.9rem;
+    }
+
+    .table-dark-custom tbody tr:hover {
+        background: rgba(255,255,255,0.05);
+    }
+
+/* --- Fraud Watch & UI Components --- */
+.bg-soft-danger {
+    background-color: #fee2e2 !important;
+}
+
+.bg-soft-success {
+    background-color: #e8f5e9 !important;
+}
+
+.badge-verified {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid #2ecc71;
+    font-size: 0.65rem;
+    padding: 0.35em 0.65em;
+}
+
+/* --- Side Cards --- */
+.side-card {
+    transition: transform 0.2s ease;
+}
+
+.tiny {
+    font-size: 0.75rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* --- Progress Bars Customization --- */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+    .stat-value {
+        font-size: 1.4rem;
+    }
+
+    .leaderboard-container {
+        overflow-x: auto;
+    }
+}
