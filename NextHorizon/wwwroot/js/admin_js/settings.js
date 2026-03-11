@@ -7,7 +7,6 @@ let pendingAction = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Setup the Confirm Button inside the modal
-    // We use a clone technique to ensure no duplicate event listeners attach on reload
     const confirmBtn = document.getElementById('confirmBtnExecute');
     if (confirmBtn) {
         const newConfirmBtn = confirmBtn.cloneNode(true);
@@ -16,17 +15,19 @@ document.addEventListener('DOMContentLoaded', () => {
         newConfirmBtn.addEventListener('click', () => {
             if (typeof pendingAction === 'function') {
                 pendingAction();
-                pendingAction = null; // Reset to prevent double-execution
+                pendingAction = null;
             }
         });
     }
+
+    // Initialize the state of moderation sliders based on the master toggle
+    syncModerationUI();
 });
 
 /**
  * 1. UTILITIES
  */
 
-// Centralized Gatekeeper for all Admin actions
 function openConfirmModal(title, message, action) {
     const modalEl = document.getElementById('confirmActionModal');
     if (!modalEl) return;
@@ -154,20 +155,51 @@ function requestPasswordChange() {
  * 4. MODERATION RULES
  */
 
+// Handles the visual disabling of sliders when auto-flagging is off
+function syncModerationUI() {
+    const isAutoEnabled = document.getElementById('autoDQ').checked;
+    const settingsPanel = document.getElementById('thresholdSettings');
+
+    if (settingsPanel) {
+        const inputs = settingsPanel.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.disabled = !isAutoEnabled;
+        });
+        settingsPanel.style.opacity = isAutoEnabled ? "1" : "0.5";
+    }
+}
+
 function toggleAutoFlag() {
     const checkbox = document.getElementById('autoDQ');
     const newState = checkbox.checked;
 
-    checkbox.checked = !newState; // Revert visually
+    checkbox.checked = !newState; // Revert visually until confirmed
 
     openConfirmModal(
         "Moderation Change",
-        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} AI Fraud Detection?`,
+        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} automated integrity checks?`,
         () => {
             checkbox.checked = newState;
+            syncModerationUI(); // Update sliders availability
             hideModal();
-            addAuditEntry("System Admin", "Toggle AI Moderation", newState ? "ENABLED" : "DISABLED");
-            showActionToast("Moderation rules updated.");
+            addAuditEntry("System Admin", "Toggle Integrity Engine", newState ? "ENABLED" : "DISABLED");
+            showActionToast(`Integrity checks ${newState ? 'enabled' : 'disabled'}.`);
+        }
+    );
+}
+
+function saveModerationRules() {
+    const runSpeed = document.getElementById('runSpeedRange').value;
+    const bikeSpeed = document.getElementById('bikeSpeedRange').value;
+    const manualFlag = document.getElementById('flagManualEntry').checked;
+
+    openConfirmModal(
+        "Save Moderation Rules",
+        `Apply thresholds: Run ${runSpeed}km/h, Bike ${bikeSpeed}km/h?`,
+        () => {
+            hideModal();
+            addAuditEntry("System Admin", "Updated Thresholds", `Run: ${runSpeed}, Bike: ${bikeSpeed}, Manual: ${manualFlag}`);
+            showActionToast("Moderation thresholds applied successfully.");
         }
     );
 }
@@ -198,13 +230,12 @@ function processModerator() {
         showActionToast("Error: Email is required.");
         return;
     }
-    // Nested confirmation for processModerator
     openConfirmModal(
         "Confirm Permissions",
         `Apply these access settings for ${email}?`,
         () => {
-            hideModal(); // Hide confirm
-            hideModal('inviteModModal'); // Hide input modal
+            hideModal();
+            hideModal('inviteModModal');
             addAuditEntry("System Admin", "Moderator Access Update", email);
             showActionToast("Permissions updated.");
         }
