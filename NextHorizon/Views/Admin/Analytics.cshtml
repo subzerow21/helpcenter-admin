@@ -103,24 +103,37 @@
 
     <div class="col-md-4">
         <div class="chart-box bg-white border p-4 rounded-4 shadow-sm h-100">
-            <h6 class="fw-bold small text-uppercase mb-4">Top Challenge Rewards</h6>
-            <div class="reward-list">
-                @foreach (var reward in Model.TopChallengeRewards)
+            <h6 class="fw-bold small text-uppercase mb-4">Top Performing Sellers</h6>
+            <div class="seller-list">
+                @if (Model.TopSellers != null && Model.TopSellers.Any())
                 {
-                    <div class="reward-item d-flex align-items-center gap-3 mb-3 p-2 rounded-3 border-bottom pb-3">
-                        <div class="reward-img-placeholder">
-                            <i class="bi bi-box-seam"></i>
+                    @foreach (var seller in Model.TopSellers.Take(5))
+                    {
+                        <div class="seller-item d-flex align-items-center gap-3 mb-3 p-2 rounded-3 border-bottom pb-3">
+                            <div class="avatar-placeholder bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                                <i class="bi bi-shop text-dark"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="mb-0 fw-bold small">@seller.SellerName</p>
+                                <p class="text-muted tiny mb-0">@seller.OrdersFulfilled Orders</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-800 text-dark d-block">₱@seller.RevenueGenerated.ToString("N0")</span>
+                                <span class="tiny text-uppercase fw-bold text-success">REVENUE</span>
+                            </div>
                         </div>
-                        <div class="flex-grow-1">
-                            <p class="mb-0 fw-bold small">@reward.ProductName</p>
-                            <p class="text-muted tiny mb-0">Via @reward.LinkedChallengeName</p>
-                        </div>
-                        <div class="text-end">
-                            <span class="fw-800 text-dark d-block">@reward.UnitsSold</span>
-                            <span class="tiny text-uppercase fw-bold text-muted">SOLD</span>
-                        </div>
-                    </div>
+                    }
                 }
+                else
+                {
+                    <p class="text-muted small italic">No seller data available for this period.</p>
+                }
+            </div>
+            <div class="mt-3">
+                @* Typo fixed: Performance *@
+                <a asp-controller="Admin" asp-action="SellerPerformance" class="text-decoration-none small fw-bold text-dark">
+                    View Full Rankings <i class="bi bi-arrow-right"></i>
+                </a>
             </div>
         </div>
     </div>
@@ -168,36 +181,7 @@
     </div>
 </div>
 
-<div class="row g-3 mb-5">
-    <div class="col-12">
-        <div class="bg-white border p-4 rounded-4 shadow-sm">
-            <h6 class="fw-bold small text-uppercase mb-3">Top Performing Sellers</h6>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Seller Name</th>
-                            <th>Orders</th>
-                            <th>Revenue</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var seller in Model.TopSellers)
-                        {
-                            <tr>
-                                <td class="fw-bold">@seller.SellerName</td>
-                                <td>@seller.OrdersFulfilled</td>
-                                <td>₱@seller.RevenueGenerated.ToString("N2")</td>
-                                <td><span class="badge bg-success">Active</span></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin_css/analytics.css" asp-append-version="true" />

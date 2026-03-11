@@ -6,7 +6,7 @@
 <div class="container-fluid py-4 bg-light">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
         <div>
-            <h4 class="fw-bold text-dark mb-1">Logistics Partners</h4>
+            <h4 class="fw-bold text-dark mb-1">Logistics</h4>
             <p class="text-secondary small mb-0">Manage active couriers and platform-wide shipping availability.</p>
         </div>
 
@@ -16,7 +16,7 @@
                 <i class="bi bi-search position-absolute" style="right: 15px; top: 10px; color: #aaa;"></i>
             </div>
             <button class="btn btn-dark rounded-pill px-4 shadow-sm py-2" onclick="openAddPartnerModal()">
-                <i class="bi bi-plus-lg me-2"></i>Add Partner
+                <i class="bi bi-plus-lg me-2"></i>Add Logistics
             </button>
         </div>
     </div>
@@ -42,7 +42,7 @@
         </div>
         <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 p-4 text-center filter-card" id="stat-archived" onclick="filterPartners('archived')">
-                <span class="text-muted x-small d-block mb-1 text-uppercase fw-bold">Archived</span>
+                <span class="text-muted x-small d-block mb-1 text-uppercase fw-bold">Delete</span>
                 <h2 class="fw-bold mb-0 text-danger">1</h2>
             </div>
         </div>
@@ -64,13 +64,10 @@
                                     <i class="bi bi-truck fs-1 text-dark"></i>
                                 </div>
                                 <div class="form-check form-switch">
+                                    @* Changed to preventDefault to handle the Reason modal first *@
                                     <input class="form-check-input custom-switch"
-                                           type="checkbox"
-                                           role="switch"
-                                           id="switch-@i"
-                                           checked
-                                           onclick="toggleStatus('Logistics Co. @i', this)">
-                                    <label class="form-check-label d-none" for="switch-@i">Toggle Status</label>
+                                           type="checkbox" role="switch" id="switch-@i" checked
+                                           onchange="handleStatusToggle('Logistics Co. @i', this)">
                                 </div>
                             </div>
                             <h5 class="fw-bold mb-1 courier-name">Logistics Co. @i</h5>
@@ -87,7 +84,7 @@
                             </div>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-outline-dark btn-sm w-100 rounded-pill fw-bold" onclick="viewPerformance('Logistics Co. @i', 94)">View Performance</button>
-                                <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="removePartner('Logistics Co. @i')">
+                                <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="confirmDeletePartner('Logistics Co. @i')">
                                     <i class="bi bi-trash3"></i>
                                 </button>
                             </div>
@@ -111,8 +108,8 @@
                         <h6 class="fw-bold mb-1 courier-name">Flash Express</h6>
                         <p class="x-small text-muted mb-3">Disabled for maintenance</p>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-dark w-100 rounded-pill" onclick="toggleStatus('Flash Express', this)">Enable Service</button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="removePartner('Flash Express')">
+                            <button class="btn btn-sm btn-dark w-100 rounded-pill" onclick="handleStatusToggle('Flash Express', null, true)">Enable Service</button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="confirmDeletePartner('Flash Express')">
                                 <i class="bi bi-trash3"></i>
                             </button>
                         </div>
@@ -124,7 +121,7 @@
 
     <div id="archiveSection" class="p-4 rounded-4" style="background-color: #fff0f0; border: 2px solid #ffcccc; display: none;">
         <div class="d-flex align-items-center mb-3">
-            <h5 class="fw-bold mb-0 text-danger">Archived Partners</h5>
+            <h5 class="fw-bold mb-0 text-danger">Archived Logistics</h5>
             <span class="badge bg-danger rounded-pill ms-2 px-3">1</span>
         </div>
         <div class="row g-4">
@@ -136,8 +133,9 @@
                         </div>
                         <h6 class="fw-bold mb-1 courier-name">Old Courier Co.</h6>
                         <p class="x-small text-muted mb-3">Archived on Oct 12, 2025</p>
-                        <button class="btn btn-sm btn-outline-dark w-100 rounded-pill" onclick="restorePartner('Old Courier Co.')">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Partner
+                        <button class="btn btn-sm btn-outline-dark w-100 rounded-pill"
+                                onclick="handleRestoreWithReason('Old Courier Co.')">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
                         </button>
                     </div>
                 </div>

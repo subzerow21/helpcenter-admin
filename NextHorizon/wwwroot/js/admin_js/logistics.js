@@ -1,6 +1,6 @@
 ﻿/**
  * Logistics Partner Module - Admin Logic
- * Handles Search, Filtering, Modals, and SweetAlert2 Actions
+ * Handles Search, Filtering, Modals, and SweetAlert2 Actions with Reason Requirements
  */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -15,14 +15,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const cards = document.querySelectorAll('.partner-card');
 
             cards.forEach(card => {
-                // Searches based on the 'data-name' attribute or the visible courier-name class
                 const nameAttr = card.getAttribute('data-name')?.toLowerCase();
                 const nameText = card.querySelector('.courier-name')?.innerText.toLowerCase();
                 const name = nameAttr || nameText;
 
                 if (name && name.includes(filter)) {
                     card.style.display = "";
-                    // Adds a subtle entry animation if using animate.css
                     card.classList.add('animate__animated', 'animate__fadeIn');
                 } else {
                     card.style.display = "none";
@@ -33,151 +31,108 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
- * Filter View Logic (Total / Active / Inactive)
- * @param {string} filter - The status type to display
+ * Filter View Logic (Total / Active / Inactive / Archived)
  */
 function filterPartners(filter) {
     const activeSection = document.getElementById('activeSection');
     const inactiveSection = document.getElementById('inactiveSection');
+    const archiveSection = document.getElementById('archiveSection');
     const filterCards = document.querySelectorAll('.filter-card');
 
-    // 1. Update UI Visuals (Toggle the black border/active state for stat cards)
+    // 1. Update UI Visuals
     filterCards.forEach(card => card.classList.remove('active-filter', 'shadow'));
     const activeCard = document.getElementById(`stat-${filter}`);
     if (activeCard) activeCard.classList.add('active-filter', 'shadow');
 
-    // 2. Toggle Section Visibility
-    if (activeSection && inactiveSection) {
-        switch (filter) {
-            case 'total':
-                activeSection.style.display = 'block';
-                inactiveSection.style.display = 'block';
-                break;
-            case 'active':
-                activeSection.style.display = 'block';
-                inactiveSection.style.display = 'none';
-                break;
-            case 'inactive':
-                activeSection.style.display = 'none';
-                inactiveSection.style.display = 'block';
-                break;
-        }
+    // 2. Reset visibility
+    if (activeSection) activeSection.style.display = 'none';
+    if (inactiveSection) inactiveSection.style.display = 'none';
+    if (archiveSection) archiveSection.style.display = 'none';
+
+    // 3. Toggle Section Visibility
+    switch (filter) {
+        case 'total':
+            activeSection.style.display = 'block';
+            inactiveSection.style.display = 'block';
+            break;
+        case 'active':
+            activeSection.style.display = 'block';
+            break;
+        case 'inactive':
+            inactiveSection.style.display = 'block';
+            break;
+        case 'archived':
+            archiveSection.style.display = 'block';
+            break;
     }
 }
 
 /**
- * Handle Image Preview for New Partner Modal
+ * Handle Status Toggle (Enable/Disable) with Reason
  */
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const preview = document.getElementById('logoPreview');
-            if (preview) preview.src = e.target.result;
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-/**
- * Modals & Partner Actions
- */
-function openAddPartnerModal() {
-    const modalElement = document.getElementById('addPartnerModal');
-    if (modalElement) {
-        const addModal = new bootstrap.Modal(modalElement);
-        // Reset form fields
-        const formInput = document.getElementById('newPartnerName');
-        const imgPreview = document.getElementById('logoPreview');
-        if (formInput) formInput.value = '';
-        if (imgPreview) imgPreview.src = '/images/default-logo.png'; // Set to your default path
-        addModal.show();
-    }
-}
-
-function saveNewPartner() {
-    const nameInput = document.getElementById('newPartnerName');
-    const name = nameInput ? nameInput.value.trim() : "";
-    const logo = document.getElementById('logoUpload')?.files[0];
-
-    if (!name) {
-        return Swal.fire({
-            title: 'Input Required',
-            text: 'Please enter a courier name.',
-            icon: 'error',
-            confirmButtonColor: '#000'
-        });
-    }
-
-    // Logic for saving (Backend integration point)
-    Swal.fire({
-        title: 'Partner Added!',
-        text: `${name} has been successfully registered.`,
-        icon: 'success',
-        confirmButtonColor: '#000'
-    }).then(() => {
-        const modalElement = document.getElementById('addPartnerModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) modalInstance.hide();
-        // location.reload(); // Uncomment if you want to refresh the list from DB
-    });
-}
-
-function viewPerformance(name, rate) {
-    const nameDisplay = document.getElementById('perfName');
-    const rateText = document.getElementById('perfRateText');
-    const progressBar = document.getElementById('perfProgressBar');
-
-    if (nameDisplay) nameDisplay.innerText = name;
-    if (rateText) rateText.innerText = rate + '%';
-    if (progressBar) {
-        progressBar.style.width = '0%';
-        setTimeout(() => {
-            progressBar.style.width = rate + '%';
-        }, 200);
-    }
-
-    const perfModal = new bootstrap.Modal(document.getElementById('performanceModal'));
-    perfModal.show();
-}
-
-function toggleStatus(name, element) {
-    const isActivating = element.type === "checkbox" ? element.checked : true;
+function handleStatusToggle(name, element, forceEnable = false) {
+    const isActivating = forceEnable || (element && element.checked);
+    const actionText = isActivating ? 'Enable' : 'Disable';
+    const actionColor = isActivating ? '#198754' : '#000';
 
     Swal.fire({
-        title: isActivating ? 'Enable Partner?' : 'Disable Partner?',
-        text: `Visibility for ${name} will be updated for all sellers.`,
+        title: `${actionText} ${name}?`,
+        text: `Please provide a reason for ${isActivating ? 'restoring' : 'suspending'} this service:`,
+        input: 'text',
+        inputPlaceholder: 'e.g., Maintenance complete / Reported delivery issues',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#000',
+        confirmButtonColor: actionColor,
         cancelButtonColor: '#d33',
-        confirmButtonText: 'Confirm Changes'
+        confirmButtonText: `Confirm ${actionText}`,
+        inputValidator: (value) => {
+            if (!value) {
+                return 'A reason is required to proceed!';
+            }
+        }
     }).then((result) => {
         if (result.isConfirmed) {
+            const reason = result.value;
+            console.log(`Action: ${actionText}, Partner: ${name}, Reason: ${reason}`);
+
             Swal.fire({
                 title: 'Success',
-                text: 'Status updated successfully.',
+                text: `${name} status updated. Reason logged: ${reason}`,
                 icon: 'success',
                 confirmButtonColor: '#000'
             });
-            // Update logic here (e.g., AJAX to server)
-        } else if (element.type === "checkbox") {
+            // AJAX call would happen here
+        } else if (element && element.type === "checkbox") {
             element.checked = !isActivating; // Revert switch if cancelled
         }
     });
 }
 
-function removePartner(name) {
+/**
+ * Handle Deletion/Archiving with Reason
+ */
+function confirmDeletePartner(name) {
     Swal.fire({
-        title: 'Archive Partner?',
-        text: `Are you sure you want to remove ${name}? This action can be reversed in the Archives.`,
+        title: `Archive ${name}?`,
+        html: `<p class="text-danger small">This courier will be removed from seller options.</p>`,
+        input: 'textarea',
+        inputLabel: 'Reason for Deletion',
+        inputPlaceholder: 'Enter the reason for archiving this partner...',
         icon: 'error',
         showCancelButton: true,
         confirmButtonColor: '#000',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Archive Partner'
+        confirmButtonText: 'Archive Partner',
+        inputValidator: (value) => {
+            if (!value) {
+                return 'You must provide a reason for archiving!';
+            }
+        }
     }).then((result) => {
         if (result.isConfirmed) {
+            const reason = result.value;
+            console.log(`Archiving ${name}. Reason: ${reason}`);
+
             Swal.fire({
                 title: 'Archived!',
                 text: 'The partner has been moved to archives.',
@@ -190,41 +145,8 @@ function removePartner(name) {
 }
 
 /**
-* Logistics Partner Module - Admin Logic
-*/
-
-document.addEventListener('DOMContentLoaded', function () {
-    filterPartners('active'); // Default view
-});
-
-function filterPartners(filter) {
-    const activeSection = document.getElementById('activeSection');
-    const inactiveSection = document.getElementById('inactiveSection');
-    const archiveSection = document.getElementById('archiveSection');
-    const filterCards = document.querySelectorAll('.filter-card');
-
-    // Update Tab Visuals
-    filterCards.forEach(card => card.classList.remove('active-filter', 'shadow'));
-    document.getElementById(`stat-${filter}`).classList.add('active-filter', 'shadow');
-
-    // Handle Section Visibility
-    // Hide everything first
-    activeSection.style.display = 'none';
-    inactiveSection.style.display = 'none';
-    archiveSection.style.display = 'none';
-
-    if (filter === 'total') {
-        activeSection.style.display = 'block';
-        inactiveSection.style.display = 'block';
-    } else if (filter === 'active') {
-        activeSection.style.display = 'block';
-    } else if (filter === 'inactive') {
-        inactiveSection.style.display = 'block';
-    } else if (filter === 'archived') {
-        archiveSection.style.display = 'block';
-    }
-}
-
+ * Restore Logic
+ */
 function restorePartner(name) {
     Swal.fire({
         title: 'Restore Partner?',
@@ -235,8 +157,74 @@ function restorePartner(name) {
         confirmButtonText: 'Yes, Restore'
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire('Restored!', `${name} is now back in Inactive status.`, 'success');
-            // Backend AJAX call: IsDeleted = false
+            Swal.fire('Restored!', `${name} is now back in the list.`, 'success');
+            // AJAX call: IsDeleted = false
+        }
+    });
+}
+
+/**
+ * Modal & Visual Helpers
+ */
+function openAddPartnerModal() {
+    const modalElement = document.getElementById('addPartnerModal');
+    if (modalElement) {
+        const addModal = new bootstrap.Modal(modalElement);
+        document.getElementById('newPartnerName').value = '';
+        document.getElementById('logoPreview').src = '/images/default-logo.png';
+        addModal.show();
+    }
+}
+
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => document.getElementById('logoPreview').src = e.target.result;
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function viewPerformance(name, rate) {
+    document.getElementById('perfName').innerText = name;
+    document.getElementById('perfRateText').innerText = rate + '%';
+    const progressBar = document.getElementById('perfProgressBar');
+    progressBar.style.width = '0%';
+    setTimeout(() => { progressBar.style.width = rate + '%'; }, 200);
+
+    new bootstrap.Modal(document.getElementById('performanceModal')).show();
+}
+
+/**
+* Handles Restoring from Archive with a required reason
+*/
+function handleRestoreWithReason(name) {
+    Swal.fire({
+        title: 'Restore Partner?',
+        text: `Enter the reason for bringing ${name} back to service:`,
+        input: 'text',
+        inputPlaceholder: 'e.g., Contract renewed / Service restored',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754', // Success Green
+        confirmButtonText: 'Yes, Restore Partner',
+        inputValidator: (value) => {
+            if (!value) {
+                return 'You must provide a reason to restore this partner!';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const reason = result.value;
+            console.log(`Restoring ${name}. Reason: ${reason}`);
+
+            Swal.fire({
+                title: 'Restored!',
+                text: `${name} is now back in the active list.`,
+                icon: 'success',
+                confirmButtonColor: '#000'
+            });
+
+            // Backend AJAX call: IsDeleted = false, LogReason = reason
         }
     });
 }

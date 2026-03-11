@@ -51,10 +51,12 @@ namespace NextHorizon.Models.Admin_Models
 
     public class SellerMetric
     {
+        public int Rank { get; set; } // Add this line
         public string SellerName { get; set; } = string.Empty;
-        public string ShopName { get; set; } = string.Empty; // Fixed: Added ShopName
+        public string ShopName { get; set; } = string.Empty;
         public int OrdersFulfilled { get; set; }
         public decimal RevenueGenerated { get; set; }
+        public double GrowthPercentage { get; set; } // Added this for the table logic
     }
 
     public class LeaderboardEntry
@@ -64,4 +66,14 @@ namespace NextHorizon.Models.Admin_Models
         public double StravaKM { get; set; }
         public string Pace { get; set; } = "0:00"; // Added Pace
     }
+
+
+
+    public class SellerPerformance
+    {
+        public string SellerName { get; set; }
+        public int OrdersFulfilled { get; set; }
+        public decimal RevenueGenerated { get; set; }
+    }
+
 }

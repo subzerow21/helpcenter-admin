@@ -33,43 +33,52 @@
 });
 
 function switchSellerTab(viewName) {
-    // Select all views and buttons
+    // If user clicked performance, the HTML <a> tag handles the redirect.
+    // We only handle local tab switching for 'active' and 'archived'.
+    if (viewName === 'performance') return;
+
     const views = {
         active: document.getElementById('view-active'),
-        performance: document.getElementById('view-performance'),
         archived: document.getElementById('view-archived')
     };
+
     const buttons = {
         active: document.getElementById('tab-active'),
-        performance: document.getElementById('tab-performance'),
         archived: document.getElementById('tab-archived')
     };
 
-    // Reset all
+    // Reset all local tabs
     Object.keys(views).forEach(key => {
-        views[key].classList.add('d-none');
-        buttons[key].classList.remove('bg-dark', 'text-white', 'fw-bold');
-        buttons[key].classList.add('text-muted');
+        if (views[key]) views[key].classList.add('d-none');
+        if (buttons[key]) {
+            buttons[key].classList.remove('bg-dark', 'text-white', 'fw-bold');
+            buttons[key].classList.add('text-muted');
+        }
     });
 
-    // Show selected
-    views[viewName].classList.remove('d-none');
-    buttons[viewName].classList.add('bg-dark', 'text-white', 'fw-bold');
-    buttons[viewName].classList.remove('text-muted');
+    // Show selected local tab
+    if (views[viewName]) {
+        views[viewName].classList.remove('d-none');
+        buttons[viewName].classList.add('bg-dark', 'text-white', 'fw-bold');
+        buttons[viewName].classList.remove('text-muted');
+    }
 }
-
 
 // --- TOAST HELPER ---
 function triggerSellerToast(msg, isError = false) {
     const toastMessage = document.getElementById('sellerToastMessage');
     const toastIcon = document.getElementById('sellerToastIcon');
 
-    toastMessage.innerText = msg;
-    toastIcon.className = isError ? "bi bi-exclamation-circle-fill text-danger fs-5" : "bi bi-check-circle-fill text-success fs-5";
+    if (toastMessage && toastIcon) {
+        toastMessage.innerText = msg;
+        toastIcon.className = isError ? "bi bi-exclamation-circle-fill text-danger fs-5" : "bi bi-check-circle-fill text-success fs-5";
 
-    const toastEl = document.getElementById('sellerToast');
-    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-    toast.show();
+        const toastEl = document.getElementById('sellerToast');
+        if (toastEl) {
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+        }
+    }
 }
 
 // --- VIEW HANDLER ---
@@ -95,6 +104,8 @@ function openConfirmModal(type, shopName) {
     const icon = document.getElementById('sellerConfirmIcon');
     const btn = document.getElementById('sellerConfirmBtn');
 
+    if (!title || !msg || !btn) return;
+
     if (type === 'delete') {
         title.innerText = "Archive Shop?";
         msg.innerText = `Are you sure you want to archive ${shopName}?`;
@@ -113,13 +124,14 @@ function openConfirmModal(type, shopName) {
 }
 
 function confirmAction(toastMsg) {
-    // Hide all possible modals that could be open
-    const confirmMod = bootstrap.Modal.getInstance(document.getElementById('confirmSellerModal'));
-    const editMod = bootstrap.Modal.getInstance(document.getElementById('editSellerModal'));
+    const confirmEl = document.getElementById('confirmSellerModal');
+    const editEl = document.getElementById('editSellerModal');
+
+    const confirmMod = bootstrap.Modal.getInstance(confirmEl);
+    const editMod = bootstrap.Modal.getInstance(editEl);
 
     if (confirmMod) confirmMod.hide();
     if (editMod) editMod.hide();
 
-    // Trigger Success Toast
     triggerSellerToast(toastMsg || "Action confirmed!");
 }

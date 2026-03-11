@@ -1,4 +1,6 @@
-﻿@{
+﻿@model NextHorizon.Models.Admin_Models.AnalyticsViewModel
+
+@{
     ViewData["Title"] = "Admin Portal - Sellers Overview";
     Layout = "_AdminLayout";
 }
@@ -15,10 +17,13 @@
                         class="btn btn-sm fw-bold bg-dark text-white rounded-0 px-3 py-2 active-tab me-1">
                     Active Sellers
                 </button>
-                <button id="tab-performance" onclick="switchSellerTab('performance')"
-                        class="btn btn-sm text-muted rounded-0 px-3 py-2 me-1">
+
+                <a asp-controller="Admin" asp-action="SellerPerformance"
+                   id="tab-performance"
+                   class="btn btn-sm text-muted rounded-0 px-3 py-2 me-1">
                     Performance Metrics
-                </button>
+                </a>
+
                 <button id="tab-archived" onclick="switchSellerTab('archived')"
                         class="btn btn-sm text-muted rounded-0 px-3 py-2">
                     Archived
@@ -27,6 +32,11 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
+            @* Filter Button *@
+            <button class="btn btn-white shadow-sm rounded-pill px-3 py-2 border-0" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-filter me-1"></i> <span class="small fw-bold">Filter</span>
+            </button>
+
             <div class="search-container shadow-sm">
                 <input type="text" id="sellerSearchInput" class="form-control rounded-pill border-0 px-3 py-2" placeholder="Search Shop or Seller">
                 <i class="bi bi-search"></i>
@@ -34,6 +44,7 @@
         </div>
     </div>
 
+    @* Active Sellers View *@
     <div id="view-active" class="consumer-grid-wrapper bg-white shadow-sm overflow-hidden rounded-4">
         <div class="table-responsive">
             <table class="table mb-0 align-middle text-center" style="min-width: 1000px;">
@@ -52,19 +63,30 @@
                 <tbody>
                     @for (int i = 1; i <= 5; i++)
                     {
-                        <tr>
+                        @* Added data-revenue and data-orders attributes for the filter logic to work *@
+                        <tr data-revenue="@(i * 1500)" data-orders="@(i * 12)">
                             <td class="border-start fw-bold">ShopExpress_@(i)</td>
                             <td class="border-start text-secondary">SellerName@(i)</td>
                             <td class="border-start text-secondary">seller@(i)@@market.com</td>
-                            <td class="border-start text-secondary">Date @(i)</td>
+                            <td class="border-start text-secondary">Jan @(i), 2026</td>
                             <td class="border-start">@(i * 12) Items</td>
                             <td class="border-start fw-bold text-dark">₱@(i * 1500).00</td>
-                            <td class="border-start"><span class="badge bg-success opacity-75">Verified</span></td>
+                            <td class="border-start">
+                                <span class="badge @(i % 3 == 0 ? "bg-warning" : "bg-success") opacity-75">
+                                    @(i % 3 == 0 ? "Pending" : "Verified")
+                                </span>
+                            </td>
                             <td class="border-start">
                                 <div class="action-icons">
-                                    <i class="bi bi-eye me-2 text-info" onclick="openViewModal('ShopExpress_@(i)', 'SellerName@(i)', '₱@(i * 1500)', '@(i * 12)')"></i>
-                                    <i class="bi bi-pencil me-2 text-primary" onclick="openEditModal('ShopExpress_@(i)', 'seller@(i)@@market.com')"></i>
-                                    <i class="bi bi-archive text-danger" onclick="openConfirmModal('delete', 'ShopExpress_@(i)')"></i>
+                                    @* View Details Trigger *@
+                                    <i class="bi bi-eye me-2 text-info" style="cursor:pointer;"
+                                       onclick="viewSellerDetails('SellerName@(i)', 'ShopExpress_@(i)', '₱@(i * 1500).00', '@(i * 12)')"></i>
+
+                                    <i class="bi bi-pencil me-2 text-primary" style="cursor:pointer;"
+                                       onclick="openEditModal('ShopExpress_@(i)', 'seller@(i)@@market.com')"></i>
+
+                                    <i class="bi bi-archive text-danger" style="cursor:pointer;"
+                                       onclick="openConfirmModal('delete', 'ShopExpress_@(i)')"></i>
                                 </div>
                             </td>
                         </tr>
@@ -74,46 +96,7 @@
         </div>
     </div>
 
-    <div id="view-performance" class="d-none">
-        <div class="row g-3">
-            @for (int i = 1; i <= 3; i++)
-            {
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm rounded-4 p-3">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="fw-bold">Top Seller @i</h6>
-                            <span class="text-success small">+12% <i class="bi bi-graph-up"></i></span>
-                        </div>
-                        <hr>
-                        <div class="text-center py-2">
-                            <p class="text-muted mb-1 small">Monthly Revenue</p>
-                            <h3 class="fw-bold">₱45,200</h3>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-        <div class="consumer-grid-wrapper bg-white shadow-sm mt-4 rounded-4 overflow-hidden">
-            <div class="p-3 fw-bold border-bottom">Rankings by Rating</div>
-            <div class="table-responsive">
-                <table class="table mb-0 align-middle text-center">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Shop</th>
-                            <th>Rating</th>
-                            <th>Fulfilled Orders</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>1</td><td>Premium Hub</td><td>⭐ 4.9</td><td>1,200</td></tr>
-                        <tr><td>2</td><td>Tech Gadgets</td><td>⭐ 4.8</td><td>950</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
+    @* Archived View *@
     <div id="view-archived" class="consumer-grid-wrapper bg-white shadow-sm d-none overflow-hidden rounded-4">
         <div class="table-responsive">
             <table class="table mb-0 align-middle text-center" style="min-width: 900px;">
@@ -142,28 +125,47 @@
     </div>
 </div>
 
+@* --- MODALS --- *@
 
-<div class="modal fade" id="viewSellerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pt-4 px-4">
-                <h5 class="fw-bold mb-0">Shop Profile</h5>
+                <h6 class="fw-bold mb-0">Filter Sellers</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body px-4 pb-4">
-                <div class="text-center mb-4">
-                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 80px; height: 80px;">
-                        <i class="bi bi-shop fs-1 text-dark"></i>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('all')">Show All</button>
+                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('top')">High Sales (> ₱5,000)</button>
+                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('pending')">Pending Only</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sellerDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-body p-4 text-center">
+                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                    <i class="bi bi-person-badge fs-3 text-dark"></i>
+                </div>
+                <h5 class="fw-bold mb-0" id="detShopName">Shop Name</h5>
+                <p class="text-muted small" id="detSellerName">Seller Name</p>
+                <hr class="my-3">
+                <div class="row text-start g-3">
+                    <div class="col-6">
+                        <label class="text-muted d-block" style="font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;">Current Revenue</label>
+                        <span class="fw-bold text-dark" id="detRevenue">₱0.00</span>
                     </div>
-                    <h5 class="fw-bold" id="viewShopName">Shop Name</h5>
-                    <span class="badge bg-success opacity-75">Verified Seller</span>
+                    <div class="col-6">
+                        <label class="text-muted d-block" style="font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;">Orders Fulfilled</label>
+                        <span class="fw-bold text-dark" id="detOrders">0</span>
+                    </div>
                 </div>
-                <div class="row g-3">
-                    <div class="col-6"><label class="small text-muted">Owner</label><p class="fw-bold" id="viewOwner">-</p></div>
-                    <div class="col-6"><label class="small text-muted">Total Sales</label><p class="fw-bold" id="viewSales">-</p></div>
-                    <div class="col-6"><label class="small text-muted">Products</label><p class="fw-bold" id="viewProducts">-</p></div>
-                    <div class="col-6"><label class="small text-muted">Joined Date</label><p class="fw-bold">Jan 12, 2026</p></div>
-                </div>
+                <button class="btn btn-dark w-100 rounded-pill mt-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -182,22 +184,16 @@
                         <label class="small fw-bold text-secondary">Shop Name</label>
                         <input type="text" class="form-control rounded-3" id="editShopName">
                     </div>
-
-                    <div class="mb-3">
-                        <label class="small fw-bold text-secondary">Owner Name</label>
-                        <input type="email" class="form-control rounded-3" id="editOwnerName">
-                    </div>
-
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary">Owner Email</label>
                         <input type="email" class="form-control rounded-3" id="editEmail">
                     </div>
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary">Status</label>
-                        <select class="form-select rounded-3">
-                            <option>Verified</option>
-                            <option>Pending</option>
-                            <option>Suspended</option>
+                        <select class="form-select rounded-3" id="editStatus">
+                            <option value="Verified">Verified</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Suspended">Suspended</option>
                         </select>
                     </div>
                 </form>
