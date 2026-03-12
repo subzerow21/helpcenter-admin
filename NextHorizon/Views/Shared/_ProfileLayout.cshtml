@@ -15,6 +15,11 @@
 
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/header.css" asp-append-version="true">
+
+
+    <!-- {Page Loader Style} -->
+    <link rel="stylesheet" href="~/css/pageLoader.css" asp-append-version="true">
+
     @await RenderSectionAsync("Styles", required: false)
 
     <style>
@@ -112,91 +117,12 @@
             }
         }
 
-        /* --- MONOCHROME LOADER STYLING --- */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: none; /* Controlled by JS */
-            justify-content: center;
-            align-items: center;
-            z-index: 10000; /* Higher than sidebar to prevent flicker */
-        }
-
-        .loader-content {
-            text-align: center;
-        }
-
-        /* Modern Professional Loader Icon */
-        .nh-loader-bars {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 25px;
-            height: 40px;
-        }
-
-            .nh-loader-bars span {
-                width: 5px;
-                height: 20px;
-                background-color: #000;
-                border-radius: 4px;
-                animation: nh-wave 1.2s ease-in-out infinite;
-            }
-
-                /* Staggered wave effect for a premium feel */
-                .nh-loader-bars span:nth-child(2) {
-                    animation-delay: 0.1s;
-                }
-
-                .nh-loader-bars span:nth-child(3) {
-                    animation-delay: 0.2s;
-                }
-
-                .nh-loader-bars span:nth-child(4) {
-                    animation-delay: 0.3s;
-                }
-
-                .nh-loader-bars span:nth-child(5) {
-                    animation-delay: 0.4s;
-                }
-
-        .loader-text {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 800;
-            color: #000;
-            text-transform: uppercase;
-            letter-spacing: 6px;
-            font-size: 0.75rem;
-            opacity: 0.9;
-        }
-
-        @@keyframes nh-wave {
-            0%, 100% {
-                transform: scaleY(1);
-                opacity: 0.3;
-            }
-
-            50% {
-                transform: scaleY(2);
-                opacity: 1;
-            }
-        }
-
-        .hide-global-nav .navbar-toggler,
-        .hide-global-nav .mobile-menu-toggle,
-        .hide-global-nav #menu-icon {
-            display: none !important;
-        }
     </style>
 </head>
 
 <body class="fixed-layout-body">
 
+    <!-- Page Loader -->
     <div id="loading-overlay">
         <div class="loader-content">
             <div class="nh-loader-bars">
@@ -209,6 +135,7 @@
             <div class="loader-text">Next Horizon</div>
         </div>
     </div>
+
 
     <partial name="_ProfileHeader" />
 
@@ -229,16 +156,10 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 
-    <script>
-        // Use logic to show loader during transitions
-        window.addEventListener("beforeunload", function () {
-            document.getElementById("loading-overlay").style.display = "flex";
-        });
 
-        // Hide loader once the new page has fully loaded
-        window.addEventListener("load", function () {
-            document.getElementById("loading-overlay").style.display = "none";
-        });
-    </script>
+    <!-- Page Loader -->
+    <script src="~/js/pageLoader.js" asp-append-version="true"></script>
+
+  
 </body>
 </html>
