@@ -10,11 +10,19 @@
 }
 
 <div class="container-fluid py-4 bg-light">
+    
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
         <div>
-            <h3 class="fw-bold mb-0 text-poppins">Seller Performance</h3>
-            <p class="text-muted small">Monitor vendor revenue, order fulfillment, and growth trends.</p>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <button onclick="history.back()" class="btn btn-white btn-sm rounded-circle shadow-sm border-0" style="width: 32px; height: 32px;">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <h3 class="fw-bold mb-0 text-poppins">Seller Performance</h3>
+            </div>
+            <p class="text-muted small ms-md-5">Monitor vendor revenue, order fulfillment, and growth trends.</p>
         </div>
+
         <div class="d-flex gap-2">
             <button class="btn btn-white shadow-sm rounded-pill px-3 py-2 border-0" data-bs-toggle="modal" data-bs-target="#filterModal">
                 <i class="bi bi-filter me-1"></i> <span class="small fw-bold">Filter</span>

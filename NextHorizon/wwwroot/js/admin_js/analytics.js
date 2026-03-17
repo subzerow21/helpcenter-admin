@@ -94,7 +94,7 @@
         // Logic to convert 0-23 into 12AM-11PM
         const peakLabels = JSON.parse(peakHoursElement.value).map(h => {
             const ampm = h >= 12 ? 'PM' : 'AM';
-            const hour = h % 12 || 12; // Converts 0 to 12 and 13 to 1
+            const hour = h % 12 || 12; 
             return hour + ampm;
         });
 
