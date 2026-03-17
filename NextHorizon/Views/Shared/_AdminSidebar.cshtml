@@ -27,6 +27,13 @@
         </li>
 
         <li class="nav-item">
+            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "FinanceRequest" ? "active" : "")"
+               href="@Url.Action("FinanceRequest", "Admin")">
+                <i class="bi bi-cash-stack me-3"></i>REQUESTS & FINANCE
+            </a>
+        </li>
+
+        <li class="nav-item">
             <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Logistics" ? "active" : "")"
                href="@Url.Action("Logistics", "Admin")"> <i class="bi bi-truck me-3"></i>LOGISTICS</a>
         </li>
@@ -38,7 +45,12 @@
 
         <li class="nav-item">
             <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Moderation" ? "active" : "")"
-               href="@Url.Action("Moderation", "Admin")"> <i class="bi bi-shield-check me-3"></i>MODERATION</a>
+               href="@Url.Action("Moderation", "Admin")"> <i class="bi bi-shield-check me-3"></i> VIOLATIONS</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "HelpCenter" ? "active" : "")"
+               href="@Url.Action("HelpCenter", "Admin")"> <i class="bi bi-gear-fill me-3"></i>HELP CENTER</a>
         </li>
 
         <li class="nav-item">

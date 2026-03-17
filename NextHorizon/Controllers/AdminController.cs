@@ -110,6 +110,27 @@ namespace NextHorizon.Controllers
             return View();
         }
 
+        public IActionResult FinanceRequest()
+        {
+            var viewModel = new FinanceRequestsViewModel
+            {
+                // Mock Payouts
+                PendingPayouts = new List<PayoutRequest>
+                {
+                    new PayoutRequest { Id = "1001", ShopName = "TechGear Hub", SellerEmail = "owner@techgear.com", Amount = 15500.50m, BankName = "GCash",  SellerNote = "Funds Transfer", DateRequested = DateTime.Now.AddDays(-2) },
+                    new PayoutRequest { Id = "1002", ShopName = "Luxe Apparel", SellerEmail = "sales@luxe.ph", Amount = 42000.00m, BankName = "BDO",  SellerNote = "Witdrawal", DateRequested = DateTime.Now.AddDays(-1) }
+                },
+
+                        // Mock Discounts
+                        PendingDiscounts = new List<DiscountRequest>
+                {
+                    new DiscountRequest { Id = "D-55", ShopName = "TechGear Hub", ProductName = "Wireless Earbuds Pro", OriginalPrice = 2500, DiscountPercent = 20, StartDate = DateTime.Now, EndDate = DateTime.Now.AddDays(7) },
+                    new DiscountRequest { Id = "D-56", ShopName = "Home Essentials", ProductName = "Ergonomic Chair", OriginalPrice = 8999, DiscountPercent = 50, StartDate = DateTime.Now.AddDays(2), EndDate = DateTime.Now.AddDays(5) }
+                }
+            };
+
+            return View("FinanceRequest", viewModel);
+        }
         public IActionResult Logistics()
         {
             return View();
@@ -125,6 +146,11 @@ namespace NextHorizon.Controllers
         }
 
         public IActionResult Moderation()
+        {
+            return View();
+        }
+
+        public IActionResult HelpCenter()
         {
             return View();
         }

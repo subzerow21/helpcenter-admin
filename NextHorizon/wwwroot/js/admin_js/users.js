@@ -86,13 +86,13 @@ function openConfirmModal(type, name) {
     const btn = document.getElementById('confirmBtn');
 
     if (type === 'delete') {
-        title.innerText = "Archive User?";
-        msg.innerText = `Move ${name} to archives?`;
+        title.innerText = "Delete User?";
+        msg.innerText = `${name} will be moved to archives!`;
         icon.innerHTML = '<i class="bi bi-trash text-danger" style="font-size: 3rem;"></i>';
         btn.className = "btn btn-danger rounded-pill px-4";
         btn.onclick = () => {
             bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-            triggerToast(`${name} archived!`, "text-danger", "bi-archive-fill");
+            triggerToast(`${name} deleted!`, "text-danger", "bi-archive-fill");
         };
     } else {
         title.innerText = "Restore User?";
