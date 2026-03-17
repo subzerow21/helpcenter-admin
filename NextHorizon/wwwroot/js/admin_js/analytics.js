@@ -84,14 +84,20 @@
         });
     }
 
-    // --- 4. PEAK ENGAGEMENT CHART ---
+    // --- 4. PEAK ENGAGEMENT CHART  ---
     const peakCanvas = document.getElementById('peakActivityChart');
     const peakHoursElement = document.getElementById('peakHours');
     const peakSyncsElement = document.getElementById('peakSyncs');
     const peakPurchasesElement = document.getElementById('peakPurchases');
 
     if (peakCanvas && peakHoursElement) {
-        const peakLabels = JSON.parse(peakHoursElement.value).map(h => h + ":00");
+        // Logic to convert 0-23 into 12AM-11PM
+        const peakLabels = JSON.parse(peakHoursElement.value).map(h => {
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hour = h % 12 || 12; // Converts 0 to 12 and 13 to 1
+            return hour + ampm;
+        });
+
         const peakSyncs = JSON.parse(peakSyncsElement.value);
         const peakPurchases = JSON.parse(peakPurchasesElement.value);
 
@@ -101,7 +107,7 @@
                 labels: peakLabels,
                 datasets: [
                     {
-                        label: 'App Activity', 
+                        label: 'App Activity',
                         data: peakSyncs,
                         backgroundColor: '#212529',
                         borderRadius: 5
@@ -117,7 +123,20 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'bottom' } }
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { usePointStyle: true, padding: 15 }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 50 } // Adjust step size based on your data volume
+                    }
+                }
             }
         });
     }
