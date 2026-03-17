@@ -53,6 +53,33 @@ body {
     color: var(--primary-dark);
 }
 
+
+.bg-soft-danger {
+    background-color: #fee2e2;
+}
+
+.bg-soft-success {
+    background-color: #e8f5e9;
+}
+
+.bg-soft-warning {
+    background-color: #fffbeb;
+}
+
+.bg-soft-primary {
+    background-color: #eff6ff;
+}
+
+.tiny {
+    font-size: 0.75rem;
+}
+
+/* Transition for See All links */
+a.tiny:hover {
+    color: #000 !important;
+    opacity: 0.8;
+}
+
 /* --- Dark Custom Leaderboard --- */
 .leaderboard-container {
     background: var(--primary-dark);
@@ -138,3 +165,5 @@ body {
         overflow-x: auto;
     }
 }
+
+

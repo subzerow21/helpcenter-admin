@@ -8,22 +8,20 @@ namespace NextHorizon.Models.Admin_Models
         // --- Growth Stats ---
         public int TotalConsumers { get; set; }
         public int TotalSellers { get; set; }
-        public double AverageOrderValue { get; set; } // Added missing definition
-        public double AvgKmPerPurchase { get; set; }
+        public decimal TotalRevenue { get; set; }
+        public double AverageOrderValue { get; set; }
         public double ChallengeToSaleConversionRate { get; set; }
-        public int TotalSocialInteractions { get; set; }
-
-        // --- Funnel Stats ---
-        public int UsersStartedChallenge { get; set; }
-        public int UsersCompletedGoal { get; set; }
-        public int UsersClaimedReward { get; set; }
         public int UsersPurchased { get; set; }
 
-        // --- Lists (Renamed to match Controller metrics) ---
-        public List<SegmentMetric> SegmentScores { get; set; } = new();
+        // --- Lists & Trends ---
         public List<AnalyticsChartData> PerformanceTrends { get; set; } = new();
-        public List<RewardMetric> TopChallengeRewards { get; set; } = new();
         public List<SellerMetric> TopSellers { get; set; } = new();
+
+        // --- Product Performance ---
+        public List<ProductMetric> TopMovingProducts { get; set; } = new();
+
+        // --- Hourly Engagement (Strava Syncs vs. Purchases) ---
+        public List<HourlyEngagementMetric> PeakEngagementData { get; set; } = new();
     }
 
     // --- Supporting Metric Classes ---
@@ -31,49 +29,39 @@ namespace NextHorizon.Models.Admin_Models
     public class AnalyticsChartData
     {
         public string DateLabel { get; set; } = string.Empty;
-        public double TotalKm { get; set; }
         public decimal TotalRevenue { get; set; }
+        public int ChallengeParticipants { get; set; } // New Metric
     }
 
-    public class RewardMetric
+    public class ProductMetric
     {
         public string ProductName { get; set; } = string.Empty;
-        public string LinkedChallengeName { get; set; } = string.Empty;
         public int UnitsSold { get; set; }
-        public string? ProductImageUrl { get; set; }
+        public decimal Revenue { get; set; }
     }
 
-    public class SegmentMetric
+    public class HourlyEngagementMetric
     {
-        public string CategoryName { get; set; } = string.Empty;
-        public double ProgressPercentage { get; set; }
+        public int Hour { get; set; } // 0 to 23
+        public int ActivitySyncCount { get; set; }
+        public int PurchaseCount { get; set; }
     }
 
     public class SellerMetric
     {
-        public int Rank { get; set; } // Add this line
+        public int Rank { get; set; }
         public string SellerName { get; set; } = string.Empty;
         public string ShopName { get; set; } = string.Empty;
         public int OrdersFulfilled { get; set; }
         public decimal RevenueGenerated { get; set; }
-        public double GrowthPercentage { get; set; } // Added this for the table logic
+        public double GrowthPercentage { get; set; }
     }
 
     public class LeaderboardEntry
     {
-        public int Rank { get; set; } // Added Rank for Dashboard usage
+        public int Rank { get; set; }
         public string UserName { get; set; } = string.Empty;
         public double StravaKM { get; set; }
-        public string Pace { get; set; } = "0:00"; // Added Pace
+        public string Pace { get; set; } = "0:00";
     }
-
-
-
-    public class SellerPerformance
-    {
-        public string SellerName { get; set; }
-        public int OrdersFulfilled { get; set; }
-        public decimal RevenueGenerated { get; set; }
-    }
-
 }

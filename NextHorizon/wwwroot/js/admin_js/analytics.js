@@ -1,14 +1,12 @@
 ﻿document.addEventListener('DOMContentLoaded', function () {
 
     // --- 1. BOOTSTRAP TOOLTIPS ---
-    // Initializes all tooltips (used in the Funnel and other UI elements)
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 
     // --- 2. DATE PRESET SELECTOR ---
-    // Shows or hides custom date inputs based on dropdown selection
     const datePreset = document.getElementById('datePreset');
     const customContainer = document.getElementById('customDateContainer');
 
@@ -18,35 +16,34 @@
                 customContainer.classList.remove('d-none');
             } else {
                 customContainer.classList.add('d-none');
-                // AJAX call logic for preset ranges would go here
                 console.log("Fetching data for preset: " + this.value + " days");
             }
         });
     }
 
-    // --- 3. ACTIVITY VS SALES CORRELATION CHART (LINE) ---
+    // --- 3. CHALLENGE vs REVENUE CHART ---
     const labelsElement = document.getElementById('jsonLabels');
-    const kmElement = document.getElementById('jsonKm');
-    const revElement = document.getElementById('jsonRev');
+    const participantsElement = document.getElementById('jsonParticipants');
+    const revElement = document.getElementById('jsonRevenue');
+    const mainCanvas = document.getElementById('mainAnalyticsChart');
 
-    // Only attempt to render if the data exists on the current page
-    if (labelsElement && kmElement && revElement && document.getElementById('activitySalesChart')) {
+    if (labelsElement && participantsElement && revElement && mainCanvas) {
         const labels = JSON.parse(labelsElement.value);
-        const kmData = JSON.parse(kmElement.value);
-        const revData = JSON.parse(revElement.value);
+        const participantData = JSON.parse(participantsElement.value);
+        const revenueData = JSON.parse(revElement.value);
 
-        const ctx = document.getElementById('activitySalesChart').getContext('2d');
+        const ctx = mainCanvas.getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Activity (KM)',
-                        data: kmData,
-                        borderColor: '#212529', // Dark Gray
-                        backgroundColor: 'rgba(33, 37, 41, 0.05)',
-                        fill: true,
+                        label: 'Challengers Joined',
+                        data: participantData,
+                        borderColor: '#212529',
+                        backgroundColor: '#212529', 
+                        fill: false,
                         tension: 0.4,
                         yAxisID: 'y',
                         pointRadius: 4,
@@ -54,9 +51,9 @@
                     },
                     {
                         label: 'Revenue (₱)',
-                        data: revData,
-                        borderColor: '#0d6efd', // Bootstrap Blue
-                        backgroundColor: 'transparent',
+                        data: revenueData,
+                        borderColor: '#0d6efd',
+                        backgroundColor: '#0d6efd',
                         fill: false,
                         tension: 0.4,
                         yAxisID: 'y1',
@@ -68,65 +65,59 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
                 scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: { display: true, text: 'Distance (KM)', font: { weight: 'bold' } },
-                        grid: { drawOnChartArea: true }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: { display: true, text: 'Revenue (₱)', font: { weight: 'bold' } },
-                        grid: { drawOnChartArea: false } // Prevents messy grid overlap
-                    }
+                    y: { type: 'linear', position: 'left', title: { display: true, text: 'Consumers' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Revenue (₱)' } }
                 },
                 plugins: {
                     legend: {
                         position: 'top',
                         align: 'end',
-                        labels: { usePointStyle: true, padding: 20 }
-                    },
-                    tooltip: {
-                        padding: 12,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        cornerRadius: 8
+                        labels: {
+                            usePointStyle: true, 
+                            pointStyle: 'circle',
+                            padding: 20
+                        }
                     }
                 }
             }
         });
     }
 
-    // --- 4. PEAK ACTIVITY CHART (BAR) ---
+    // --- 4. PEAK ENGAGEMENT CHART ---
     const peakCanvas = document.getElementById('peakActivityChart');
-    if (peakCanvas) {
-        const peakCtx = peakCanvas.getContext('2d');
-        new Chart(peakCtx, {
+    const peakHoursElement = document.getElementById('peakHours');
+    const peakSyncsElement = document.getElementById('peakSyncs');
+    const peakPurchasesElement = document.getElementById('peakPurchases');
+
+    if (peakCanvas && peakHoursElement) {
+        const peakLabels = JSON.parse(peakHoursElement.value).map(h => h + ":00");
+        const peakSyncs = JSON.parse(peakSyncsElement.value);
+        const peakPurchases = JSON.parse(peakPurchasesElement.value);
+
+        new Chart(peakCanvas.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['12am', '4am', '8am', '12pm', '4pm', '8pm', '11pm'],
-                datasets: [{
-                    label: 'Active Users',
-                    data: [12, 5, 45, 30, 85, 120, 40], // Example static data
-                    backgroundColor: '#212529',
-                    borderRadius: 5
-                }]
+                labels: peakLabels,
+                datasets: [
+                    {
+                        label: 'App Activity', 
+                        data: peakSyncs,
+                        backgroundColor: '#212529',
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Purchases',
+                        data: peakPurchases,
+                        backgroundColor: '#0d6efd',
+                        borderRadius: 5
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, display: false },
-                    x: { grid: { display: false } }
-                }
+                plugins: { legend: { display: true, position: 'bottom' } }
             }
         });
     }
