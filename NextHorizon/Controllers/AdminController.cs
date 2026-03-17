@@ -145,11 +145,6 @@ namespace NextHorizon.Controllers
             return View();
         }
 
-        public IActionResult Moderation()
-        {
-            return View();
-        }
-
         public IActionResult HelpCenter()
         {
             return View();

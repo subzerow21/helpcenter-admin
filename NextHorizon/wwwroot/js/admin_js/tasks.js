@@ -28,11 +28,7 @@ function filterLeaderboard() {
     const rows = document.querySelectorAll('#leaderboardTable tbody tr');
 
     rows.forEach(row => {
-        // Assuming Category is the 3rd column (index 2)
         const categoryBadge = row.querySelector('td:nth-child(3)').innerText.trim();
-
-        // Match logic: Check if "All" is selected OR if the text matches the badge
-        // Using includes to handle emojis (e.g., "Running" inside "🏃 Running")
         if (selectedCategory === "All" || categoryBadge.includes(selectedCategory)) {
             row.style.display = "";
         } else {
@@ -41,7 +37,6 @@ function filterLeaderboard() {
     });
 }
 
-// Search functionality listener
 document.getElementById('leaderboardSearch')?.addEventListener('keyup', function (e) {
     const term = e.target.value.toLowerCase();
     const rows = document.querySelectorAll('#leaderboardTable tbody tr');
@@ -57,28 +52,43 @@ document.getElementById('leaderboardSearch')?.addEventListener('keyup', function
 });
 
 /**
- * Launch & Edit Challenge Modals
+ * Launch Challenge Handler
  */
-function openCreateChallengeModal() {
-    // Reset form
-    document.getElementById('launchForm').reset();
+function handleChallengeSubmit(event) {
+    event.preventDefault(); // Stop refresh to allow validation and custom modal
 
-    // Reset Image Preview specifically
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    if (preview && placeholder) {
-        preview.src = "#";
-        preview.classList.add('d-none');
-        placeholder.classList.remove('d-none');
+    const startDate = new Date(document.getElementById('startDate').value);
+    const endDate = new Date(document.getElementById('endDate').value);
+
+    if (endDate < startDate) {
+        alert("End date cannot be earlier than the start date.");
+        return;
     }
 
-    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
+    // Instead of window.confirm (localhost), open our custom Bootstrap modal
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmLaunchModal'));
+    confirmModal.show();
 }
 
-function openEditChallenge(challengeName) {
-    console.log("Editing: " + challengeName);
-    // In a real app, populate the form fields and image preview here based on ID
-    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
+/**
+ * Final Execution (Called from the Confirm Modal)
+ */
+function executeLaunch() {
+    // 1. Hide Confirmation Modal
+    const confirmModalEl = document.getElementById('confirmLaunchModal');
+    const confirmInstance = bootstrap.Modal.getInstance(confirmModalEl);
+    if (confirmInstance) confirmInstance.hide();
+
+    // 2. Hide Main Launch Modal
+    const launchModalEl = document.getElementById('launchChallengeModal');
+    const launchInstance = bootstrap.Modal.getInstance(launchModalEl);
+    if (launchInstance) launchInstance.hide();
+
+    // 3. Trigger Toast
+    saveChallengeAction();
+
+    // 4. Reset Form
+    document.getElementById('launchForm').reset();
 }
 
 /**
@@ -100,53 +110,65 @@ function previewChallengeImage(input) {
 }
 
 /**
- * User Profile View Logic
+ * Modal Openers
  */
-function openUserView(username, rank, dist, activities, pts) {
-    document.getElementById('userNameView').innerText = username;
-    const initial = username.startsWith('@') ? username.charAt(1) : username.charAt(0);
-    document.getElementById('userInitial').innerText = initial.toUpperCase();
+function openCreateChallengeModal() {
+    const form = document.getElementById('launchForm');
+    if (form) form.reset();
 
-    document.getElementById('userRankView').innerText = "Ranked " + rank;
-    document.getElementById('userDistView').innerText = dist;
-    document.getElementById('userActView').innerText = activities;
-    document.getElementById('userPtsView').innerText = pts;
+    const preview = document.getElementById('imagePreview');
+    const placeholder = document.getElementById('uploadPlaceholder');
+    if (preview && placeholder) {
+        preview.src = "#";
+        preview.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+    }
 
-    new bootstrap.Modal(document.getElementById('userViewModal')).show();
+    const modalEl = document.getElementById('launchChallengeModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
 }
 
 /**
- * Override & Confirmation Logic
+ * User Profile View Logic
  */
-function openOverrideModal(challengeName) {
-    new bootstrap.Modal(document.getElementById('overrideModal')).show();
+function openUserView(username, rank, dist, act, time, picUrl) {
+    const nameEl = document.getElementById('userNameView');
+    const rankEl = document.getElementById('userRankView');
+    const distEl = document.getElementById('userDistView');
+    const actEl = document.getElementById('userActView');
+    const timeEl = document.getElementById('userTimeView');
+    const picEl = document.getElementById('userModalPic');
+
+    if (nameEl) nameEl.innerText = username;
+    if (rankEl) rankEl.innerText = rank.includes('#') ? "Ranked " + rank : "Ranked #" + rank;
+    if (distEl) distEl.innerText = dist;
+    if (actEl) actEl.innerText = act;
+    if (timeEl) timeEl.innerText = time;
+
+    if (picEl) {
+        const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&size=128`;
+        picEl.src = picUrl && picUrl.trim() !== "" ? picUrl : fallback;
+    }
+
+    const modalEl = document.getElementById('userViewModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
 }
 
-function confirmAction(message, colorClass = "text-success", icon = "bi-check-circle-fill") {
-    const modalIds = ['launchChallengeModal', 'userViewModal', 'overrideModal'];
-
-    modalIds.forEach(id => {
-        const modalEl = document.getElementById(id);
-        if (modalEl) {
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            if (modalInstance) modalInstance.hide();
-        }
-    });
-
-    triggerToast(message, colorClass, icon);
+/**
+ * Toast Notifications
+ */
+function saveChallengeAction() {
+    triggerToast("Challenge live! Users will receive a notification.", "text-success", "bi-lightning-fill");
 }
 
 function confirmOverride() {
-    confirmAction("Challenge archived. Final results calculated.", "text-warning", "bi-shield-fill-check");
+    const modalEl = document.getElementById('overrideModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    triggerToast("Challenge archived. Final results calculated.", "text-warning", "bi-shield-fill-check");
 }
 
-function saveChallengeAction() {
-    confirmAction("Challenge live! Users will receive a notification.", "text-success", "bi-lightning-fill");
-}
-
-/**
- * Toast Notification System
- */
 function triggerToast(msg, colorClass = "text-success", icon = "bi-check-circle-fill") {
     const toastMsgEl = document.getElementById('toastMsg');
     const toastIconEl = document.getElementById('toastIcon');

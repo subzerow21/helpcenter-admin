@@ -6,9 +6,28 @@
 let pendingAction = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Setup the Confirm Button inside the modal
+
+    // --- 1. ENHANCED DEFAULT TAB LOGIC ---
+    // Target the specific button and pane for Account Security
+    const defaultTabEl = document.querySelector('#v-pills-tab button[data-bs-target="#tab-account"]');
+    const defaultPane = document.getElementById('tab-account');
+
+    if (defaultTabEl && defaultPane) {
+        // Ensure classes are present for immediate visibility
+        defaultTabEl.classList.add('active');
+        defaultPane.classList.add('show', 'active');
+
+        // Initialize and show via Bootstrap to ensure internal state is synced
+        if (typeof bootstrap !== 'undefined') {
+            const tabTrigger = bootstrap.Tab.getOrCreateInstance(defaultTabEl);
+            tabTrigger.show();
+        }
+    }
+
+    // --- 2. MODAL CONFIRMATION LOGIC ---
     const confirmBtn = document.getElementById('confirmBtnExecute');
     if (confirmBtn) {
+        // Use cloneNode to wipe existing listeners and prevent double-execution
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
@@ -19,21 +38,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    // Initialize the state of moderation sliders based on the master toggle
-    syncModerationUI();
 });
 
 /**
  * 1. UTILITIES
  */
 
-function openConfirmModal(title, message, action) {
+function openConfirmModal(title, message, action, iconClass = 'bi-exclamation-circle', iconColor = 'text-warning') {
     const modalEl = document.getElementById('confirmActionModal');
+    const iconEl = document.getElementById('confirmIcon');
     if (!modalEl) return;
 
     document.getElementById('confirmTitle').innerText = title;
     document.getElementById('confirmBody').innerText = message;
+
+    // Optional: Update icon based on action (e.g., shield for security, triangle for danger)
+    if (iconEl) {
+        iconEl.className = `bi ${iconClass} ${iconColor} display-4 mb-3`;
+    }
 
     pendingAction = action;
 
@@ -62,7 +84,14 @@ function addAuditEntry(user, action, target) {
     const tableBody = document.getElementById('auditLogBody');
     if (!tableBody) return;
 
-    const now = new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const now = new Date().toLocaleString([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
     const newRow = `
         <tr>
             <td>${now}</td>
@@ -73,34 +102,6 @@ function addAuditEntry(user, action, target) {
         </tr>
     `;
     tableBody.insertAdjacentHTML('afterbegin', newRow);
-}
-
-/**
- * 2. GENERAL & BRANDING
- */
-
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('logoPreview').src = e.target.result;
-            showActionToast("Logo preview updated locally.");
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function saveGeneralSettings() {
-    const platform = document.getElementById('platformName').value;
-    openConfirmModal(
-        "Save Platform Settings",
-        "Update global branding and measurement units?",
-        () => {
-            hideModal();
-            addAuditEntry("System Admin", "Updated Branding", platform);
-            showActionToast("Platform settings saved.");
-        }
-    );
 }
 
 /**
@@ -123,7 +124,8 @@ function saveProfileInfo() {
             hideModal();
             addAuditEntry("System Admin", "Profile Update", name);
             showActionToast("Profile information updated.");
-        }
+        },
+        'bi-person-check', 'text-dark'
     );
 }
 
@@ -132,85 +134,46 @@ function requestPasswordChange() {
     const newPass = document.getElementById('newPass').value;
     const confirmPass = document.getElementById('confirmNewPass').value;
 
-    if (!currentPass || newPass !== confirmPass || newPass.length < 6) {
-        showActionToast("Error: Check password requirements.");
+    if (!currentPass) {
+        showActionToast("Error: Current password is required.");
+        return;
+    }
+    if (newPass.length < 6) {
+        showActionToast("Error: New password must be at least 6 characters.");
+        return;
+    }
+    if (newPass !== confirmPass) {
+        showActionToast("Error: New passwords do not match.");
         return;
     }
 
     openConfirmModal(
-        "Update Password",
-        "This will change your login credentials immediately.",
+        "Confirm Password Change",
+        "Are you sure you want to update your password? You will be required to use the new password for your next login.",
         () => {
+            // Execution logic
+            addAuditEntry("System Admin", "Security Update", "Password Changed");
+            showActionToast("Password updated successfully.");
+
+            // Clear fields
             document.getElementById('currentPass').value = "";
             document.getElementById('newPass').value = "";
             document.getElementById('confirmNewPass').value = "";
+
             hideModal();
-            addAuditEntry("System Admin", "Security Update", "Password Changed");
-            showActionToast("Password updated successfully.");
-        }
+        },
+        'bi-shield-lock', 'text-danger' // Security-specific icon and color
     );
 }
 
 /**
- * 4. MODERATION RULES
- */
-
-// Handles the visual disabling of sliders when auto-flagging is off
-function syncModerationUI() {
-    const isAutoEnabled = document.getElementById('autoDQ').checked;
-    const settingsPanel = document.getElementById('thresholdSettings');
-
-    if (settingsPanel) {
-        const inputs = settingsPanel.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.disabled = !isAutoEnabled;
-        });
-        settingsPanel.style.opacity = isAutoEnabled ? "1" : "0.5";
-    }
-}
-
-function toggleAutoFlag() {
-    const checkbox = document.getElementById('autoDQ');
-    const newState = checkbox.checked;
-
-    checkbox.checked = !newState; // Revert visually until confirmed
-
-    openConfirmModal(
-        "Moderation Change",
-        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} automated integrity checks?`,
-        () => {
-            checkbox.checked = newState;
-            syncModerationUI(); // Update sliders availability
-            hideModal();
-            addAuditEntry("System Admin", "Toggle Integrity Engine", newState ? "ENABLED" : "DISABLED");
-            showActionToast(`Integrity checks ${newState ? 'enabled' : 'disabled'}.`);
-        }
-    );
-}
-
-function saveModerationRules() {
-    const runSpeed = document.getElementById('runSpeedRange').value;
-    const bikeSpeed = document.getElementById('bikeSpeedRange').value;
-    const manualFlag = document.getElementById('flagManualEntry').checked;
-
-    openConfirmModal(
-        "Save Moderation Rules",
-        `Apply thresholds: Run ${runSpeed}km/h, Bike ${bikeSpeed}km/h?`,
-        () => {
-            hideModal();
-            addAuditEntry("System Admin", "Updated Thresholds", `Run: ${runSpeed}, Bike: ${bikeSpeed}, Manual: ${manualFlag}`);
-            showActionToast("Moderation thresholds applied successfully.");
-        }
-    );
-}
-
-/**
- * 5. PERMISSIONS
+ * 4. PERMISSIONS
  */
 
 function openInviteModal() {
     const modalEl = document.getElementById('inviteModModal');
     document.getElementById('modModalLabel').innerText = "Add New Moderator";
+    document.getElementById('modName').value = "";
     document.getElementById('modEmail').value = "";
     document.getElementById('modRole').value = "Moderator";
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -219,96 +182,79 @@ function openInviteModal() {
 function editModerator(name, email, role) {
     const modalEl = document.getElementById('inviteModModal');
     document.getElementById('modModalLabel').innerText = "Edit Permissions: " + name;
+    document.getElementById('modName').value = name;
     document.getElementById('modEmail').value = email;
     document.getElementById('modRole').value = role;
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 function processModerator() {
+    const name = document.getElementById('modName').value;
     const email = document.getElementById('modEmail').value;
-    if (!email) {
-        showActionToast("Error: Email is required.");
+    if (!email || !name) {
+        showActionToast("Error: Name and Email are required.");
         return;
     }
     openConfirmModal(
         "Confirm Permissions",
-        `Apply these access settings for ${email}?`,
+        `Apply these access settings for ${name}?`,
         () => {
             hideModal();
             hideModal('inviteModModal');
             addAuditEntry("System Admin", "Moderator Access Update", email);
             showActionToast("Permissions updated.");
-        }
+        },
+        'bi-person-gear', 'text-dark'
     );
 }
 
 function requestRemoveAccess(name, rowId) {
     openConfirmModal(
         "Revoke Access",
-        `Remove ${name} from the administrative team?`,
+        `Remove ${name} from the administrative team? This action is immediate.`,
         () => {
             const row = document.getElementById(rowId);
             if (row) row.remove();
             hideModal();
             addAuditEntry("System Admin", "Revoked Access", name);
             showActionToast(`Access revoked for ${name}.`);
-        }
+        },
+        'bi-person-x', 'text-danger'
     );
 }
 
 /**
- * 6. DANGER ZONE & SESSIONS
+ * 5. DANGER ZONE & SESSIONS
  */
 
 function handleMaintenanceToggle() {
     const toggle = document.getElementById('maintenanceToggle');
     const newState = toggle.checked;
-    toggle.checked = !newState;
+
+    toggle.checked = !newState; // Revert until confirmed
 
     openConfirmModal(
         "Maintenance Mode",
-        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} maintenance?`,
+        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} maintenance? Users will be blocked from the platform.`,
         () => {
             toggle.checked = newState;
             hideModal();
             addAuditEntry("System Admin", "Toggle Maintenance", newState ? "ON" : "OFF");
             showActionToast(`Maintenance mode is now ${newState ? 'Active' : 'Inactive'}.`);
-        }
-    );
-}
-
-function requestPurgeData() {
-    openConfirmModal(
-        "Purge All Data",
-        "Irreversible: This will permanently delete all flagged records.",
-        () => {
-            hideModal();
-            addAuditEntry("System Admin", "Data Purge", "All Flagged Records");
-            showActionToast("Database purge initiated.");
-        }
-    );
-}
-
-function requestExpireAdminSessions() {
-    openConfirmModal(
-        "Expire Admin Sessions",
-        "Force all other administrators to log in again?",
-        () => {
-            hideModal();
-            addAuditEntry("System Admin", "Expire Sessions", "All Administrators");
-            showActionToast("Admin sessions expired.");
-        }
+        },
+        'bi-tools', 'text-warning'
     );
 }
 
 function requestSignOutAllUsers() {
     openConfirmModal(
         "Global Sign Out",
-        "EMERGENCY: Force disconnect every user on the platform?",
+        "EMERGENCY: Force disconnect every user (Consumer and Seller) on the platform?",
         () => {
             hideModal();
             addAuditEntry("System Admin", "Global Sign Out", "All Users");
             showActionToast("Global sign-out command sent.");
-        }
+        },
+        'bi-exclamation-triangle', 'text-danger'
     );
 }

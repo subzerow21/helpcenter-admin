@@ -43,14 +43,11 @@
                href="@Url.Action("Tasks", "Admin")"> <i class="bi bi-trophy-fill me-3"></i>TASKS AND CHALLENGES</a>
         </li>
 
-        <li class="nav-item">
-            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Moderation" ? "active" : "")"
-               href="@Url.Action("Moderation", "Admin")"> <i class="bi bi-shield-check me-3"></i> VIOLATIONS</a>
-        </li>
+
 
         <li class="nav-item">
             <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "HelpCenter" ? "active" : "")"
-               href="@Url.Action("HelpCenter", "Admin")"> <i class="bi bi-gear-fill me-3"></i>HELP CENTER</a>
+               href="@Url.Action("HelpCenter", "Admin")"> <i class="bi bi-question-circle-fill me-3"></i>HELP CENTER</a>
         </li>
 
         <li class="nav-item">
