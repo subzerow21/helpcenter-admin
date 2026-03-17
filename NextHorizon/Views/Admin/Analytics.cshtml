@@ -67,28 +67,6 @@
 </div>
 
 <div class="row g-3 mb-5">
-    <div class="col-12">
-        <div class="bg-white border p-4 rounded-4 shadow-sm">
-            <h6 class="fw-bold small text-uppercase mb-4">Segment Engagement Scores</h6>
-            <div class="row">
-                @foreach (var segment in Model.SegmentScores)
-                {
-                    <div class="col-md-3">
-                        <label class="small fw-bold mb-1 d-flex justify-content-between">
-                            @segment.CategoryName.ToUpper()
-                            <span>@segment.ProgressPercentage%</span>
-                        </label>
-                        <div class="progress mb-3" style="height: 8px;">
-                            <div class="progress-bar bg-dark" style="width: @segment.ProgressPercentage%"></div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-5">
     <div class="col-md-8">
         <div class="chart-box bg-white border p-4 rounded-4 shadow-sm h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
