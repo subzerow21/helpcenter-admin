@@ -222,39 +222,3 @@ function requestRemoveAccess(name, rowId) {
         'bi-person-x', 'text-danger'
     );
 }
-
-/**
- * 5. DANGER ZONE & SESSIONS
- */
-
-function handleMaintenanceToggle() {
-    const toggle = document.getElementById('maintenanceToggle');
-    const newState = toggle.checked;
-
-    toggle.checked = !newState; // Revert until confirmed
-
-    openConfirmModal(
-        "Maintenance Mode",
-        `Confirm ${newState ? 'ENABLING' : 'DISABLING'} maintenance? Users will be blocked from the platform.`,
-        () => {
-            toggle.checked = newState;
-            hideModal();
-            addAuditEntry("System Admin", "Toggle Maintenance", newState ? "ON" : "OFF");
-            showActionToast(`Maintenance mode is now ${newState ? 'Active' : 'Inactive'}.`);
-        },
-        'bi-tools', 'text-warning'
-    );
-}
-
-function requestSignOutAllUsers() {
-    openConfirmModal(
-        "Global Sign Out",
-        "EMERGENCY: Force disconnect every user (Consumer and Seller) on the platform?",
-        () => {
-            hideModal();
-            addAuditEntry("System Admin", "Global Sign Out", "All Users");
-            showActionToast("Global sign-out command sent.");
-        },
-        'bi-exclamation-triangle', 'text-danger'
-    );
-}
