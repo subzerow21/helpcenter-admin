@@ -1,0 +1,107 @@
+﻿@{
+    ViewData["Title"] = "Admin Portal - Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+
+    <link rel="stylesheet" href="~/css/adminLogin.css" asp-append-version="true">
+
+</head>
+<body>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="monochromeToast" class="toast toast-monochrome hide" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    Reset link sent successfully.
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="left-brand">
+            <h1>NH</h1>
+            <p>Next Horizon</p>
+        </div>
+
+        <div class="right-form">
+            <div class="form-wrapper">
+                <div class="welcome-text text-center text-md-start">
+                    <h3>Welcome Back</h3>
+                    <p>Enter your staff credentials to access the portal.</p>
+                </div>
+
+                <form id="mainLoginForm">
+                    <div class="mb-4">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" placeholder="USR-000-000" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Password</label>
+                            <a href="#" class="forgot-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
+                        </div>
+                        <input type="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="form-label">Access Level</label>
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle-custom shadow-none" type="button" id="roleDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="selectedRole">Super Admin</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-custom shadow-sm" aria-labelledby="roleDropdown">
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Super Admin', 'admin')">Super Admin</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Finance Officer', 'finance')">Finance Officer</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Support Agent', 'support')">Support Agent</a></li>
+                            </ul>
+                            <input type="hidden" name="AccessLevel" id="accessLevelInput" value="admin">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-access">ACCESS PORTAL</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="fw-bold m-0">Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4 text-center">
+                    <div class="mb-4"><i class="bi bi-envelope-at fs-1 text-muted"></i></div>
+                    <p class="text-muted small px-3">Enter your work email to receive a secure reset link.</p>
+                    <div class="mt-4 text-start px-3">
+                        <label class="form-label">Work Email Address</label>
+                        <input type="email" id="resetEmail" class="form-control" placeholder="staff@nexthorizon.com">
+                    </div>
+                </div>
+                <div class="modal-footer px-4 pb-4">
+                    <button type="button" class="btn btn-access m-0" onclick="sendResetLink()">SEND RESET LINK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/adminLogin.js" asp-append-version="true"></script>
+    
+</body>
+</html>

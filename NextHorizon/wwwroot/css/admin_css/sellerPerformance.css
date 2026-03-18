@@ -12,7 +12,39 @@
 }
 
 .x-small {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.03rem;
+}
+
+.nav-finance-style .nav-link {
+    color: #6c757d;
+    font-weight: 600;
+    padding: 12px 24px;
+    transition: all 0.2s ease;
+}
+
+    .nav-finance-style .nav-link.active {
+        background-color: #212529 !important;
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+.chart-center-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.btn-white {
+    background: #fff;
+    border: 1px solid #dee2e6;
+}
+
+.border-dashed {
+    border-style: dashed !important;
 }
 
 /* --- Navigation & Tabs --- */

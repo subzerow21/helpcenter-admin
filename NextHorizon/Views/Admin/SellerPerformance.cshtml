@@ -7,170 +7,177 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin_css/sellerPerformance.css" asp-append-version="true" />
+    <style>
+       
+    </style>
 }
 
 <div class="container-fluid py-4 bg-light">
-    
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
-        <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <button onclick="history.back()" class="btn btn-white btn-sm rounded-circle shadow-sm border-0" style="width: 32px; height: 32px;">
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-                <h3 class="fw-bold mb-0 text-poppins">Seller Performance</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" onclick="history.back()" class="btn btn-white btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <div>
+                <h3 class="fw-bold mb-0 text-poppins">Marketplace Performance</h3>
+                <p class="text-muted small mb-0">Monitor vendor revenue and high-velocity products.</p>
             </div>
-            <p class="text-muted small ms-md-5">Monitor vendor revenue, order fulfillment, and growth trends.</p>
         </div>
-
-        <div class="d-flex gap-2">
-            <button class="btn btn-white shadow-sm rounded-pill px-3 py-2 border-0" data-bs-toggle="modal" data-bs-target="#filterModal">
-                <i class="bi bi-filter me-1"></i> <span class="small fw-bold">Filter</span>
-            </button>
-            <button class="btn btn-dark shadow-sm rounded-pill px-3 py-2 border-0">
-                <i class="bi bi-download me-1"></i> <span class="small fw-bold">Export CSV</span>
-            </button>
-        </div>
+        <button type="button" class="btn btn-dark shadow-sm rounded-pill px-4 border-0" onclick="window.print()">
+            <i class="bi bi-printer me-2"></i><span class="small fw-bold">Print Report</span>
+        </button>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-primary-subtle text-primary rounded-circle p-3">
-                        <i class="bi bi-shop fs-4"></i>
-                    </div>
-                    <div>
-                        <p class="text-muted small fw-bold mb-0">TOTAL ACTIVE SELLERS</p>
-                        <h4 class="fw-bold mb-0">@Model.TotalSellers</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-success-subtle text-success rounded-circle p-3">
-                        <i class="bi bi-currency-dollar fs-4"></i>
-                    </div>
-                    <div>
-                        <p class="text-muted small fw-bold mb-0">AVG. SELLER REVENUE</p>
-                        <h4 class="fw-bold mb-0">
-                            ₱@(Model.TopSellers.Any() ? Model.TopSellers.Average(s => s.RevenueGenerated).ToString("N2") : "0.00")
-                        </h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-warning-subtle text-warning rounded-circle p-3">
-                        <i class="bi bi-star fs-4"></i>
-                    </div>
-                    <div>
-                        <p class="text-muted small fw-bold mb-0">TOP CATEGORY</p>
-                        <h4 class="fw-bold mb-0">Apparel</h4>
-                    </div>
-                </div>
-            </div>
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-2">
+            <ul class="nav nav-pills nav-fill nav-finance-style" id="performanceTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-pill" id="sellers-tab" data-bs-toggle="tab" data-bs-target="#tab-sellers" type="button" role="tab">
+                        <i class="bi bi-trophy me-2"></i>Top Sellers
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill" id="products-tab" data-bs-toggle="tab" data-bs-target="#tab-products" type="button" role="tab">
+                        <i class="bi bi-lightning-charge me-2"></i>Top Moving Products
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="fw-bold small text-uppercase mb-0">Performance Leaderboard</h6>
-                    <span class="badge bg-light text-dark border rounded-pill fw-normal">Live Data</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="performanceTable">
-                        <thead class="bg-light">
-                            <tr class="x-small text-muted text-uppercase">
-                                <th class="ps-4">Rank</th>
-                                <th>Seller</th>
-                                <th>Orders</th>
-                                <th>Revenue</th>
-                                <th>Growth</th>
-                                <th class="text-end pe-4">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var seller in Model.TopSellers)
-                            {
-                                <tr data-rank="@seller.Rank" data-growth="@(seller.GrowthPercentage >= 0 ? "positive" : "negative")">
-                                    <td class="ps-4">
-                                        @if (seller.Rank <= 3)
+            <div class="tab-content" id="performanceTabContent">
+
+                <div class="tab-pane fade show active" id="tab-sellers" role="tabpanel" aria-labelledby="sellers-tab">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr class="x-small text-muted text-uppercase">
+                                        <th class="ps-4">Rank</th>
+                                        <th>Vendor / Shop</th>
+                                        <th>Gross Revenue</th>
+                                        <th class="text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.TopSellers != null)
+                                    {
+                                        foreach (var s in Model.TopSellers)
                                         {
-                                            <span class="badge rounded-pill bg-dark">#@seller.Rank</span>
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <span class="badge rounded-pill @(s.Rank <= 3 ? "bg-dark" : "bg-light text-muted")">#@s.Rank</span>
+                                                </td>
+                                                <td>
+                                                    <span class="d-block fw-bold small">@s.SellerName</span>
+                                                    <span class="text-muted tiny">@s.ShopName</span>
+                                                </td>
+                                                <td><span class="fw-bold text-dark small">₱@s.RevenueGenerated.ToString("N2")</span></td>
+                                                <td class="text-end pe-4">
+                                                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3 tiny fw-bold"
+                                                            onclick="viewSellerDetails('@s.SellerName', '@s.ShopName', '₱@s.RevenueGenerated.ToString("N2")', '@s.OrdersFulfilled')">
+                                                        Details
+                                                    </button>
+                                                </td>
+                                            </tr>
                                         }
-                                        else
-                                        {
-                                            <span class="text-muted ps-1">#@seller.Rank</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                                <i class="bi bi-building small"></i>
-                                            </div>
-                                            <div>
-                                                <span class="fw-bold d-block small">@seller.SellerName</span>
-                                                <span class="text-muted tiny">@seller.ShopName</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="small">@seller.OrdersFulfilled</span></td>
-                                    <td><span class="fw-bold small text-dark">₱@seller.RevenueGenerated.ToString("N2")</span></td>
-                                    <td>
-                                        <span class="small fw-bold @(seller.GrowthPercentage >= 0 ? "text-success" : "text-danger")">
-                                            <i class="bi @(seller.GrowthPercentage >= 0 ? "bi-caret-up-fill" : "bi-caret-down-fill")"></i>
-                                            @Math.Abs(seller.GrowthPercentage)%
-                                        </span>
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <button class="btn btn-sm btn-outline-dark rounded-pill px-3"
-                                                onclick="viewSellerDetails('@seller.SellerName', '@seller.ShopName', '₱@seller.RevenueGenerated.ToString("N2")', '@seller.OrdersFulfilled')">
-                                            View Details
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="tab-pane fade" id="tab-products" role="tabpanel" aria-labelledby="products-tab">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr class="x-small text-muted text-uppercase">
+                                        <th class="ps-4" style="width: 80px;">Rank</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>Units Sold</th>
+                                        <th class="text-end pe-4">Total Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.TopProducts != null)
+                                    {
+                                        int rank = 1;
+                                        foreach (var prod in Model.TopProducts)
+                                        {
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <span class="badge rounded-pill @(rank <= 3 ? "bg-dark" : "bg-light text-muted")">#@rank</span>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-bold small">@prod.ProductName</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted tiny">@prod.Category</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark border px-2">@prod.SalesCount</span>
+                                                </td>
+                                                <td class="text-end pe-4">
+                                                    <span class="fw-bold text-success small">₱@prod.Revenue.ToString("N2")</span>
+                                                </td>
+                                            </tr>
+                                            rank++;
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
-                <h6 class="fw-bold small text-uppercase mb-3">Revenue Share</h6>
-                <div class="chart-container" style="position: relative; height: 300px;">
-                    <canvas id="revenueShareChart"></canvas>
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 20px;">
+                <div class="mb-4">
+                    <h6 class="fw-bold small text-uppercase mb-1">Revenue Share</h6>
+                    <p class="text-muted tiny">Top 3 Sellers vs. The Market</p>
                 </div>
-                <div class="mt-4">
-                    <p class="text-muted small italic text-center mb-0">
-                        Distribution of total revenue across top performing vendors based on current billing cycle.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header border-0 pt-4 px-4">
-                <h6 class="fw-bold mb-0">Filter Performance</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body px-4 pb-4">
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('all')">Show All</button>
-                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('top')">Top 3 Rankings</button>
-                    <button class="btn btn-outline-dark btn-sm rounded-pill" onclick="filterSellers('growth')">Positive Growth</button>
+                <div class="position-relative d-flex justify-content-center align-items-center" style="height: 220px;">
+                    <canvas id="revenueShareChart"></canvas>
+                    <div class="chart-center-label">
+                        <p class="text-muted mb-0 text-uppercase fw-bold" style="font-size: 0.55rem;">Platform Total</p>
+                        <h6 class="fw-bold mb-0">₱@Model.TotalRevenue.ToString("N0")</h6>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width: 10px; height: 10px; background: #212529; border-radius: 2px;"></div>
+                            <span class="tiny fw-bold">Top 3 Sellers</span>
+                        </div>
+                        <span class="tiny fw-bold">65%</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width: 10px; height: 10px; background: #dee2e6; border-radius: 2px;"></div>
+                            <span class="tiny fw-bold">Other Vendors</span>
+                        </div>
+                        <span class="tiny text-muted">35%</span>
+                    </div>
+
+                    <div class="p-3 rounded-4 border-dashed bg-light">
+                        <div class="d-flex gap-2">
+                            <i class="bi bi-info-circle-fill text-dark"></i>
+                            <p class="tiny text-muted mb-0">
+                                This highlights platform dependency. A balanced chart indicates a healthy vendor ecosystem.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -180,24 +187,20 @@
 <div class="modal fade" id="sellerDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-body p-4 text-center">
-                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                    <i class="bi bi-graph-up-arrow fs-3 text-dark"></i>
-                </div>
-                <h5 class="fw-bold mb-0" id="detShopName">Shop Name</h5>
-                <p class="text-muted small mb-3" id="detSellerName">Seller Name</p>
-                <hr class="opacity-10">
-                <div class="row text-start g-3">
-                    <div class="col-6">
-                        <label class="text-muted d-block tiny text-uppercase fw-bold">Current Revenue</label>
-                        <span class="fw-bold text-dark fs-6" id="detRevenue">₱0.00</span>
+            <div class="modal-body p-4">
+                <h5 class="fw-bold mb-1" id="detSellerName">Seller Detail</h5>
+                <p id="detShopName" class="text-muted small mb-4"></p>
+                <div class="bg-light p-3 rounded-4 mb-4">
+                    <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="tiny text-muted text-uppercase">Revenue:</span>
+                        <span class="small fw-bold text-success" id="detRevenue"></span>
                     </div>
-                    <div class="col-6">
-                        <label class="text-muted d-block tiny text-uppercase fw-bold">Total Orders</label>
-                        <span class="fw-bold text-dark fs-6" id="detOrders">0</span>
+                    <div class="d-flex justify-content-between">
+                        <span class="tiny text-muted text-uppercase">Orders:</span>
+                        <span class="small fw-bold" id="detOrders"></span>
                     </div>
                 </div>
-                <button class="btn btn-dark w-100 rounded-pill mt-4" data-bs-dismiss="modal">Close Performance View</button>
+                <button type="button" class="btn btn-dark w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
