@@ -338,3 +338,17 @@ function reinstateAccess(name) {
         'bi-arrow-counterclockwise', 'text-dark'
     );
 }
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Check if URL has a hash (like #tab-audit)
+    var hash = window.location.hash;
+    if (hash) {
+        // Find the tab button that targets this ID
+        var tabTrigger = document.querySelector(`[data-bs-target="${hash}"]`);
+        if (tabTrigger) {
+            var tab = new bootstrap.Tab(tabTrigger);
+            tab.show();
+        }
+    }
+});
