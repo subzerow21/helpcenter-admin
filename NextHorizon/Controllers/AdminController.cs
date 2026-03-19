@@ -11,16 +11,88 @@ namespace NextHorizon.Controllers
     {
         private readonly DashboardService _dashboardService = new DashboardService();
 
-        // URL: /Admin/Dashboard
+        // Helper method to check if user is logged in
+        private bool IsUserLoggedIn()
+        {
+            return HttpContext.Session.GetInt32("StaffId").HasValue;
+        }
+
+        // Helper method to get current user's role
+        private string GetCurrentUserRole()
+        {
+            return HttpContext.Session.GetString("UserType") ?? "Unknown";
+        }
+
+        // Helper method to check if user has specific role
+        private bool HasRole(string allowedRole)
+        {
+            var userRole = GetCurrentUserRole();
+            return userRole == allowedRole || userRole == "SuperAdmin"; // SuperAdmin can access everything
+        }
+
+        // Helper method to check if user has any of the allowed roles
+        private bool HasAnyRole(string[] allowedRoles)
+        {
+            var userRole = GetCurrentUserRole();
+            return userRole == "SuperAdmin" || allowedRoles.Contains(userRole);
+        }
+
+        // Helper method to redirect to login if not authenticated
+        private IActionResult RedirectToLoginIfNotAuthenticated()
+        {
+            if (!IsUserLoggedIn())
+            {
+                return RedirectToAction("AdminLogin", "Login");
+            }
+            return null;
+        }
+
+        // Helper method to redirect if unauthorized
+        private IActionResult RedirectIfUnauthorized(string[] allowedRoles, string actionName = null)
+        {
+            if (!HasAnyRole(allowedRoles))
+            {
+                // Log unauthorized access attempt
+                var staffId = HttpContext.Session.GetInt32("StaffId");
+                if (staffId.HasValue)
+                {
+                    var username = HttpContext.Session.GetString("Username") ?? "Unknown";
+                    var attemptedAction = actionName ?? ControllerContext.ActionDescriptor.ActionName;
+                    
+                    // You can log this to audit_logs if you want
+                    Console.WriteLine($"UNAUTHORIZED ACCESS ATTEMPT: User {username} (Role: {GetCurrentUserRole()}) tried to access {attemptedAction}");
+                }
+                
+                // Redirect to dashboard with error message
+                TempData["ErrorMessage"] = "You don't have permission to access this page.";
+                return RedirectToAction("Dashboard");
+            }
+            return null;
+        }
+
+        // URL: /Admin/Dashboard - Accessible by all admin roles
         public IActionResult Dashboard()
         {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
             var model = _dashboardService.GetHeroStats();
+            
+            // Pass user role to view for UI customization
+            ViewBag.UserRole = GetCurrentUserRole();
+            
             return View(model);
         }
 
-        // URL: /Admin/Analytics
+        // URL: /Admin/Analytics - Accessible by SuperAdmin, Admin, and Finance Officer
         public IActionResult Analytics()
         {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
+            if (unauthorized != null) return unauthorized;
+
             // Define raw product data for the "Most Purchased" section
             var productData = new List<ProductMetric>
             {
@@ -79,12 +151,19 @@ namespace NextHorizon.Controllers
                 }.OrderBy(h => h.Hour).ToList()
             };
 
+            ViewBag.UserRole = GetCurrentUserRole();
             return View(viewModel);
         }
 
-        // URL: /Admin/SellerPerformance
+        // URL: /Admin/SellerPerformance - Accessible by SuperAdmin, Admin, and Finance Officer
         public IActionResult SellerPerformance()
         {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
+            if (unauthorized != null) return unauthorized;
+
             // Detailed Seller List for Table
             var mockSellers = new List<SellerMetric>
             {
@@ -109,20 +188,51 @@ namespace NextHorizon.Controllers
             {
                 TotalSellers = 124,
                 TotalConsumers = 1540,
-                TotalRevenue = 2451401.45m, // Drives the Donut Chart Total
+                TotalRevenue = 2451401.45m,
                 TotalOrders = 5840,
                 TopSellers = mockSellers,
-                TopProducts = mockProducts // Drives the "Top Moving Products" tab
+                TopProducts = mockProducts
             };
 
+            ViewBag.UserRole = GetCurrentUserRole();
             return View(viewModel);
         }
 
-        public IActionResult Consumers() => View();
-        public IActionResult Sellers() => View();
+        // Consumers - Accessible by SuperAdmin, Admin, and Support Agent
+        public IActionResult Consumers()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
 
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Support Agent" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // Sellers - Accessible by SuperAdmin, Admin, and Support Agent
+        public IActionResult Sellers()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Support Agent" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // FinanceRequest - Accessible ONLY by SuperAdmin and Finance Officer
         public IActionResult FinanceRequest()
         {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Finance Officer" });
+            if (unauthorized != null) return unauthorized;
+
             var viewModel = new FinanceRequestsViewModel
             {
                 PendingPayouts = new List<PayoutRequest>
@@ -137,25 +247,96 @@ namespace NextHorizon.Controllers
                 }
             };
 
+            ViewBag.UserRole = GetCurrentUserRole();
             return View("FinanceRequest", viewModel);
         }
 
-        public IActionResult Logistics() => View();
-        public IActionResult Tasks() => View();
-        public IActionResult ChallengeDetails() => View();
-        // URL: /Admin/HelpCenter
-        public IActionResult HelpCenter()
+        // Logistics - Accessible by SuperAdmin, Admin, and Logistics team
+        public IActionResult Logistics()
         {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Logistics" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
             return View();
         }
 
-        public IActionResult Settings() => View();
-        public IActionResult Notifications() => View();
+        // Tasks - Accessible by all admin roles
+        public IActionResult Tasks()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
 
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // ChallengeDetails - Accessible by SuperAdmin, Admin, and Marketing
+        public IActionResult ChallengeDetails()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Marketing" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // HelpCenter - Accessible by all admin roles
+        public IActionResult HelpCenter()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // Settings - Accessible ONLY by SuperAdmin
+        public IActionResult Settings()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // Notifications - Accessible by all admin roles
+        public IActionResult Notifications()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // Logout - Accessible by all (clears session)
         public IActionResult Logout()
         {
-            // Redirect back to Dashboard for now
-            return RedirectToAction("Dashboard");
+            var staffId = HttpContext.Session.GetInt32("StaffId");
+            var username = HttpContext.Session.GetString("Username");
+            
+            if (staffId.HasValue)
+            {
+                Console.WriteLine($"User {username} logged out");
+                // You can also log to audit_logs here
+            }
+            
+            // Clear session
+            HttpContext.Session.Clear();
+            
+            // Redirect to login page
+            return RedirectToAction("AdminLogin", "Login");
         }
     }
 }
