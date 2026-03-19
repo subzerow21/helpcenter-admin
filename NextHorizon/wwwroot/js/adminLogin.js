@@ -25,18 +25,5 @@ function selectRole(label, value) {
 
 document.getElementById('mainLoginForm').addEventListener('submit', function (e) {
     e.preventDefault();
-
-    // Get the value from the hidden input
-    const selectedRole = document.getElementById('accessLevelInput').value;
-
-    if (selectedRole === 'admin') {
-        // Route for Super Admin
         window.location.href = '/Admin/Dashboard';
-    } else if (selectedRole === 'finance' || selectedRole === 'support') {
-        // Route for everyone else (Staff/Other page)
-        window.location.href = '/Staff/Portal';
-    } else {
-        // Fallback if no role is detected
-        showToast("Please select a valid access level.");
-    }
 });
