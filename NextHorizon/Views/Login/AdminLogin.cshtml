@@ -54,7 +54,23 @@
                     <input type="password" class="form-control" placeholder="••••••••" required>
                 </div>
 
-                <button type="submit" class="btn btn-access"> LOGIN </button>
+                <div class="mb-4">
+                    <label class="form-label">Access Level</label>
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle-custom shadow-none" type="button" id="roleDropdown" data-bs-toggle="dropdown">
+                            <span id="selectedRole">Super Admin</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-custom shadow-lg">
+                            <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Super Admin', 'admin')">Super Admin</a></li>
+                            <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Finance Officer', 'finance')">Finance Officer</a></li>
+                            <li><a class="dropdown-item dropdown-item-custom" onclick="selectRole('Support Agent', 'support')">Support Agent</a></li>
+                        </ul>
+                        <input type="hidden" id="accessLevelInput" value="admin">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-access">ACCESS PORTAL</button>
 
                 <div class="auth-footer">
                     <i class="bi bi-shield-lock-fill"></i>
