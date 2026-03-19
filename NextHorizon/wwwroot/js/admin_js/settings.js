@@ -8,16 +8,13 @@ let pendingAction = null;
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. ENHANCED DEFAULT TAB LOGIC ---
-    // Target the specific button and pane for Account Security
     const defaultTabEl = document.querySelector('#v-pills-tab button[data-bs-target="#tab-account"]');
     const defaultPane = document.getElementById('tab-account');
 
     if (defaultTabEl && defaultPane) {
-        // Ensure classes are present for immediate visibility
         defaultTabEl.classList.add('active');
         defaultPane.classList.add('show', 'active');
 
-        // Initialize and show via Bootstrap to ensure internal state is synced
         if (typeof bootstrap !== 'undefined') {
             const tabTrigger = bootstrap.Tab.getOrCreateInstance(defaultTabEl);
             tabTrigger.show();
@@ -27,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. MODAL CONFIRMATION LOGIC ---
     const confirmBtn = document.getElementById('confirmBtnExecute');
     if (confirmBtn) {
-        // Use cloneNode to wipe existing listeners and prevent double-execution
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
@@ -37,6 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 pendingAction = null;
             }
         });
+    }
+
+    // --- 3. INITIALIZE SEARCH FILTER ---
+    const searchInput = document.getElementById('adminSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', filterAdminTable);
     }
 });
 
@@ -52,7 +54,6 @@ function openConfirmModal(title, message, action, iconClass = 'bi-exclamation-ci
     document.getElementById('confirmTitle').innerText = title;
     document.getElementById('confirmBody').innerText = message;
 
-    // Optional: Update icon based on action (e.g., shield for security, triangle for danger)
     if (iconEl) {
         iconEl.className = `bi ${iconClass} ${iconColor} display-4 mb-3`;
     }
@@ -84,17 +85,16 @@ function addAuditEntry(user, action, target) {
     const tableBody = document.getElementById('auditLogBody');
     if (!tableBody) return;
 
-    const now = new Date().toLocaleString([], {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const now = new Date();
+    const timestamp = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0');
 
     const newRow = `
-        <tr>
-            <td>${now}</td>
+        <tr class="fade-in">
+            <td>${timestamp}</td>
             <td><strong>${user}</strong></td>
             <td>${action}</td>
             <td>${target}</td>
@@ -102,12 +102,28 @@ function addAuditEntry(user, action, target) {
         </tr>
     `;
     tableBody.insertAdjacentHTML('afterbegin', newRow);
+
+    const container = tableBody.closest('.scrollable-card-body');
+    if (container) container.scrollTop = 0;
+}
+
+/**
+ * 2. SEARCH & FILTERING
+ */
+function filterAdminTable() {
+    const input = document.getElementById('adminSearchInput');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('.admin-row');
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+    });
 }
 
 /**
  * 3. ACCOUNT SECURITY
  */
-
 function saveProfileInfo() {
     const name = document.getElementById('adminFullName').value;
     const email = document.getElementById('adminEmail').value;
@@ -149,60 +165,142 @@ function requestPasswordChange() {
 
     openConfirmModal(
         "Confirm Password Change",
-        "Are you sure you want to update your password? You will be required to use the new password for your next login.",
+        "Update your security credentials? You will need the new password for your next login.",
         () => {
-            // Execution logic
             addAuditEntry("System Admin", "Security Update", "Password Changed");
             showActionToast("Password updated successfully.");
-
-            // Clear fields
             document.getElementById('currentPass').value = "";
             document.getElementById('newPass').value = "";
             document.getElementById('confirmNewPass').value = "";
-
             hideModal();
         },
-        'bi-shield-lock', 'text-danger' // Security-specific icon and color
+        'bi-shield-lock', 'text-danger'
     );
 }
 
 /**
- * 4. PERMISSIONS
+ * 4. PERMISSIONS / ADMINISTRATIVE ACCESS
  */
+
+// --- CUSTOM DROPDOWN TOGGLE LOGIC ---
+
+function updateRoleUI(roleName, roleValue) {
+    document.getElementById('selectedRoleText').innerText = roleName;
+    document.getElementById('accessLevelInput').value = roleValue;
+
+    const supportSection = document.getElementById('supportAssignmentSection');
+
+    // Toggle support assignment visibility if "Support Agent" is chosen
+    if (roleName === "Support Agent") {
+        supportSection.classList.remove('d-none');
+    } else {
+        supportSection.classList.add('d-none');
+        updateSupportUI('-- Select Assignment --', ''); // Reset child dropdown
+    }
+}
+
+function updateSupportUI(supportName, supportValue) {
+    document.getElementById('selectedSupportText').innerText = supportName;
+    document.getElementById('supportType').value = supportValue;
+}
+
+// Toggle for the credential override section
+function toggleCredentialOverride() {
+    const section = document.getElementById('credentialOverrideSection');
+    const btn = document.getElementById('overrideToggleBtn');
+
+    if (section.classList.contains('d-none')) {
+        section.classList.remove('d-none');
+        btn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancel Credential Update';
+        btn.classList.replace('btn-outline-dark', 'btn-outline-danger');
+    } else {
+        section.classList.add('d-none');
+        btn.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Update User\'s Login Credentials';
+        btn.classList.replace('btn-outline-danger', 'btn-outline-dark');
+        document.getElementById('overrideUsername').value = "";
+        document.getElementById('overridePassword').value = "";
+    }
+}
 
 function openInviteModal() {
     const modalEl = document.getElementById('inviteModModal');
-    document.getElementById('modModalLabel').innerText = "Add New Moderator";
+    document.getElementById('modModalLabel').innerText = "Add New User";
+
+    // Reset standard inputs
     document.getElementById('modName').value = "";
     document.getElementById('modEmail').value = "";
-    document.getElementById('modRole').value = "Moderator";
+    document.getElementById('modPhone').value = "";
+
+    // Reset Custom Dropdowns
+    updateRoleUI('Moderator', 'mod');
+    updateSupportUI('-- Select Assignment --', '');
+
+    const section = document.getElementById('credentialOverrideSection');
+    if (!section.classList.contains('d-none')) toggleCredentialOverride();
+
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
-function editModerator(name, email, role) {
+function editModerator(name, email, role, phone, supportType = "") {
     const modalEl = document.getElementById('inviteModModal');
     document.getElementById('modModalLabel').innerText = "Edit Permissions: " + name;
     document.getElementById('modName').value = name;
     document.getElementById('modEmail').value = email;
-    document.getElementById('modRole').value = role;
+    document.getElementById('modPhone').value = phone || "";
+
+    // Update Custom Role UI
+    updateRoleUI(role, role.toLowerCase());
+
+    // Update Custom Support UI if applicable
+    if (role === "Support Agent" && supportType) {
+        updateSupportUI(supportType, supportType);
+    }
+
+    const section = document.getElementById('credentialOverrideSection');
+    if (!section.classList.contains('d-none')) toggleCredentialOverride();
+
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 function processModerator() {
     const name = document.getElementById('modName').value;
     const email = document.getElementById('modEmail').value;
-    if (!email || !name) {
+    const role = document.getElementById('selectedRoleText').innerText;
+    const supportType = document.getElementById('supportType').value;
+    const isOverriding = !document.getElementById('credentialOverrideSection').classList.contains('d-none');
+
+    if (!name || !email) {
         showActionToast("Error: Name and Email are required.");
         return;
     }
+
+    // Mandatory Field Check for Support Agents
+    if (role === "Support Agent" && !supportType) {
+        showActionToast("Error: Please assign a Support Type (Consumer or Seller).");
+        return;
+    }
+
+    let confirmationMsg = `Apply ${role} settings for ${name}?`;
+    if (role === "Support Agent") confirmationMsg += ` (Assigned to: ${supportType})`;
+    if (isOverriding) confirmationMsg += ` [Login Credentials Updated]`;
+
     openConfirmModal(
         "Confirm Permissions",
-        `Apply these access settings for ${name}?`,
+        confirmationMsg,
         () => {
             hideModal();
             hideModal('inviteModModal');
-            addAuditEntry("System Admin", "Moderator Access Update", email);
-            showActionToast("Permissions updated.");
+
+            // Logic to add to table with current date
+            const today = new Date().toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+
+            addAuditEntry("System Admin", "Moderator Access Update", `${name} (${role}${supportType ? ' - ' + supportType : ''})`);
+            showActionToast("Permissions updated successfully.");
+
+            // Note: In a real app, you would append the new HTML row here 
+            // including the <td>${today}</td> column.
         },
         'bi-person-gear', 'text-dark'
     );
@@ -211,14 +309,46 @@ function processModerator() {
 function requestRemoveAccess(name, rowId) {
     openConfirmModal(
         "Revoke Access",
-        `Remove ${name} from the administrative team? This action is immediate.`,
+        `Move ${name} to revoked status? They will lose all portal access immediately.`,
         () => {
             const row = document.getElementById(rowId);
-            if (row) row.remove();
+            if (row) {
+                row.classList.add('fade-out');
+                setTimeout(() => {
+                    row.remove();
+                    addAuditEntry("System Admin", "Revoked Access", name);
+                    showActionToast(`Access revoked for ${name}.`);
+                }, 300);
+            }
             hideModal();
-            addAuditEntry("System Admin", "Revoked Access", name);
-            showActionToast(`Access revoked for ${name}.`);
         },
         'bi-person-x', 'text-danger'
     );
 }
+
+function reinstateAccess(name) {
+    openConfirmModal(
+        "Reinstate Access",
+        `Restore administrative permissions for ${name}?`,
+        () => {
+            hideModal();
+            addAuditEntry("System Admin", "Reinstated Access", name);
+            showActionToast(`${name} has been restored to active status.`);
+        },
+        'bi-arrow-counterclockwise', 'text-dark'
+    );
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Check if URL has a hash (like #tab-audit)
+    var hash = window.location.hash;
+    if (hash) {
+        // Find the tab button that targets this ID
+        var tabTrigger = document.querySelector(`[data-bs-target="${hash}"]`);
+        if (tabTrigger) {
+            var tab = new bootstrap.Tab(tabTrigger);
+            tab.show();
+        }
+    }
+});
