@@ -1,4 +1,4 @@
-﻿@{
+﻿﻿@{
     ViewData["Title"] = "Admin Portal - Settings";
     Layout = "_AdminLayout";
 }
@@ -31,18 +31,19 @@
         <div class="col-md-9">
             <div class="tab-content" id="v-pills-tabContent">
 
+                <!-- Account Security Tab -->
                 <div class="tab-pane fade show active" id="tab-account" role="tabpanel">
                     <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
                         <h5 class="fw-bold mb-1">Profile Information</h5>
                         <p class="text-muted small mb-4">Update your display name and contact email.</p>
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="small fw-bold mb-1">Full Name</label>
-                                <input type="text" id="adminFullName" class="form-control rounded-3" value="System Admin">
+                                <input type="text" id="adminFullName" class="form-control rounded-3" value="@ViewBag.CurrentAdminName">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="small fw-bold mb-1">Email Address</label>
-                                <input type="email" id="adminEmail" class="form-control rounded-3" value="admin@nexthorizon.com">
+                                <input type="email" id="adminEmail" class="form-control rounded-3" value="@ViewBag.CurrentAdminEmail">
                             </div>
                         </div>
                         <div class="d-flex justify-content-end mt-3">
@@ -73,6 +74,7 @@
                     </div>
                 </div>
 
+                <!-- Permissions Tab -->
                 <div class="tab-pane fade" id="tab-security" role="tabpanel">
                     <div class="card border-0 shadow-sm rounded-4 p-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -87,7 +89,7 @@
                                     <input type="text" id="adminSearchInput" class="form-control bg-light border-start-0 rounded-end-pill" placeholder="Search...">
                                 </div>
                                 <button class="btn btn-sm btn-dark rounded-pill px-3 btn-add-user" onclick="openInviteModal()">
-                                    <i class="bi bi-person-plus"></i> <span class="d-none d-md-inline"> </span>
+                                    <i class="bi bi-person-plus"></i> <span class="d-none d-md-inline"> Add User</span>
                                 </button>
                             </div>
                         </div>
@@ -102,6 +104,7 @@
                         </ul>
 
                         <div class="tab-content">
+                            <!-- Active Admins Tab -->
                             <div class="tab-pane fade show active" id="activeAdmins">
                                 <div class="table-responsive rounded-3 border scrollable-card-body">
                                     <table class="table align-middle mb-0">
@@ -111,57 +114,35 @@
                                                 <th>Role</th>
                                                 <th>Contact</th>
                                                 <th>Date Added</th>
+                                                <th>Last Active</th>
                                                 <th class="text-end pe-3">Action</th>
-                                            </tr>
+                                             </tr>
                                         </thead>
                                         <tbody class="small" id="adminTableBody">
-                                            <tr class="admin-row" id="modRow1">
-                                                <td class="ps-3">
-                                                    <div class="fw-bold name-cell">Sarah Chen</div>
-                                                    <div class="x-small text-muted email-cell">sarah.c@nexthorizon.com</div>
-                                                </td>
-                                                <td><span class="badge bg-light text-dark border rounded-pill fw-normal">Moderator</span></td>
-                                                <td class="x-small text-muted">+1 234 567 890</td>
-                                                <td class="x-small text-muted">Oct 24, 2025</td>
-                                                <td class="text-end pe-3">
-                                                    <button class="btn btn-sm btn-outline-dark border-0"
-                                                            onclick="editModerator('Sarah Chen', 'sarah.c@nexthorizon.com', 'Moderator', '+1 234 567 890')">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                    @* Updated to Trash Icon *@
-                                                    <button class="btn btn-sm btn-outline-danger border-0"
-                                                            onclick="requestRemoveAccess('Sarah Chen', 'modRow1')">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </td>
+                                            <tr>
+                                                <td colspan="6" class="text-center py-4 text-muted">Loading...</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
+                            <!-- Revoked Admins Tab -->
                             <div class="tab-pane fade" id="revokedAdmins">
                                 <div class="table-responsive rounded-3 border scrollable-card-body">
                                     <table class="table align-middle mb-0">
                                         <thead class="bg-light sticky-top">
                                             <tr class="x-small text-muted text-uppercase">
                                                 <th class="ps-3">User</th>
+                                                <th>Role</th>
                                                 <th>Revoked Date</th>
+                                                <th>Revoked By</th>
                                                 <th class="text-end pe-3">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="small">
+                                        <tbody class="small" id="revokedTableBody">
                                             <tr>
-                                                <td class="ps-3">
-                                                    <div class="fw-bold text-muted">John Doe</div>
-                                                    <div class="x-small">j.doe@nexthorizon.com</div>
-                                                </td>
-                                                <td class="text-muted">Oct 12, 2025</td>
-                                                <td class="text-end pe-3">
-                                                    <button class="btn btn-sm btn-dark rounded-pill px-3" onclick="reinstateAccess('John Doe')">
-                                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reinstate
-                                                    </button>
-                                                </td>
+                                                <td colspan="5" class="text-center py-4 text-muted">Loading...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -171,10 +152,18 @@
                     </div>
                 </div>
 
+                <!-- Audit Logs Tab -->
                 <div class="tab-pane fade" id="tab-audit" role="tabpanel">
                     <div class="card border-0 shadow-sm rounded-4 p-4">
                         <h5 class="fw-bold mb-1">System Audit Logs</h5>
                         <p class="text-muted small mb-4">Read-only trail of administrative actions.</p>
+
+                        <div class="mb-3">
+                            <div class="input-group" style="max-width: 300px;">
+                                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                <input type="text" id="auditSearchInput" class="form-control" placeholder="Search logs...">
+                            </div>
+                        </div>
 
                         <div class="table-responsive rounded-3 border scrollable-card-body" style="max-height: 450px; overflow-y: auto;">
                             <table class="table table-hover align-middle small mb-0">
@@ -189,24 +178,17 @@
                                 </thead>
                                 <tbody id="auditLogBody">
                                     <tr>
-                                        <td>2026-03-07 14:20</td>
-                                        <td><strong>SuperAdmin</strong></td>
-                                        <td>Initial Setup</td>
-                                        <td>System</td>
-                                        <td><span class="badge bg-success-subtle text-success rounded-pill">Success</span></td>
+                                        <td colspan="5" class="text-center py-4 text-muted">Loading...</td>
                                     </tr>
-                                    @for (int i = 0; i < 15; i++)
-                                    {
-                                        <tr>
-                                            <td>2026-03-07 12:00</td>
-                                            <td><strong>Admin</strong></td>
-                                            <td>Login</td>
-                                            <td>Dashboard</td>
-                                            <td><span class="badge bg-success-subtle text-success rounded-pill">Success</span></td>
-                                        </tr>
-                                    }
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="small text-muted" id="auditPaginationInfo"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-dark" onclick="loadAuditLogs(currentAuditPage - 1)" id="prevAuditBtn" disabled>Previous</button>
+                                <button class="btn btn-sm btn-outline-dark" onclick="loadAuditLogs(currentAuditPage + 1)" id="nextAuditBtn" disabled>Next</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -215,26 +197,36 @@
     </div>
 </div>
 
+<!-- Add/Edit Admin Modal -->
 <div class="modal fade" id="inviteModModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="modModalLabel">User Details</h5>
+                <h5 class="modal-title fw-bold" id="modModalLabel">Add New User</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="editStaffId" value="">
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="small fw-bold mb-1">First Name</label>
+                        <input type="text" id="modFirstName" class="form-control rounded-3" placeholder="John">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small fw-bold mb-1">Last Name</label>
+                        <input type="text" id="modLastName" class="form-control rounded-3" placeholder="Doe">
+                    </div>
                     <div class="col-md-12">
-                        <label class="small fw-bold mb-1">Full Name</label>
-                        <input type="text" id="modName" class="form-control rounded-3" placeholder="Sarah Chen">
+                        <label class="small fw-bold mb-1">Middle Name (Optional)</label>
+                        <input type="text" id="modMiddleName" class="form-control rounded-3" placeholder="M">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="small fw-bold mb-1">Email Address</label>
-                        <input type="email" id="modEmail" class="form-control rounded-3" placeholder="sarah@example.com">
+                        <input type="email" id="modEmail" class="form-control rounded-3" placeholder="john.doe@example.com">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="small fw-bold mb-1">Phone Number</label>
-                        <input type="tel" id="modPhone" class="form-control rounded-3" placeholder="+1 234...">
+                        <input type="tel" id="modPhone" class="form-control rounded-3" placeholder="+1 234 567 890">
                     </div>
                     <div class="mb-3">
                         <label class="small fw-bold mb-1">Assign Role</label>
@@ -244,30 +236,29 @@
                                 <i class="bi bi-chevron-down small text-muted"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-custom shadow-lg">
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Admin', 'admin')">Admin</a></li>
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Moderator', 'mod')">Moderator</a></li>
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Support Agent', 'support')">Support Agent</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('SuperAdmin', 'SuperAdmin')">SuperAdmin</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Admin', 'Admin')">Admin</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Finance Officer', 'Finance Officer')">Finance Officer</a></li>
+                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateRoleUI('Support Agent', 'Support Agent')">Support Agent</a></li>
                             </ul>
                             <input type="hidden" id="accessLevelInput" value="">
                         </div>
                     </div>
-                    @* Support Assignment Section Removed *@
                 </div>
 
                 <div class="mt-3">
-                    @* This button label and visibility now handled by JS *@
                     <button type="button" id="overrideToggleBtn" class="btn btn-sm btn-outline-dark rounded-pill w-100 mb-2" onclick="toggleCredentialOverride()">
-                        <i class="bi bi-shield-lock me-1"></i> <span id="overrideBtnText">Update User's Login Credentials</span>
+                        <i class="bi bi-shield-lock me-1"></i> <span id="overrideBtnText">Manually assign login credentials</span>
                     </button>
 
-                    <div id="credentialOverrideSection" class="d-none bg-light p-3 rounded-3 border border-warning-subtle">
+                    <div id="credentialOverrideSection" class="d-none bg-light p-3 rounded-3 border">
                         <p class="x-small text-muted mb-3"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Warning: Overriding credentials will change access immediately.</p>
                         <div class="mb-2">
-                            <label class="x-small fw-bold mb-1">New Username</label>
-                            <input type="text" id="overrideUsername" class="form-control form-control-sm rounded-2">
+                            <label class="x-small fw-bold mb-1">Custom Username</label>
+                            <input type="text" id="overrideUsername" class="form-control form-control-sm rounded-2" placeholder="custom.username">
                         </div>
                         <div>
-                            <label class="x-small fw-bold mb-1">New Password</label>
+                            <label class="x-small fw-bold mb-1">Custom Password</label>
                             <input type="password" id="overridePassword" class="form-control form-control-sm rounded-2" placeholder="••••••••">
                         </div>
                     </div>
@@ -281,7 +272,7 @@
     </div>
 </div>
 
-
+<!-- Confirmation Modal -->
 <div class="modal fade" id="confirmActionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4 text-center">
@@ -289,6 +280,9 @@
                 <i id="confirmIcon" class="bi bi-exclamation-circle text-warning display-4 mb-3"></i>
                 <h5 class="fw-bold" id="confirmTitle">Are you sure?</h5>
                 <p class="text-muted small mb-0" id="confirmBody">This action will be logged in the system.</p>
+                <div id="confirmReasonContainer" class="mt-3 d-none">
+                    <textarea id="confirmReason" class="form-control rounded-3" rows="2" placeholder="Reason for this action..."></textarea>
+                </div>
             </div>
             <div class="modal-footer border-0 justify-content-center pt-0 pb-4">
                 <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
@@ -298,14 +292,15 @@
     </div>
 </div>
 
+<!-- Toast Notification -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="settingsToast" class="toast align-items-center text-white bg-dark border-0 rounded-4 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+    <div id="settingsToast" class="toast align-items-center text-white bg-dark border-0 rounded-4 shadow" role="alert">
         <div class="d-flex">
             <div class="toast-body">
                 <i class="bi bi-check-circle-fill me-2 text-success"></i>
                 <span id="toastMsg">Action completed successfully.</span>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto shadow-none" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto shadow-none" data-bs-dismiss="toast"></button>
         </div>
     </div>
 </div>

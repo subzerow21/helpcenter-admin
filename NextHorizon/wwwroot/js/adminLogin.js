@@ -1,10 +1,4 @@
-﻿// Role selection function
-function selectRole(roleDisplay, roleValue) {
-    document.getElementById('selectedRole').textContent = roleDisplay;
-    document.getElementById('accessLevelInput').value = roleValue;
-}
-
-// Show toast message
+﻿﻿// Show toast message
 function showToast(message, isSuccess = true) {
     const toastElement = document.getElementById('monochromeToast');
     const toastBody = document.getElementById('toastMessage');
@@ -22,22 +16,15 @@ function showToast(message, isSuccess = true) {
     toast.show();
 }
 
-// Handle login form submission
+// Handle login form submission - NO ROLE SELECTION NEEDED
 document.getElementById('mainLoginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const username = document.querySelector('input[type="text"]').value;
     const password = document.querySelector('input[type="password"]').value;
-    const selectedRole = document.getElementById('selectedRole').textContent;
     
     if (!username || !password) {
         showToast('Please enter both username and password', false);
-        return;
-    }
-    
-    // Validate role first
-    const isValidRole = await validateUserRole(username, selectedRole);
-    if (!isValidRole) {
         return;
     }
     
@@ -52,7 +39,7 @@ document.getElementById('mainLoginForm').addEventListener('submit', async functi
             body: JSON.stringify({
                 username: username,
                 password: password,
-                selectedRole: selectedRole
+                selectedRole: null  // No role selected - will be detected from database
             })
         });
         
@@ -382,42 +369,17 @@ async function submitNewPassword() {
     }
 }
 
-async function validateUserRole(username, selectedRole) {
-    try {
-        const response = await fetch(`/Login/GetUserType?username=${encodeURIComponent(username)}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const userType = data.userType;
-            let expectedRole = '';
-            
-            // Map selected role to user_type
-            switch(selectedRole) {
-                case 'Super Admin':
-                    expectedRole = 'SuperAdmin';
-                    break;
-                case 'Finance Officer':
-                    expectedRole = 'Finance Officer';
-                    break;
-                case 'Support Agent':
-                    expectedRole = 'Support Agent';
-                    break;
-                default:
-                    expectedRole = selectedRole;
-            }
-            
-            if (userType !== expectedRole) {
-                showToast(`This account is not authorized as ${selectedRole}`, false);
-                return false;
-            }
-            return true;
-        } else {
-            showToast('User not found', false);
-            return false;
-        }
-    } catch (error) {
-        console.error('Error validating role:', error);
-        return false;
+// REMOVED: validateUserRole function - no longer needed
+
+// Toggle password visibility
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        button.innerHTML = '<i class="bi bi-eye-slash"></i>';
+    } else {
+        input.type = 'password';
+        button.innerHTML = '<i class="bi bi-eye"></i>';
     }
 }
 

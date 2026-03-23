@@ -68,10 +68,10 @@ namespace NextHorizon.Controllers
 
         [HttpPost]
         public async Task<IActionResult> AuthenticateAdmin([FromBody] LoginRequestModel request)
-        {
+{
             try
             {
-                Console.WriteLine($"=== Login Attempt for user: {request.Username} with role: {request.SelectedRole} ===");
+                Console.WriteLine($"=== Login Attempt for user: {request.Username} ===");
                 
                 using (var connection = new SqlConnection(_connectionString))
                 {
@@ -79,8 +79,7 @@ namespace NextHorizon.Controllers
                     {
                         command.CommandType = CommandType.StoredProcedure;
                         command.Parameters.AddWithValue("@Username", request.Username);
-                        command.Parameters.AddWithValue("@SelectedRole", request.SelectedRole);
-                        command.Parameters.AddWithValue("@Password", request.Password); // Send the plain password
+                        command.Parameters.AddWithValue("@Password", request.Password);
 
                         await connection.OpenAsync();
                         Console.WriteLine("Database connection opened");
@@ -109,7 +108,6 @@ namespace NextHorizon.Controllers
                                         HttpContext.Session.SetString("Username", reader["Username"].ToString());
                                         HttpContext.Session.SetString("FullName", reader["FullName"].ToString());
                                         HttpContext.Session.SetString("UserType", userType);
-                                        HttpContext.Session.SetString("AccessLevel", reader["AccessLevel"].ToString());
 
                                         await LogAdminAction(
                                             Convert.ToInt32(reader["StaffId"]),
@@ -168,7 +166,7 @@ namespace NextHorizon.Controllers
                 });
             }
         }
-       
+        
         [HttpPost]
         public async Task<IActionResult> GenerateOTP([FromBody] ForgotPasswordModel model)
         {

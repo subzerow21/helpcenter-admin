@@ -50,36 +50,30 @@
                                 <th>Seller / Shop</th>
                                 <th>Amount</th>
                                 <th>Bank Method</th>
-                                <th>Seller Note</th>
                                 <th>Requested Date</th>
                                 <th class="text-center">Action</th>
-                            </tr>
+                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var p in Model.PendingPayouts)
                             {
                                 <tr>
-                                    <td class="ps-4 fw-bold">#@p.Id</td>
+                                    <td class="ps-4 fw-bold">#@p.WithdrawalId</td>
                                     <td>
                                         <span class="d-block fw-bold small">@p.ShopName</span>
                                         <span class="text-muted tiny">@p.SellerEmail</span>
                                     </td>
                                     <td><span class="fw-bold text-success">₱@p.Amount.ToString("N2")</span></td>
                                     <td><span class="badge bg-light text-dark border">@p.BankName</span></td>
-                                    <td>
-                                        <span class="small text-muted d-inline-block text-truncate" style="max-width: 150px;" title="@p.SellerNote">
-                                            @(string.IsNullOrEmpty(p.SellerNote) ? "—" : p.SellerNote)
-                                        </span>
-                                    </td>
-                                    <td class="small">@p.DateRequested.ToString("MMM dd, yyyy")</td>
+                                    <td class="small">@p.RequestedAt.ToString("MMM dd, yyyy")</td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-1">
                                             <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold"
-                                                    onclick="openPayoutModal('@p.Id', '@p.Amount', 'approve', '@p.SellerNote?.Replace("'", "\\'")')">
+                                                    onclick="openPayoutModal(@p.WithdrawalId, @p.Amount, 'approve')">
                                                 Approve
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold"
-                                                    onclick="openPayoutModal('@p.Id', '@p.Amount', 'reject', '@p.SellerNote?.Replace("'", "\\'")')">
+                                                    onclick="openPayoutModal(@p.WithdrawalId, @p.Amount, 'reject')">
                                                 Reject
                                             </button>
                                         </div>
@@ -110,18 +104,19 @@
                         <tbody>
                             @foreach (var d in Model.PendingDiscounts)
                             {
+                                var discountedPrice = d.OriginalPrice - (d.OriginalPrice * d.TotalDiscountPercent / 100);
                                 <tr>
                                     <td class="ps-4">
                                         <span class="fw-bold small d-block">@d.ProductName</span>
                                         <span class="text-muted tiny">By @d.ShopName</span>
                                     </td>
                                     <td class="text-muted small">₱@d.OriginalPrice.ToString("N2")</td>
-                                    <td><span class="badge bg-danger-subtle text-danger fw-bold">-@d.DiscountPercent%</span></td>
-                                    <td class="fw-bold">₱@d.DiscountedPrice.ToString("N2")</td>
-                                    <td class="small">@d.StartDate.ToString("MM/dd") - @d.EndDate.ToString("MM/dd")</td>
+                                    <td><span class="badge bg-danger-subtle text-danger fw-bold">-@d.TotalDiscountPercent%</span></td>
+                                    <td class="fw-bold">₱@discountedPrice.ToString("N2")</td>
+                                    <td class="small">@d.CreatedAt.ToString("MM/dd") - @d.CreatedAt.AddDays(7).ToString("MM/dd")</td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-dark rounded-pill px-4 shadow-sm"
-                                                onclick="openDiscountReviewModal('@d.Id', '@d.ProductName', '@d.DiscountPercent', '@d.DiscountedPrice.ToString("N2")', '@d.StartDate.ToString("MMM dd") - @d.EndDate.ToString("MMM dd")', '@d.ProductImage')">
+                                                onclick="openDiscountReviewModal(@d.Id, '@d.ProductName', @d.TotalDiscountPercent, @discountedPrice, '@d.CreatedAt.ToString("MMM dd") - @d.CreatedAt.AddDays(7).ToString("MMM dd")', '@(d.ProductImage ?? "")')">
                                             Review
                                         </button>
                                     </td>
@@ -145,7 +140,7 @@
                                 <label class="d-block mb-2 tiny fw-bold text-muted text-uppercase">Promotion Banner</label>
                                 <div class="promo-upload-zone rounded-4 border-dashed p-3 d-flex flex-column align-items-center justify-content-center"
                                      onclick="document.getElementById('promoImage').click()"
-                                     style="min-height: 150px;">
+                                     style="min-height: 150px; cursor: pointer; background-color: #f8f9fa; border: 2px dashed #ddd;">
                                     <img id="promoPreview" class="img-fluid rounded-3 mb-2 d-none" style="max-height: 120px;">
                                     <div id="uploadZoneText">
                                         <i class="bi bi-image fs-2 text-muted"></i>
@@ -204,7 +199,6 @@
                     <div class="card border-0 shadow-sm rounded-4 p-4">
                         <h6 class="fw-bold mb-3">Live Campaigns</h6>
                         <div id="activePromoList" class="d-flex flex-column gap-3">
-                            @* Default Empty State *@
                             <div id="emptyPromoState" class="text-center py-5">
                                 <i class="bi bi-calendar2-x text-muted fs-1"></i>
                                 <p class="text-muted small mt-2">No promotions currently running.</p>
@@ -229,7 +223,6 @@
                 <h5 class="fw-bold" id="financeTitle">Confirm Action</h5>
                 <p class="text-muted small" id="financeMessage"></p>
 
-                @* Seller's Note Display in Modal *@
                 <div id="sellerReasonDisplay" class="bg-light p-3 rounded-3 mb-3 border-start border-4 border-primary d-none text-start">
                     <label class="tiny text-uppercase fw-bold text-muted d-block mb-1">Seller's Note:</label>
                     <p id="sellerReasonText" class="small mb-0 italic"></p>
