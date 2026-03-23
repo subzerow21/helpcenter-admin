@@ -1,4 +1,4 @@
-@model NextHorizon.Models.Admin_Models.QueueDashboardViewModel
+@model NextHorizon.Models.Admin_Models.HelpCenterV2ViewModel
 @{
     ViewData["Title"] = "Help Center";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -16,13 +16,7 @@
         pos = s.QueuePosition,
         status = s.Status,
         cat = s.Category,
-        agent = s.AssignedTo ?? "Unassigned",
-        msgs = s.Messages.Select(m => new
-        {
-            f = m.Sender,
-            t = m.Body,
-            time = m.TimeLabel
-        })
+        agent = s.AssignedTo ?? "Unassigned"
     }));
 
     var agentsJson = System.Text.Json.JsonSerializer.Serialize(Model.Agents.Select(a => new
@@ -32,6 +26,14 @@
         status = a.Status,
         sessions = a.ActiveSessions,
         max = a.MaxSessions
+    }));
+
+    var faqsJson = System.Text.Json.JsonSerializer.Serialize(Model.Faqs.Select(f => new
+    {
+        id = f.Id,
+        q = f.Question,
+        a = f.Answer,
+        cat = f.Category
     }));
 }
 
@@ -44,9 +46,9 @@
         /* ── STATS ── */
         .q-stats {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(5,1fr);
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .qs {
@@ -65,7 +67,7 @@
         }
 
         .qs-val {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             color: #1a1a1a;
             letter-spacing: -0.5px;
@@ -76,13 +78,13 @@
             font-size: 10px;
             color: #aaa;
             margin-top: 4px;
-            display: flex;
-            align-items: center;
-            gap: 3px;
         }
 
             .qs-sub.warn {
                 color: #854F0B;
+                display: flex;
+                align-items: center;
+                gap: 3px;
             }
 
         .up {
@@ -95,23 +97,23 @@
             font-weight: 600;
         }
 
-        /* ── LAYOUT ── */
-        .q-shell {
+        /* ── SHELL ── */
+        .hc-shell {
             display: grid;
-            grid-template-columns: 1fr 340px;
+            grid-template-columns: 1fr 380px;
             gap: 14px;
-            height: calc(100vh - 62px - 52px - 90px - 16px);
-            min-height: 500px;
+            height: calc(100vh - 62px - 52px - 80px - 14px);
+            min-height: 580px;
         }
 
-        .q-left {
+        .hc-left {
             display: flex;
             flex-direction: column;
             gap: 14px;
             overflow: hidden;
         }
 
-        .q-right {
+        .hc-right {
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -127,7 +129,7 @@
             overflow: hidden;
         }
 
-        .panel-hd {
+        .ph {
             padding: 12px 18px;
             border-bottom: 1px solid #f0f0f0;
             display: flex;
@@ -136,7 +138,7 @@
             flex-shrink: 0;
         }
 
-        .panel-title {
+        .ph-title {
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.8px;
@@ -144,7 +146,7 @@
             color: #1a1a1a;
         }
 
-        .panel-sub {
+        .ph-sub {
             font-size: 11px;
             color: #aaa;
             font-weight: 400;
@@ -163,6 +165,9 @@
             font-family: 'Poppins', sans-serif;
             letter-spacing: 0.3px;
             transition: background .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
             .pbtn:hover {
@@ -189,42 +194,17 @@
                     background: #fad4d4;
                 }
 
-        /* ── WAIT WARNING BAR ── */
-        .wait-warn {
-            background: #FCEBEB;
-            border-left: 3px solid #e24b4a;
-            padding: 8px 14px;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 11.5px;
-            flex-shrink: 0;
-        }
-
-            .wait-warn.show {
-                display: flex;
-            }
-
-        .ww-left {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #791F1F;
-            font-weight: 500;
-        }
-
-            .ww-left svg {
-                width: 13px;
-                height: 13px;
-                stroke: #791F1F;
+            .pbtn svg {
+                width: 12px;
+                height: 12px;
                 fill: none;
+                stroke: currentColor;
                 stroke-width: 2;
                 stroke-linecap: round;
                 stroke-linejoin: round;
-                flex-shrink: 0;
             }
 
-        /* ── QUEUE TABLE ── */
+        /* ── QUEUE ── */
         .q-scroll {
             overflow-y: auto;
             flex: 1;
@@ -249,7 +229,7 @@
                 letter-spacing: 1px;
                 text-transform: uppercase;
                 color: #aaa;
-                padding: 9px 18px;
+                padding: 9px 16px;
                 text-align: left;
                 border-bottom: 1px solid #f0f0f0;
                 background: #fafafa;
@@ -259,7 +239,7 @@
             }
 
             .qtbl td {
-                padding: 10px 18px;
+                padding: 10px 16px;
                 border-bottom: 1px solid #f5f5f5;
                 vertical-align: middle;
             }
@@ -323,19 +303,13 @@
                 color: #791F1F;
             }
 
-        /* ── SLA BAR ── */
-        .sla {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
         .sla-bar {
-            width: 50px;
+            width: 44px;
             height: 5px;
             background: #f0f0f0;
             border-radius: 2px;
             overflow: hidden;
+            display: inline-block;
         }
 
         .sla-fill {
@@ -343,22 +317,16 @@
             border-radius: 2px;
         }
 
-        .sla-ok {
+        .sl-ok {
             background: #4ade80;
         }
 
-        .sla-warn {
+        .sl-warn {
             background: #f59e0b;
         }
 
-        .sla-breach {
+        .sl-red {
             background: #e24b4a;
-        }
-
-        .sla-txt {
-            font-size: 10px;
-            color: #aaa;
-            white-space: nowrap;
         }
 
         /* ── BADGES ── */
@@ -392,11 +360,6 @@
             color: #666;
         }
 
-        .b-resolved {
-            background: #EAF3DE;
-            color: #27500A;
-        }
-
         .b-online {
             background: #EAF3DE;
             color: #27500A;
@@ -417,173 +380,276 @@
             color: #666;
         }
 
-        /* ── AGENTS ── */
-        .agent-list {
+        .b-full {
+            background: #FCEBEB;
+            color: #791F1F;
+        }
+
+        .b-resolved {
+            background: #EAF3DE;
+            color: #27500A;
+        }
+
+        /* ── WAIT WARNING ── */
+        .wait-warn {
+            background: #FCEBEB;
+            border-left: 3px solid #e24b4a;
+            padding: 8px 14px;
+            display: none;
+            align-items: center;
+            font-size: 11.5px;
+            flex-shrink: 0;
+        }
+
+            .wait-warn.show {
+                display: flex;
+            }
+
+        .ww-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #791F1F;
+            font-weight: 500;
+        }
+
+            .ww-left svg {
+                width: 13px;
+                height: 13px;
+                stroke: #791F1F;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                flex-shrink: 0;
+            }
+
+        /* ── AGENT STATUS — 3 COLUMNS ── */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .agent-col {
+            border-right: 1px solid #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+            .agent-col:last-child {
+                border-right: none;
+            }
+
+        .agent-col-hd {
+            padding: 8px 12px;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #aaa;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slot-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #e8e8e8;
+        }
+
+            .slot-dot.filled {
+                background: #1a1a1a;
+            }
+
+        .agent-col-body {
             flex: 1;
             overflow-y: auto;
         }
 
-            .agent-list::-webkit-scrollbar {
+            .agent-col-body::-webkit-scrollbar {
                 width: 3px;
             }
 
-            .agent-list::-webkit-scrollbar-thumb {
+            .agent-col-body::-webkit-scrollbar-thumb {
                 background: #e8e8e8;
             }
 
-        .agent-row {
-            padding: 10px 18px;
+        .agent-slot {
+            padding: 9px 12px;
             border-bottom: 1px solid #f5f5f5;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 7px;
         }
 
-            .agent-row:last-child {
+            .agent-slot:last-child {
                 border-bottom: none;
             }
 
-        .agent-av {
-            width: 32px;
-            height: 32px;
+        .ag-av {
+            width: 28px;
+            height: 28px;
             background: #1a1a1a;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
             color: #fff;
             flex-shrink: 0;
             position: relative;
         }
 
-            .agent-av .dot {
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                width: 9px;
-                height: 9px;
-                border-radius: 50%;
-                border: 2px solid #fff;
-            }
+        .ag-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
 
-        .dot-online {
+        .d-on {
             background: #4ade80;
         }
 
-        .dot-busy {
+        .d-busy {
             background: #378ADD;
         }
 
-        .dot-away {
+        .d-away {
             background: #f59e0b;
         }
 
-        .dot-offline {
+        .d-off {
             background: #ccc;
         }
 
-        .agent-info {
+        .ag-info {
             flex: 1;
             min-width: 0;
         }
 
-        .agent-name {
-            font-size: 12px;
+        .ag-name {
+            font-size: 11px;
             font-weight: 600;
             color: #1a1a1a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .agent-load {
-            font-size: 10.5px;
+        .ag-chat {
+            font-size: 10px;
             color: #aaa;
             margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .agent-bar-wrap {
-            width: 60px;
-            height: 5px;
-            background: #f0f0f0;
-            border-radius: 2px;
-            margin-top: 4px;
+        .empty-slot {
+            padding: 9px 12px;
+            font-size: 11px;
+            color: #ddd;
+            font-style: italic;
+            border-bottom: 1px solid #f5f5f5;
         }
 
-        .agent-bar {
-            height: 5px;
-            border-radius: 2px;
-            background: #1a1a1a;
-        }
-
-            .agent-bar.full {
-                background: #e24b4a;
+            .empty-slot:last-child {
+                border-bottom: none;
             }
 
-        /* ── SESSION DETAIL STRIP ── */
-        .sess-strip {
+        /* ── FAQ FORM ── */
+        .faq-form {
             background: #fff;
             border: 1px solid #e8e8e8;
             flex-shrink: 0;
         }
 
-        .ss-top {
-            padding: 11px 16px;
-            border-bottom: 1px solid #f0f0f0;
+        .faq-form-body {
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .faq-inp {
+            width: 100%;
+            background: #f8f8f8;
+            border: 1.5px solid #e8e8e8;
+            padding: 8px 12px;
+            font-size: 12.5px;
+            font-family: 'Poppins', sans-serif;
+            color: #1a1a1a;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+            .faq-inp:focus {
+                border-color: #1a1a1a;
+            }
+
+            .faq-inp::placeholder {
+                color: #ccc;
+            }
+
+        textarea.faq-inp {
+            resize: none;
+            height: 58px;
+            line-height: 1.5;
+        }
+
+        .faq-cats {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .cat-chip {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 11px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: all .15s;
+        }
+
+            .cat-chip.on {
+                background: #1a1a1a;
+                color: #fff;
+                border-color: #1a1a1a;
+            }
+
+        .faq-form-foot {
+            padding: 9px 16px;
+            border-top: 1px solid #f0f0f0;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        .ss-name {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1a1a1a;
-        }
-
-        .ss-role {
-            font-size: 11px;
+        .char-count {
+            font-size: 10.5px;
             color: #aaa;
-            font-weight: 300;
-            margin-top: 1px;
         }
 
-        .ss-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .ss-field {
-            padding: 8px 14px;
-            border-bottom: 1px solid #f5f5f5;
-            border-right: 1px solid #f5f5f5;
-        }
-
-            .ss-field:nth-child(even) {
-                border-right: none;
-            }
-
-            .ss-field:nth-last-child(-n+2) {
-                border-bottom: none;
-            }
-
-        .ss-lbl {
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #ccc;
-            margin-bottom: 2px;
-        }
-
-        .ss-val {
-            font-size: 12px;
-            font-weight: 600;
-            color: #1a1a1a;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* ── LIVE CHAT ── */
-        .chat-panel {
+        /* ── FAQ LIST ── */
+        .faq-list-panel {
             background: #fff;
             border: 1px solid #e8e8e8;
             flex: 1;
@@ -593,375 +659,246 @@
             min-height: 0;
         }
 
-        .chat-msgs {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px 14px;
+        .faq-search {
+            padding: 9px 16px;
+            border-bottom: 1px solid #f5f5f5;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: #f8f8f8;
-            min-height: 0;
-        }
-
-            .chat-msgs::-webkit-scrollbar {
-                width: 3px;
-            }
-
-            .chat-msgs::-webkit-scrollbar-thumb {
-                background: #e0e0e0;
-            }
-
-        .sys-row {
-            text-align: center;
-            padding: 3px 0;
-        }
-
-            .sys-row span {
-                font-size: 10.5px;
-                color: #aaa;
-                background: #efefef;
-                padding: 2px 12px;
-                border-radius: 10px;
-            }
-
-        .cm {
-            display: flex;
-            gap: 7px;
-            align-items: flex-end;
-        }
-
-            .cm.r {
-                flex-direction: row-reverse;
-            }
-
-        .cm-av {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            font-weight: 700;
-            color: #fff;
-            flex-shrink: 0;
-        }
-
-        .cm-wrap {
-            max-width: 75%;
-        }
-
-        .cm-sender {
-            font-size: 9.5px;
-            color: #bbb;
-            margin-bottom: 3px;
-            font-weight: 500;
-        }
-
-        .cm.r .cm-sender {
-            text-align: right;
-        }
-
-        .bubble {
-            padding: 8px 11px;
-            font-size: 12.5px;
-            line-height: 1.55;
-        }
-
-        .bub-cust {
-            background: #fff;
-            color: #1a1a1a;
-            border: 1px solid #eee;
-            border-radius: 3px 12px 12px 12px;
-        }
-
-        .bub-agt {
-            background: #1a1a1a;
-            color: #fff;
-            border-radius: 12px 3px 12px 12px;
-        }
-
-        .bub-sys {
-            background: #EAF3DE;
-            color: #27500A;
-            border: 1px solid #C0DD97;
-            border-radius: 8px;
-            font-size: 11.5px;
-            text-align: center;
-        }
-
-        .bub-end {
-            background: #FCEBEB;
-            color: #791F1F;
-            border: 1px solid #f0c0c0;
-            border-radius: 8px;
-            font-size: 11.5px;
-            text-align: center;
-        }
-
-        .bub-note {
-            background: #FAEEDA;
-            color: #633806;
-            border: 1px solid #f5d08a;
-            border-radius: 8px;
-            font-size: 11.5px;
-            font-style: italic;
-        }
-
-        .cm-time {
-            font-size: 9.5px;
-            color: #ccc;
-            margin-top: 3px;
-        }
-
-        .cm.r .cm-time {
-            text-align: right;
-        }
-
-        /* TYPING */
-        .typing-ind {
-            display: none;
-            align-items: center;
-            gap: 5px;
-            font-size: 10.5px;
-            color: #4ade80;
-        }
-
-            .typing-ind.show {
-                display: flex;
-            }
-
-        .t-dots {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            padding: 7px 10px;
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 3px 12px 12px 12px;
-        }
-
-        .td {
-            width: 5px;
-            height: 5px;
-            background: #ccc;
-            border-radius: 50%;
-            animation: tdot 1.4s infinite;
-        }
-
-            .td:nth-child(2) {
-                animation-delay: .2s;
-            }
-
-            .td:nth-child(3) {
-                animation-delay: .4s;
-            }
-
-        @@keyframes tdot {
-            0%, 60%, 100% {
-                transform: translateY(0);
-                opacity: .4;
-            }
-
-            30% {
-                transform: translateY(-5px);
-                opacity: 1;
-            }
-        }
-
-        /* NOTE BAR */
-        .note-bar {
-            padding: 6px 14px;
-            border-top: 1px solid #f5d08a;
-            background: #FAEEDA;
-            display: none;
             align-items: center;
             gap: 8px;
+            background: #fafafa;
             flex-shrink: 0;
         }
 
-            .note-bar.show {
-                display: flex;
-            }
-
-        .note-lbl {
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #854F0B;
-            white-space: nowrap;
-        }
-
-        .note-inp {
-            flex: 1;
-            background: none;
-            border: none;
-            outline: none;
-            font-size: 12px;
-            font-family: 'Poppins', sans-serif;
-            color: #633806;
-        }
-
-            .note-inp::placeholder {
-                color: #c8a060;
-            }
-
-        /* INPUT BAR */
-        .inp-bar {
-            padding: 10px 14px;
-            border-top: 1px solid #f0f0f0;
-            background: #fff;
-            flex-shrink: 0;
-        }
-
-        .inp-row {
-            display: flex;
-            gap: 6px;
-            background: #f8f8f8;
-            border: 1.5px solid #e8e8e8;
-            padding: 6px 6px 6px 12px;
-            transition: border-color .2s;
-        }
-
-            .inp-row:focus-within {
-                border-color: #1a1a1a;
-            }
-
-        .inp-field {
-            flex: 1;
-            background: none;
-            border: none;
-            outline: none;
-            font-size: 12.5px;
-            font-family: 'Poppins', sans-serif;
-            color: #1a1a1a;
-            padding: 3px 0;
-        }
-
-            .inp-field::placeholder {
-                color: #ccc;
-            }
-
-        .inp-send {
-            width: 34px;
-            height: 34px;
-            background: #1a1a1a;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: background .15s;
-        }
-
-            .inp-send:hover {
-                background: #333;
-            }
-
-            .inp-send svg {
-                width: 13px;
-                height: 13px;
+            .faq-search svg {
+                width: 12px;
+                height: 12px;
+                stroke: #bbb;
                 fill: none;
-                stroke: #fff;
                 stroke-width: 2;
                 stroke-linecap: round;
                 stroke-linejoin: round;
+                flex-shrink: 0;
             }
 
-        .inp-actions {
+            .faq-search input {
+                background: none;
+                border: none;
+                outline: none;
+                font-size: 12px;
+                font-family: 'Poppins', sans-serif;
+                color: #1a1a1a;
+                flex: 1;
+            }
+
+                .faq-search input::placeholder {
+                    color: #ccc;
+                }
+
+        .faq-filter {
             display: flex;
-            gap: 6px;
-            margin-top: 7px;
+            gap: 5px;
+            padding: 8px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            flex-shrink: 0;
+            flex-wrap: wrap;
         }
 
-        .inp-act {
-            flex: 1;
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            color: #555;
+        .ff {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #666;
             font-size: 10.5px;
             font-weight: 600;
-            padding: 6px 0;
+            padding: 4px 10px;
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
             transition: all .15s;
         }
 
-            .inp-act:hover {
-                background: #f5f5f5;
-            }
-
-            .inp-act svg {
-                width: 12px;
-                height: 12px;
-                fill: none;
-                stroke: currentColor;
-                stroke-width: 2;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-            }
-
-            .inp-act.resolve {
+            .ff.on {
                 background: #1a1a1a;
                 color: #fff;
                 border-color: #1a1a1a;
             }
 
-                .inp-act.resolve:hover {
-                    background: #333;
-                }
-
-            .inp-act.endsess {
-                background: #FCEBEB;
-                color: #791F1F;
-                border-color: #f0c0c0;
-            }
-
-                .inp-act.endsess:hover {
-                    background: #fad4d4;
-                }
-
-                .inp-act.endsess.pulsing {
-                    animation: epulse 1s infinite;
-                }
-
-        @@keyframes epulse {
-            0%, 100% {
-                background: #FCEBEB;
-            }
-
-            50% {
-                background: #f5b5b5;
-            }
+        .faq-scroll {
+            overflow-y: auto;
+            flex: 1;
         }
 
-        .canned-sel {
-            background: #f5f5f5;
-            border: 1px solid #e8e8e8;
-            color: #666;
-            font-size: 11px;
-            font-family: 'Poppins', sans-serif;
-            padding: 4px 8px;
+            .faq-scroll::-webkit-scrollbar {
+                width: 3px;
+            }
+
+            .faq-scroll::-webkit-scrollbar-thumb {
+                background: #e8e8e8;
+            }
+
+        .faq-item {
+            border-bottom: 1px solid #f5f5f5;
+            padding: 12px 16px;
+            transition: background .1s;
+        }
+
+            .faq-item:last-child {
+                border-bottom: none;
+            }
+
+            .faq-item.editing {
+                background: #fafffe;
+                border-left: 2px solid #1a1a1a;
+            }
+
+        .faq-item-hd {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .faq-q {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1a1a1a;
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .faq-actions {
+            display: flex;
+            gap: 3px;
+            flex-shrink: 0;
+        }
+
+        .faq-act {
+            background: none;
+            border: none;
             cursor: pointer;
-            outline: none;
-            margin-left: auto;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            transition: background .15s;
         }
 
-        .ended-bar {
-            padding: 14px;
-            text-align: center;
+            .faq-act:hover {
+                background: #f5f5f5;
+            }
+
+            .faq-act svg {
+                width: 13px;
+                height: 13px;
+                fill: none;
+                stroke: #888;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .faq-act.del svg {
+                stroke: #e24b4a;
+            }
+
+        .faq-a {
             font-size: 12px;
-            color: #888;
-            background: #f5f5f5;
-            border-top: 1px solid #e8e8e8;
+            color: #555;
+            line-height: 1.55;
+            font-weight: 300;
         }
+
+        .faq-cat-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+
+        .fc-orders {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .fc-returns {
+            background: #FAEEDA;
+            color: #633806;
+        }
+
+        .fc-payments {
+            background: #EAF3DE;
+            color: #27500A;
+        }
+
+        .fc-shipping {
+            background: #EEEDFE;
+            color: #3C3489;
+        }
+
+        .fc-general {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .edit-inp {
+            width: 100%;
+            background: #f8f8f8;
+            border: 1px solid #e8e8e8;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: 'Poppins', sans-serif;
+            color: #1a1a1a;
+            outline: none;
+            margin-bottom: 6px;
+        }
+
+            .edit-inp:focus {
+                border-color: #1a1a1a;
+            }
+
+        textarea.edit-inp {
+            resize: none;
+            height: 50px;
+            line-height: 1.5;
+        }
+
+        .edit-foot {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .faq-empty {
+            padding: 24px;
+            text-align: center;
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        /* TOAST */
+        .nh-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 10px 18px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity .3s;
+            pointer-events: none;
+        }
+
+            .nh-toast.show {
+                opacity: 1;
+            }
     </style>
 }
 
@@ -991,34 +928,32 @@
         <div class="qs-sub"><span class="up">+5</span> vs yesterday</div>
     </div>
     <div class="qs">
-        <div class="qs-lbl">Abandonment</div>
-        <div class="qs-val">@Model.Stats.AbandonRate.ToString("0.0")%</div>
-        <div class="qs-sub"><span class="up">&#8722;1.1%</span> vs yesterday</div>
+        <div class="qs-lbl">Total FAQs</div>
+        <div class="qs-val" id="statFaqCount">@Model.Faqs.Count</div>
+        <div class="qs-sub">across 5 categories</div>
     </div>
 </div>
 
 <!-- MAIN SHELL -->
-<div class="q-shell">
+<div class="hc-shell">
 
     <!-- LEFT -->
-    <div class="q-left">
+    <div class="hc-left">
 
         <!-- QUEUE TABLE -->
         <div class="panel" style="flex:1;min-height:0;">
-            <div class="panel-hd">
+            <div class="ph">
                 <div>
-                    <div class="panel-title">Live Queue</div>
-                    <div class="panel-sub" id="qMeta">@Model.Stats.InQueue waiting</div>
+                    <div class="ph-title">Live Queue</div>
+                    <div class="ph-sub" id="qMeta">@Model.Stats.InQueue waiting</div>
                 </div>
-                <div style="display:flex;gap:6px;">
-                    <button class="pbtn out" onclick="autoAssign()">Auto-Assign</button>
-                </div>
+                <button class="pbtn out" onclick="autoAssign()">Auto-Assign</button>
             </div>
 
             <div class="wait-warn" id="waitWarn">
                 <div class="ww-left">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                    Customers waiting over 5 minutes &mdash; assign an agent immediately
+                    <span id="warnTxt">Customers waiting over 5 minutes &mdash; assign an agent immediately</span>
                 </div>
             </div>
 
@@ -1028,7 +963,6 @@
                         <tr>
                             <th>Customer</th>
                             <th>Wait Time</th>
-                            <th>Position</th>
                             <th>SLA</th>
                             <th>Status</th>
                             <th>Assigned</th>
@@ -1040,428 +974,320 @@
             </div>
         </div>
 
-        <!-- AGENTS -->
-        <div class="panel" style="flex-shrink:0;">
-            <div class="panel-hd">
+        <!-- AGENT STATUS — 3 COLUMNS -->
+        <div class="panel" style="flex-shrink:0;height:240px;">
+            <div class="ph">
                 <div>
-                    <div class="panel-title">Agent Status</div>
-                    <div class="panel-sub" id="agentMeta">@Model.Stats.AgentsOnline online</div>
+                    <div class="ph-title">Agent Status</div>
+                    <div class="ph-sub" id="agentMeta">@Model.Stats.AgentsOnline online &middot; max 3 chats each</div>
                 </div>
-                <div style="font-size:10px;color:#aaa;">Max per agent: <strong style="color:#1a1a1a;">3</strong></div>
+                <div style="font-size:10px;color:#aaa;">Total capacity: <strong style="color:#1a1a1a;">9 sessions</strong></div>
             </div>
-            <div class="agent-list" id="agentList"></div>
+            <div class="agent-grid" id="agentGrid"></div>
         </div>
+
     </div>
 
-    <!-- RIGHT -->
-    <div class="q-right">
+    <!-- RIGHT: FAQ MANAGER -->
+    <div class="hc-right">
 
-        <!-- SESSION DETAIL STRIP -->
-        <div class="sess-strip">
-            <div class="ss-top">
+        <!-- ADD FORM -->
+        <div class="faq-form">
+            <div class="ph">
                 <div>
-                    <div class="ss-name" id="ssName">Select a session</div>
-                    <div class="ss-role" id="ssRole">&mdash;</div>
+                    <div class="ph-title">FAQ Manager</div>
+                    <div class="ph-sub">Add, edit, or delete FAQs in real time</div>
                 </div>
-                <span class="badge b-waiting" id="ssStatus">Waiting</span>
             </div>
-            <div class="ss-grid">
-                <div class="ss-field"><div class="ss-lbl">Session ID</div><div class="ss-val" id="ssId">&mdash;</div></div>
-                <div class="ss-field"><div class="ss-lbl">Assigned To</div><div class="ss-val" id="ssAgent">&mdash;</div></div>
-                <div class="ss-field"><div class="ss-lbl">Session Time</div><div class="ss-val" id="ssSessTime">00:00</div></div>
-                <div class="ss-field"><div class="ss-lbl">Customer Idle</div><div class="ss-val" id="ssIdle" style="color:#4ade80;">Active</div></div>
-                <div class="ss-field"><div class="ss-lbl">Category</div><div class="ss-val" id="ssCat">&mdash;</div></div>
-                <div class="ss-field"><div class="ss-lbl">CSAT</div><div class="ss-val" id="ssCsat">Pending</div></div>
+            <div class="faq-form-body">
+                <input class="faq-inp" id="faqQ" type="text" placeholder="Question — e.g. How do I track my order?" maxlength="300" />
+                <textarea class="faq-inp" id="faqA" placeholder="Answer — type the full response here..." maxlength="500"></textarea>
+                <div class="faq-cats">
+                    <div class="cat-chip on" onclick="selCat(this,'orders')">Orders</div>
+                    <div class="cat-chip" onclick="selCat(this,'returns')">Returns</div>
+                    <div class="cat-chip" onclick="selCat(this,'payments')">Payments</div>
+                    <div class="cat-chip" onclick="selCat(this,'shipping')">Shipping</div>
+                    <div class="cat-chip" onclick="selCat(this,'general')">General</div>
+                </div>
+            </div>
+            <div class="faq-form-foot">
+                <span class="char-count" id="charCount">0 / 500 chars</span>
+                <button class="pbtn" onclick="addFaq()">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    Add FAQ
+                </button>
             </div>
         </div>
 
-        <!-- LIVE CHAT -->
-        <div class="chat-panel">
-            <div class="panel-hd">
-                <div class="panel-title">Live Chat</div>
-                <div style="display:flex;gap:6px;align-items:center;">
-                    <select class="canned-sel" onchange="useCanned(this)">
-                        <option value="">Canned responses...</option>
-                        <option value="Thank you for reaching out to Next Horizon! I'll look into this right away.">Greeting</option>
-                        <option value="I've escalated this to our logistics team. You'll receive an update within 2 hours.">Escalate to logistics</option>
-                        <option value="Your refund has been processed and should reflect within 5–7 business days.">Refund processed</option>
-                        <option value="Could you please provide your order number so I can assist you better?">Request order number</option>
-                        <option value="Is there anything else I can help you with today?">Closing</option>
-                    </select>
-                    <button class="pbtn out" style="font-size:10px;padding:4px 9px;" onclick="toggleNote()">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:3px;vertical-align:-1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                        Internal Note
-                    </button>
-                    <div class="typing-ind" id="typingInd">
-                        <div class="t-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>
-                        <span>typing...</span>
-                    </div>
-                </div>
+        <!-- FAQ LIST -->
+        <div class="faq-list-panel">
+            <div class="ph">
+                <div class="ph-title">Published FAQs</div>
+                <span id="faqListCount" style="font-size:11px;color:#aaa;font-weight:500;">@Model.Faqs.Count FAQs</span>
             </div>
-
-            <div class="chat-msgs" id="chatMsgs">
-                <div class="sys-row"><span>Select a session from the queue to start chatting.</span></div>
+            <div class="faq-search">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                <input type="text" placeholder="Search FAQs..." oninput="filterFaqs(this.value)" />
             </div>
-
-            <div class="note-bar" id="noteBar">
-                <span class="note-lbl">Internal Note</span>
-                <input class="note-inp" type="text" placeholder="Add a private note (not visible to customer)..."
-                       onkeydown="if(event.key==='Enter')addNote(this)" />
+            <div class="faq-filter">
+                <button class="ff on" onclick="setFaqFilter(this,'all')">All</button>
+                <button class="ff" onclick="setFaqFilter(this,'orders')">Orders</button>
+                <button class="ff" onclick="setFaqFilter(this,'returns')">Returns</button>
+                <button class="ff" onclick="setFaqFilter(this,'payments')">Payments</button>
+                <button class="ff" onclick="setFaqFilter(this,'shipping')">Shipping</button>
+                <button class="ff" onclick="setFaqFilter(this,'general')">General</button>
             </div>
-
-            <div id="inputSection">
-                <div class="inp-bar">
-                    <div class="inp-row">
-                        <input class="inp-field" id="chatField" placeholder="Type a message to the customer..."
-                               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" />
-                        <button class="inp-send" onclick="sendMsg()" title="Send">
-                            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                        </button>
-                    </div>
-                    <div class="inp-actions">
-                        <button class="inp-act endsess" id="endBtn" onclick="endSession()">
-                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                            End Session
-                        </button>
-                        <button class="inp-act resolve" onclick="resolveSession()">
-                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-                            Resolve
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <div class="faq-scroll" id="faqList"></div>
         </div>
+
     </div>
-
 </div>
+
+<div class="nh-toast" id="nhToast"></div>
 
 @section Scripts {
     <script>
         var SESSIONS  = @Html.Raw(sessionsJson);
         var AGENTS    = @Html.Raw(agentsJson);
-        var activeId  = null;
-        var sessEnded = false, sessSeconds = 0, idleSeconds = 0;
-        var IDLE_LIMIT = 180, idleShown = false;
-        var sessTimer = null, idleTimer = null;
-        var noteVisible = false;
+        var FAQS      = @Html.Raw(faqsJson);
 
+        var selCategory = 'orders';
+        var faqFilter   = 'all';
+        var faqSearch   = '';
+        var nextId      = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
+        var qTimer      = null;
+
+        /* ── HELPERS ── */
         function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-        function nowTime(){ return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
         function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+        function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function slaClass(s){ return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
+        function slaPct(s){ return Math.min(100,Math.round(s/360*100)); }
 
-        function slaClass(s){ return s<120?'sla-ok':s<300?'sla-warn':'sla-breach'; }
-        function slaPct(s)  { return Math.min(100,Math.round(s/360*100)); }
+        function showToast(msg){
+            var t=document.getElementById('nhToast');
+            t.textContent=msg; t.classList.add('show');
+            setTimeout(function(){ t.classList.remove('show'); }, 2400);
+        }
 
         /* ── QUEUE ── */
         function renderQueue(){
-            var body = document.getElementById('qBody');
-            body.innerHTML = '';
-            var over5 = 0;
+            var body=document.getElementById('qBody');
+            body.innerHTML='';
+            var over5=0;
             SESSIONS.forEach(function(s){
-                if(s.waitSec >= 300) over5++;
-                var tr = document.createElement('tr');
-                if(s.id === activeId) tr.classList.add('sel');
-                tr.onclick = function(){ switchSession(s.id); };
-                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
-                var sb  = s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
-                var sl  = s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
-                var pct = slaPct(s.waitSec);
-                var sc  = slaClass(s.waitSec);
-                tr.innerHTML =
+                if(s.waitSec>=300) over5++;
+                var tr=document.createElement('tr');
+                tr.onclick=function(){};
+                var wc=s.waitSec>=300?'q-wait over5':'q-wait';
+                var sb=s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
+                var sl=s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
+                var pct=slaPct(s.waitSec);
+                var sc=slaClass(s.waitSec);
+                var btnLabel=s.agent==='Unassigned'?'Assign':'Reassign';
+                tr.innerHTML=
                     '<td><div class="q-cust"><div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
                     +'<div><div class="q-name">'+s.name+'</div><div class="q-role">'+s.role+'</div></div></div></td>'
                     +'<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
-                    +'<td style="font-size:11px;color:#aaa;">#'+s.pos+' of '+SESSIONS.length+'</td>'
-                    +'<td><div class="sla"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div>'
-                    +'<span class="sla-txt">'+fmt(s.waitSec)+'</span></div></td>'
+                    +'<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div><span style="font-size:10px;color:#aaa;">'+fmt(s.waitSec)+'</span></div></td>'
                     +'<td><span class="badge '+sb+'">'+sl+'</span></td>'
-                    +'<td style="font-size:11.5px;color:#1a1a1a;font-weight:500;">'+s.agent+'</td>'
-                    +'<td><button class="pbtn out" style="font-size:10px;padding:4px 9px;" onclick="event.stopPropagation();assignSession('+s.id+')">'
-                    +(s.agent==='Unassigned'?'Assign':'Reassign')+'</button></td>';
+                    +'<td style="font-size:11.5px;font-weight:'+(s.agent==='Unassigned'?'400;color:#aaa':'500;color:#1a1a1a')+';">'+s.agent+'</td>'
+                    +'<td><button class="pbtn '+(s.agent==='Unassigned'?'':'out')+'" style="font-size:10px;padding:4px 9px;" onclick="event.stopPropagation();assignSession('+s.id+')">'+btnLabel+'</button></td>';
                 body.appendChild(tr);
             });
-            var w = document.getElementById('waitWarn');
-            w.classList.toggle('show', over5 > 0);
-            if(over5 > 0) w.querySelector('.ww-left').lastChild.textContent = ' '+over5+' customer(s) waiting over 5 minutes \u2014 assign an agent immediately';
-            var longest = Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; }));
-            document.getElementById('qMeta').textContent = SESSIONS.length+' waiting \u00b7 longest: '+fmt(longest);
-            document.getElementById('qsInQueue').textContent = SESSIONS.length;
+            var w=document.getElementById('waitWarn');
+            w.classList.toggle('show',over5>0);
+            if(over5>0) document.getElementById('warnTxt').textContent=over5+' customer(s) waiting over 5 minutes — assign an agent immediately';
+            var longest=SESSIONS.length?Math.max.apply(null,SESSIONS.map(function(s){return s.waitSec;})):0;
+            document.getElementById('qMeta').textContent=SESSIONS.length+' waiting · longest: '+fmt(longest);
+            document.getElementById('qsInQueue').textContent=SESSIONS.length;
         }
 
-        /* ── AGENTS ── */
+        /* ── AGENT 3-COLUMN ── */
         function renderAgents(){
-            var list = document.getElementById('agentList');
-            list.innerHTML = '';
-            var online = AGENTS.filter(function(a){ return a.status==='online'||a.status==='busy'; }).length;
-            document.getElementById('agentMeta').textContent = online+' online';
-            AGENTS.forEach(function(a){
-                var d = document.createElement('div');
-                d.className = 'agent-row';
-                var pct = Math.round(a.sessions/a.max*100);
-                var bc  = pct >= 100 ? 'agent-bar full' : 'agent-bar';
-                d.innerHTML =
-                    '<div class="agent-av"><span>'+a.initials+'</span><div class="dot dot-'+a.status+'"></div></div>'
-                    +'<div class="agent-info">'
-                        +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                            +'<div class="agent-name">'+a.name+'</div>'
-                            +'<span class="badge b-'+a.status+'" style="font-size:9px;padding:1px 7px;">'+a.status+'</span>'
-                        +'</div>'
-                        +'<div class="agent-load">'+a.sessions+'/'+a.max+' sessions</div>'
-                        +'<div class="agent-bar-wrap"><div class="'+bc+'" style="width:'+pct+'%"></div></div>'
-                    +'</div>';
-                list.appendChild(d);
-            });
-        }
-
-        /* ── SWITCH SESSION ── */
-        function switchSession(id){
-            activeId = id;
-            sessEnded = false; idleShown = false;
-            idleSeconds = 0; sessSeconds = 0;
-            clearInterval(sessTimer); clearInterval(idleTimer);
-            document.getElementById('ssIdle').textContent = 'Active';
-            document.getElementById('ssIdle').style.color = '#4ade80';
-            document.getElementById('endBtn').classList.remove('pulsing');
-            document.getElementById('ssSessTime').textContent = '00:00';
-
-            var s = SESSIONS.find(function(x){ return x.id===id; });
-            document.getElementById('ssName').textContent  = s.name;
-            document.getElementById('ssRole').textContent  = s.role+' \u2014 '+s.email;
-            document.getElementById('ssId').textContent    = s.no;
-            document.getElementById('ssAgent').textContent = s.agent;
-            document.getElementById('ssCat').textContent   = s.cat;
-            document.getElementById('ssCsat').textContent  = 'Pending';
-
-            var sb = document.getElementById('ssStatus');
-            sb.className = 'badge '+(s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting');
-            sb.textContent = cap(s.status);
-
-            renderChat(s);
-            renderQueue();
-            restoreInput();
-            startTimers();
-        }
-
-        /* ── CHAT ── */
-        function renderChat(s){
-            var area = document.getElementById('chatMsgs');
-            area.innerHTML = '';
-            addSys('Session started \u2014 '+s.name+' connected');
-            s.msgs.forEach(function(m){ addBubble(m.f, m.t, m.time, false, s); });
-            area.scrollTop = area.scrollHeight;
-        }
-
-        function addSys(html){
-            var area = document.getElementById('chatMsgs');
-            var d = document.createElement('div');
-            d.className = 'sys-row'; d.innerHTML = '<span>'+html+'</span>';
-            area.appendChild(d);
-        }
-
-        function addBubble(from, text, ts, scroll, s){
-            var area = document.getElementById('chatMsgs');
-            s = s || SESSIONS.find(function(x){ return x.id===activeId; });
-            if(!s) return;
-
-            if(from==='sys'||from==='end'){
-                var d = document.createElement('div');
-                d.className = 'cm';
-                d.innerHTML = '<div style="flex:1"><div class="bubble '+(from==='end'?'bub-end':'bub-sys')+'">'+text+'</div></div>';
-                area.appendChild(d);
-                if(scroll) area.scrollTop = area.scrollHeight;
-                return;
+            var grid=document.getElementById('agentGrid');
+            grid.innerHTML='';
+            for(var slot=0;slot<3;slot++){
+                var col=document.createElement('div');
+                col.className='agent-col';
+                var hd=document.createElement('div');
+                hd.className='agent-col-hd';
+                hd.innerHTML='<div class="slot-dot filled"></div>Chat Slot '+(slot+1);
+                col.appendChild(hd);
+                var body=document.createElement('div');
+                body.className='agent-col-body';
+                AGENTS.forEach(function(a){
+                    var hasChat=slot<a.sessions;
+                    var chatSess=null;
+                    if(hasChat){
+                        var busy=SESSIONS.filter(function(s){return s.agent===a.name&&s.status==='active';});
+                        if(busy[slot]) chatSess=busy[slot];
+                    }
+                    var dotCls=a.status==='online'?'d-on':a.status==='busy'?'d-busy':a.status==='away'?'d-away':'d-off';
+                    var statusCls='b-'+a.status;
+                    if(a.status==='offline'||a.status==='away'){
+                        var d=document.createElement('div');
+                        d.className='agent-slot';
+                        d.innerHTML='<div class="ag-av" style="background:#ccc;"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
+                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+cap(a.status)+'</div></div>'
+                            +'<span class="badge '+statusCls+'" style="font-size:9px;padding:1px 6px;">'+a.status+'</span>';
+                        body.appendChild(d);
+                    } else if(hasChat){
+                        var isFull=a.sessions>=a.max&&slot===a.max-1;
+                        var d=document.createElement('div');
+                        d.className='agent-slot';
+                        var chatTxt=chatSess?chatSess.name+' · '+fmt(chatSess.waitSec):'Slot '+(slot+1)+' occupied';
+                        d.innerHTML='<div class="ag-av"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
+                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+chatTxt+'</div></div>'
+                            +'<span class="badge '+(isFull?'b-full':statusCls)+'" style="font-size:9px;padding:1px 6px;">'+(isFull?'Full':a.status)+'</span>';
+                        body.appendChild(d);
+                    } else {
+                        var d=document.createElement('div');
+                        d.className='empty-slot';
+                        d.textContent='Available slot';
+                        body.appendChild(d);
+                    }
+                });
+                col.appendChild(body);
+                grid.appendChild(col);
             }
-            if(from==='note'){
-                var d = document.createElement('div');
-                d.className = 'cm';
-                d.innerHTML = '<div style="flex:1"><div class="bubble bub-note">&#128274; Internal note: '+text+'</div></div>';
-                area.appendChild(d);
-                if(scroll) area.scrollTop = area.scrollHeight;
-                return;
-            }
-
-            var isAgt = from==='agt';
-            var d = document.createElement('div');
-            d.className = 'cm'+(isAgt?' r':'');
-            d.innerHTML =
-                '<div class="cm-av" style="background:'+(isAgt?'#1a1a1a':s.bg)+'">'+(isAgt?'JC':s.av)+'</div>'
-                +'<div class="cm-wrap">'
-                    +'<div class="cm-sender">'+(isAgt?'You (Agent)':s.name)+'</div>'
-                    +'<div class="bubble '+(isAgt?'bub-agt':'bub-cust')+'">'+text+'</div>'
-                    +'<div class="cm-time">'+(ts||nowTime())+'</div>'
-                +'</div>';
-            area.appendChild(d);
-            if(scroll) area.scrollTop = area.scrollHeight;
         }
 
-        function sendMsg(){
-            var f = document.getElementById('chatField');
-            if(!f||sessEnded) return;
-            var txt = f.value.trim(); if(!txt) return;
-            f.value = '';
-            var s = SESSIONS.find(function(x){ return x.id===activeId; });
-            if(!s) return;
-            s.msgs.push({f:'agt',t:txt,time:nowTime()});
-            addBubble('agt', txt, nowTime(), true);
-            resetIdle();
-
-            fetch('/Admin/QueueSend', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({sessionId: activeId, message: txt, isNote: false})
-            }).catch(function(){});
-
-            simulateCustomerReply();
-        }
-
-        function simulateCustomerReply(){
-            var ind = document.getElementById('typingInd');
-            ind.classList.add('show');
-            setTimeout(function(){
-                ind.classList.remove('show');
-                var s = SESSIONS.find(function(x){ return x.id===activeId; });
-                if(!s||sessEnded) return;
-                var replies = ["Thank you for the update!","Okay, I'll wait for your response.","Got it, appreciate your help!","Understood, thank you so much!"];
-                var r = replies[Math.floor(Math.random()*replies.length)];
-                s.msgs.push({f:'cust',t:r,time:nowTime()});
-                addBubble('cust', r, nowTime(), true);
-                resetIdle();
-            }, 1800+Math.random()*1200);
-        }
-
-        function useCanned(sel){
-            var v = sel.value; sel.value='';
-            if(!v) return;
-            var f = document.getElementById('chatField');
-            if(f){ f.value=v; f.focus(); }
-        }
-
-        function toggleNote(){
-            noteVisible = !noteVisible;
-            document.getElementById('noteBar').classList.toggle('show', noteVisible);
-        }
-
-        function addNote(inp){
-            var txt = inp.value.trim(); if(!txt) return;
-            inp.value = '';
-            addBubble('note', txt, '', true);
-            noteVisible = false;
-            document.getElementById('noteBar').classList.remove('show');
-        }
-
-        /* ── TIMERS ── */
-        function startTimers(){
-            sessTimer = setInterval(function(){
-                sessSeconds++;
-                document.getElementById('ssSessTime').textContent = fmt(sessSeconds);
-                SESSIONS.forEach(function(s){ s.waitSec++; });
-                renderQueue();
-            }, 1000);
-
-            idleTimer = setInterval(function(){
-                idleSeconds++;
-                var el = document.getElementById('ssIdle');
-                if(idleSeconds < 60){
-                    el.textContent='Active'; el.style.color='#4ade80';
-                } else if(idleSeconds < IDLE_LIMIT){
-                    el.textContent=Math.floor(idleSeconds/60)+'m idle'; el.style.color='#854F0B';
-                } else {
-                    el.textContent=Math.floor(idleSeconds/60)+'m '+idleSeconds%60+'s idle'; el.style.color='#791F1F';
-                    if(!idleShown){ idleShown=true; document.getElementById('endBtn').classList.add('pulsing'); }
-                }
-            }, 1000);
-        }
-
-        function resetIdle(){
-            idleSeconds=0; idleShown=false;
-            document.getElementById('ssIdle').textContent='Active';
-            document.getElementById('ssIdle').style.color='#4ade80';
-            document.getElementById('endBtn').classList.remove('pulsing');
-        }
-
-        /* ── ACTIONS ── */
-        function endSession(){
-            if(sessEnded||!activeId) return;
-            sessEnded=true;
-            clearInterval(sessTimer); clearInterval(idleTimer);
-            var s = SESSIONS.find(function(x){ return x.id===activeId; });
-            addBubble('end','Session ended at '+nowTime()+'. '+s.name+' has been notified and a transcript sent via email.','',true);
-            document.getElementById('ssStatus').className='badge b-done';
-            document.getElementById('ssStatus').textContent='Ended';
-            document.getElementById('ssCsat').textContent='Survey sent';
-            document.getElementById('inputSection').innerHTML='<div class="ended-bar">Session ended \u2014 select another session from the queue.</div>';
-
-            fetch('/Admin/QueueEndSession', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({sessionId: activeId, reason:'agent_ended'})
-            }).catch(function(){});
-
-            SESSIONS = SESSIONS.filter(function(x){ return x.id!==activeId; });
-            renderQueue();
-        }
-
-        function resolveSession(){
-            if(!activeId) return;
-            var s = SESSIONS.find(function(x){ return x.id===activeId; });
-            if(!s) return;
-            addBubble('sys','Session resolved at '+nowTime()+'. CSAT survey sent to '+s.name+'.','',true);
-            document.getElementById('ssStatus').className='badge b-resolved';
-            document.getElementById('ssStatus').textContent='Resolved';
-            document.getElementById('ssCsat').textContent='Survey sent';
-
-            fetch('/Admin/QueueResolve', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({sessionId: activeId})
-            }).catch(function(){});
-
-            setTimeout(function(){ endSession(); }, 500);
-        }
-
+        /* ── ASSIGN ── */
         function assignSession(id){
-            var s = SESSIONS.find(function(x){ return x.id===id; });
-            var avail = AGENTS.find(function(a){ return (a.status==='online'||a.status==='busy')&&a.sessions<a.max; });
-            if(!avail){ alert('No available agents. All agents are at capacity.'); return; }
-            s.agent = avail.name; s.status='active';
-            avail.sessions++;
-            fetch('/Admin/QueueAssign', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({sessionId:id, agentName:avail.name})
-            }).catch(function(){});
+            var s=SESSIONS.find(function(x){return x.id===id;});
+            var avail=AGENTS.find(function(a){return (a.status==='online'||a.status==='busy')&&a.sessions<a.max;});
+            if(!avail){showToast('No available agents. All agents are at capacity.');return;}
+            s.agent=avail.name; s.status='active'; avail.sessions++;
+            fetch('/Admin/QueueAssign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:id,agentName:avail.name})}).catch(function(){});
             renderQueue(); renderAgents();
-            switchSession(id);
+            showToast(s.name+' assigned to '+avail.name);
         }
 
         function autoAssign(){
-            var waiting = SESSIONS.filter(function(s){ return s.status==='waiting'; });
             var count=0;
-            waiting.forEach(function(s){
+            SESSIONS.filter(function(s){return s.status==='waiting';}).forEach(function(s){
                 var avail=AGENTS.find(function(a){return (a.status==='online'||a.status==='busy')&&a.sessions<a.max;});
                 if(avail){s.agent=avail.name;s.status='active';avail.sessions++;count++;}
             });
             fetch('/Admin/QueueAutoAssign',{method:'POST'}).catch(function(){});
             renderQueue(); renderAgents();
-            if(count>0 && activeId) addSys(count+' session(s) auto-assigned to available agents.');
+            showToast(count>0?count+' session(s) auto-assigned.':'No available agents right now.');
         }
 
-        function doTransfer(){
-            addBubble('sys','Transfer request sent. Waiting for an available agent...','',true);
+        /* ── FAQ ── */
+        function selCat(el,cat){
+            document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('on');});
+            el.classList.add('on'); selCategory=cat;
+        }
+        function setFaqFilter(el,cat){
+            document.querySelectorAll('.ff').forEach(function(f){f.classList.remove('on');});
+            el.classList.add('on'); faqFilter=cat; renderFaqs();
+        }
+        function filterFaqs(v){ faqSearch=v.toLowerCase(); renderFaqs(); }
+
+        document.getElementById('faqA').addEventListener('input',function(){
+            document.getElementById('charCount').textContent=this.value.length+' / 500 chars';
+        });
+
+        function addFaq(){
+            var q=document.getElementById('faqQ').value.trim();
+            var a=document.getElementById('faqA').value.trim();
+            if(!q||!a){showToast('Please fill in both question and answer.');return;}
+            if(a.length>500){showToast('Answer exceeds 500 characters.');return;}
+
+            fetch('/Admin/FaqAdd',{
+                method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({question:q,answer:a,category:selCategory})
+            })
+            .then(function(r){return r.json();})
+            .catch(function(){return{success:true,id:nextId};})
+            .then(function(data){
+                FAQS.push({id:data.id||nextId++,q:q,a:a,cat:selCategory});
+                document.getElementById('faqQ').value='';
+                document.getElementById('faqA').value='';
+                document.getElementById('charCount').textContent='0 / 500 chars';
+                updateFaqCounts();
+                renderFaqs();
+                showToast('FAQ added successfully!');
+            });
         }
 
-        function restoreInput(){
-            document.getElementById('inputSection').innerHTML =
-                '<div class="inp-bar">'
-                +'<div class="inp-row">'
-                    +'<input class="inp-field" id="chatField" placeholder="Type a message to the customer..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendMsg();}"/>'
-                    +'<button class="inp-send" onclick="sendMsg()"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
-                +'</div>'
-                +'<div class="inp-actions">'
-                    +'<button class="inp-act" onclick="doTransfer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg> Transfer</button>'
-                    +'<button class="inp-act endsess" id="endBtn" onclick="endSession()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> End Session</button>'
-                    +'<button class="inp-act resolve" onclick="resolveSession()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg> Resolve</button>'
-                +'</div>'
-            +'</div>';
+        function deleteFaq(id){
+            fetch('/Admin/FaqDelete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).catch(function(){});
+            FAQS=FAQS.filter(function(f){return f.id!==id;});
+            updateFaqCounts();
+            renderFaqs();
+            showToast('FAQ deleted.');
         }
+
+        function editFaq(id){
+            var f=FAQS.find(function(x){return x.id===id;});
+            if(!f)return;
+            var item=document.getElementById('faq-'+id);
+            item.classList.add('editing');
+            item.innerHTML=
+                '<input class="edit-inp" id="eq-'+id+'" type="text" value="'+escH(f.q)+'"/>'
+                +'<textarea class="edit-inp" id="ea-'+id+'">'+escH(f.a)+'</textarea>'
+                +'<div class="edit-foot">'
+                    +'<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit('+id+')">Save</button>'
+                    +'<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
+                +'</div>';
+        }
+
+        function saveEdit(id){
+            var q=document.getElementById('eq-'+id).value.trim();
+            var a=document.getElementById('ea-'+id).value.trim();
+            if(!q||!a){showToast('Both fields are required.');return;}
+            var f=FAQS.find(function(x){return x.id===id;});
+            f.q=q; f.a=a;
+            fetch('/Admin/FaqUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,question:q,answer:a,category:f.cat})}).catch(function(){});
+            renderFaqs();
+            showToast('FAQ updated successfully!');
+        }
+
+        function updateFaqCounts(){
+            document.getElementById('statFaqCount').textContent=FAQS.length;
+            document.getElementById('faqListCount').textContent=FAQS.length+' FAQs';
+        }
+
+        function renderFaqs(){
+            var list=document.getElementById('faqList');
+            list.innerHTML='';
+            var filtered=FAQS.filter(function(f){
+                return (faqFilter==='all'||f.cat===faqFilter)
+                    && (!faqSearch||f.q.toLowerCase().includes(faqSearch)||f.a.toLowerCase().includes(faqSearch));
+            });
+            if(filtered.length===0){
+                list.innerHTML='<div class="faq-empty">No FAQs found.</div>';
+                return;
+            }
+            filtered.forEach(function(f){
+                var d=document.createElement('div');
+                d.className='faq-item';
+                d.id='faq-'+f.id;
+                d.innerHTML=
+                    '<div class="faq-item-hd">'
+                        +'<div class="faq-q">'+escH(f.q)+'</div>'
+                        +'<div class="faq-actions">'
+                            +'<button class="faq-act" onclick="editFaq('+f.id+')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                            +'<button class="faq-act del" onclick="deleteFaq('+f.id+')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+                        +'</div>'
+                    +'</div>'
+                    +'<div class="faq-a">'+escH(f.a)+'</div>'
+                    +'<span class="faq-cat-badge fc-'+f.cat+'">'+cap(f.cat)+'</span>';
+                list.appendChild(d);
+            });
+        }
+
+        /* ── LIVE WAIT TIMER ── */
+        qTimer=setInterval(function(){
+            SESSIONS.forEach(function(s){ s.waitSec++; });
+            renderQueue();
+        },1000);
 
         renderQueue();
         renderAgents();
+        renderFaqs();
     </script>
 }
