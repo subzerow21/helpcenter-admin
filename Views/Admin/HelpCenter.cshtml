@@ -1,97 +1,125 @@
-﻿@model NextHorizon.Models.Admin_Models.HelpCenterViewModel
+@model NextHorizon.Models.Admin_Models.QueueDashboardViewModel
 @{
     ViewData["Title"] = "Help Center";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
-    var ticketsJson = System.Text.Json.JsonSerializer.Serialize(Model.Tickets.Select(t => new
+    var sessionsJson = System.Text.Json.JsonSerializer.Serialize(Model.Sessions.Select(s => new
     {
-        id = t.Id,
-        no = t.TicketNo,
-        subj = t.Subject,
-        name = t.CustomerName,
-        email = t.CustomerEmail,
-        av = t.Initials,
-        avBg = t.AvatarColor,
-        status = t.Status,
-        cat = t.Category,
-        date = t.DateLabel,
-        role = t.Role,
-        msgs = t.Messages.Select(m => new
+        id = s.Id,
+        no = s.SessionNo,
+        name = s.CustomerName,
+        email = s.CustomerEmail,
+        role = s.Role,
+        av = s.Initials,
+        bg = s.AvatarColor,
+        waitSec = s.WaitSeconds,
+        pos = s.QueuePosition,
+        status = s.Status,
+        cat = s.Category,
+        agent = s.AssignedTo ?? "Unassigned",
+        msgs = s.Messages.Select(m => new
         {
-            from = m.Sender,
-            av = m.Initials,
-            avBg = m.AvatarColor,
-            text = m.Body,
-            time = m.TimeLabel,
-            resolved = m.IsResolved
+            f = m.Sender,
+            t = m.Body,
+            time = m.TimeLabel
         })
+    }));
+
+    var agentsJson = System.Text.Json.JsonSerializer.Serialize(Model.Agents.Select(a => new
+    {
+        name = a.Name,
+        initials = a.Initials,
+        status = a.Status,
+        sessions = a.ActiveSessions,
+        max = a.MaxSessions
     }));
 }
 
 @section Styles {
     <style>
-        * {
-            font-family: 'Poppins', sans-serif;
+        .admin-content {
+            padding: 20px !important;
         }
 
-        .hc-stats {
+        /* ── STATS ── */
+        .q-stats {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 22px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
-        .hc-stat {
+        .qs {
             background: #fff;
             border: 1px solid #e8e8e8;
-            padding: 18px 20px;
+            padding: 12px 16px;
         }
 
-        .hc-stat-label {
-            font-size: 10px;
+        .qs-lbl {
+            font-size: 9px;
             font-weight: 700;
             letter-spacing: 1.2px;
             text-transform: uppercase;
             color: #aaa;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
-        .hc-stat-val {
-            font-size: 28px;
+        .qs-val {
+            font-size: 22px;
             font-weight: 700;
             color: #1a1a1a;
             letter-spacing: -0.5px;
             line-height: 1;
         }
 
-        .hc-stat-sub {
-            font-size: 11px;
+        .qs-sub {
+            font-size: 10px;
             color: #aaa;
-            margin-top: 6px;
+            margin-top: 4px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
         }
+
+            .qs-sub.warn {
+                color: #854F0B;
+            }
 
         .up {
             color: #27500A;
             font-weight: 600;
         }
 
-        .down {
+        .dn {
             color: #A32D2D;
             font-weight: 600;
         }
 
-        .hc-grid {
+        /* ── LAYOUT ── */
+        .q-shell {
             display: grid;
-            grid-template-columns: 1fr 390px;
+            grid-template-columns: 1fr 340px;
             gap: 14px;
-            height: calc(100vh - 62px - 52px - 136px - 14px);
-            min-height: 520px;
+            height: calc(100vh - 62px - 52px - 90px - 16px);
+            min-height: 500px;
         }
 
-        .hc-panel {
+        .q-left {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        .q-right {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        /* ── PANEL ── */
+        .panel {
             background: #fff;
             border: 1px solid #e8e8e8;
             display: flex;
@@ -99,8 +127,8 @@
             overflow: hidden;
         }
 
-        .hc-panel-hd {
-            padding: 15px 20px;
+        .panel-hd {
+            padding: 12px 18px;
             border-bottom: 1px solid #f0f0f0;
             display: flex;
             align-items: center;
@@ -108,27 +136,28 @@
             flex-shrink: 0;
         }
 
-        .hc-panel-title {
-            font-size: 11.5px;
+        .panel-title {
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
             color: #1a1a1a;
         }
 
-        .hc-panel-sub {
+        .panel-sub {
             font-size: 11px;
             color: #aaa;
             font-weight: 400;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
-        .btn-new {
+        /* ── BUTTONS ── */
+        .pbtn {
             background: #1a1a1a;
             color: #fff;
             border: none;
-            padding: 7px 16px;
-            font-size: 11px;
+            padding: 6px 13px;
+            font-size: 10.5px;
             font-weight: 600;
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
@@ -136,92 +165,58 @@
             transition: background .15s;
         }
 
-            .btn-new:hover {
+            .pbtn:hover {
                 background: #333;
             }
 
-        .hc-tabs {
-            display: flex;
-            border-bottom: 2px solid #f0f0f0;
-            padding: 0 20px;
+            .pbtn.out {
+                background: #fff;
+                color: #1a1a1a;
+                border: 1px solid #e0e0e0;
+            }
+
+                .pbtn.out:hover {
+                    background: #f5f5f5;
+                }
+
+            .pbtn.danger {
+                background: #FCEBEB;
+                color: #791F1F;
+                border: 1px solid #f0c0c0;
+            }
+
+                .pbtn.danger:hover {
+                    background: #fad4d4;
+                }
+
+        /* ── WAIT WARNING BAR ── */
+        .wait-warn {
+            background: #FCEBEB;
+            border-left: 3px solid #e24b4a;
+            padding: 8px 14px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
             flex-shrink: 0;
         }
 
-        .hc-tab {
-            padding: 11px 0;
-            margin-right: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            color: #bbb;
-            cursor: pointer;
-            border: none;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            background: none;
-            font-family: 'Poppins', sans-serif;
-            transition: color .2s, border-color .2s;
-        }
-
-            .hc-tab:hover {
-                color: #555;
+            .wait-warn.show {
+                display: flex;
             }
 
-            .hc-tab.active {
-                color: #1a1a1a;
-                border-bottom-color: #1a1a1a;
-            }
-
-        .hc-filters {
-            padding: 10px 20px;
-            border-bottom: 1px solid #f5f5f5;
+        .ww-left {
             display: flex;
             align-items: center;
             gap: 6px;
-            flex-shrink: 0;
-            flex-wrap: wrap;
+            color: #791F1F;
+            font-weight: 500;
         }
 
-        .hc-filter {
-            background: #f5f5f5;
-            border: 1px solid #e8e8e8;
-            color: #666;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 5px 12px;
-            cursor: pointer;
-            font-family: 'Poppins', sans-serif;
-            letter-spacing: 0.3px;
-            transition: all .15s;
-        }
-
-            .hc-filter:hover:not(.active) {
-                background: #ebebeb;
-            }
-
-            .hc-filter.active {
-                background: #1a1a1a;
-                color: #fff;
-                border-color: #1a1a1a;
-            }
-
-        .hc-search {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f8f8f8;
-            border: 1px solid #e8e8e8;
-            padding: 6px 12px;
-            max-width: 210px;
-            flex: 1;
-        }
-
-            .hc-search svg {
+            .ww-left svg {
                 width: 13px;
                 height: 13px;
-                stroke: #bbb;
+                stroke: #791F1F;
                 fill: none;
                 stroke-width: 2;
                 stroke-linecap: round;
@@ -229,45 +224,32 @@
                 flex-shrink: 0;
             }
 
-            .hc-search input {
-                background: none;
-                border: none;
-                outline: none;
-                font-size: 12px;
-                font-family: 'Poppins', sans-serif;
-                color: #1a1a1a;
-                width: 100%;
-            }
-
-                .hc-search input::placeholder {
-                    color: #ccc;
-                }
-
-        .ticket-scroll {
+        /* ── QUEUE TABLE ── */
+        .q-scroll {
             overflow-y: auto;
             flex: 1;
         }
 
-            .ticket-scroll::-webkit-scrollbar {
+            .q-scroll::-webkit-scrollbar {
                 width: 3px;
             }
 
-            .ticket-scroll::-webkit-scrollbar-thumb {
+            .q-scroll::-webkit-scrollbar-thumb {
                 background: #e8e8e8;
             }
 
-        .ticket-tbl {
+        .qtbl {
             width: 100%;
             border-collapse: collapse;
         }
 
-            .ticket-tbl th {
-                font-size: 10px;
+            .qtbl th {
+                font-size: 9.5px;
                 font-weight: 700;
                 letter-spacing: 1px;
                 text-transform: uppercase;
                 color: #aaa;
-                padding: 10px 20px;
+                padding: 9px 18px;
                 text-align: left;
                 border-bottom: 1px solid #f0f0f0;
                 background: #fafafa;
@@ -276,221 +258,349 @@
                 z-index: 1;
             }
 
-            .ticket-tbl td {
-                padding: 13px 20px;
+            .qtbl td {
+                padding: 10px 18px;
                 border-bottom: 1px solid #f5f5f5;
                 vertical-align: middle;
             }
 
-            .ticket-tbl tbody tr {
+            .qtbl tbody tr {
                 cursor: pointer;
                 transition: background .1s;
             }
 
-                .ticket-tbl tbody tr:hover td {
+                .qtbl tbody tr:hover td {
                     background: #fafafa;
                 }
 
-                .ticket-tbl tbody tr.selected td {
+                .qtbl tbody tr.sel td {
                     background: #f5f5f5 !important;
                 }
 
-                .ticket-tbl tbody tr:last-child td {
+                .qtbl tbody tr:last-child td {
                     border-bottom: none;
                 }
 
-        .t-user {
+        .q-cust {
             display: flex;
             align-items: center;
-            gap: 9px;
+            gap: 8px;
         }
 
-        .t-av {
-            width: 30px;
-            height: 30px;
+        .q-av {
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #fff;
             font-size: 10px;
             font-weight: 700;
+            color: #fff;
             flex-shrink: 0;
         }
 
-        .t-name {
-            font-size: 12.5px;
+        .q-name {
+            font-size: 12px;
             font-weight: 600;
             color: #1a1a1a;
         }
 
-        .t-email {
-            font-size: 11px;
+        .q-role {
+            font-size: 10.5px;
             color: #aaa;
             font-weight: 300;
         }
 
-        .t-subj {
-            font-size: 12.5px;
-            color: #333;
-            font-weight: 500;
-            max-width: 200px;
+        .q-wait {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-variant-numeric: tabular-nums;
         }
 
-        .t-ref {
-            font-size: 11px;
-            color: #bbb;
-            font-weight: 300;
-            margin-top: 2px;
+            .q-wait.over5 {
+                color: #791F1F;
+            }
+
+        /* ── SLA BAR ── */
+        .sla {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .t-date {
-            font-size: 11.5px;
+        .sla-bar {
+            width: 50px;
+            height: 5px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .sla-fill {
+            height: 5px;
+            border-radius: 2px;
+        }
+
+        .sla-ok {
+            background: #4ade80;
+        }
+
+        .sla-warn {
+            background: #f59e0b;
+        }
+
+        .sla-breach {
+            background: #e24b4a;
+        }
+
+        .sla-txt {
+            font-size: 10px;
             color: #aaa;
-            font-weight: 300;
             white-space: nowrap;
         }
 
+        /* ── BADGES ── */
         .badge {
             display: inline-flex;
             align-items: center;
-            padding: 3px 9px;
-            font-size: 10px;
+            padding: 2px 8px;
+            font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
-        .badge-open {
+        .b-waiting {
             background: #EAF3DE;
             color: #27500A;
         }
 
-        .badge-pending {
+        .b-active {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .b-idle {
             background: #FAEEDA;
             color: #633806;
         }
 
-        .badge-closed {
+        .b-done {
             background: #f0f0f0;
             color: #666;
         }
 
-        .badge-urgent {
-            background: #FCEBEB;
-            color: #791F1F;
+        .b-resolved {
+            background: #EAF3DE;
+            color: #27500A;
         }
 
-        .btn-view {
-            background: #1a1a1a;
-            color: #fff;
-            border: none;
-            padding: 5px 12px;
-            font-size: 10.5px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Poppins', sans-serif;
-            letter-spacing: 0.3px;
-            transition: background .15s;
-            white-space: nowrap;
+        .b-online {
+            background: #EAF3DE;
+            color: #27500A;
         }
 
-            .btn-view:hover {
-                background: #333;
+        .b-busy {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .b-away {
+            background: #FAEEDA;
+            color: #633806;
+        }
+
+        .b-offline {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* ── AGENTS ── */
+        .agent-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+            .agent-list::-webkit-scrollbar {
+                width: 3px;
             }
 
-            .btn-view.outline {
-                background: #fff;
-                color: #1a1a1a;
-                border: 1px solid #e0e0e0;
+            .agent-list::-webkit-scrollbar-thumb {
+                background: #e8e8e8;
             }
 
-                .btn-view.outline:hover {
-                    background: #f5f5f5;
-                }
-
-        .detail-wrap {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .detail-hd {
-            padding: 14px 20px;
-            border-bottom: 1px solid #f0f0f0;
-            flex-shrink: 0;
-        }
-
-        .detail-no {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #aaa;
-            margin-bottom: 5px;
-        }
-
-        .detail-subj {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin-bottom: 6px;
-            line-height: 1.3;
-        }
-
-        .detail-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .detail-meta-txt {
-            font-size: 11px;
-            color: #aaa;
-        }
-
-        .detail-user {
+        .agent-row {
+            padding: 10px 18px;
+            border-bottom: 1px solid #f5f5f5;
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 20px;
-            border-bottom: 1px solid #f5f5f5;
-            flex-shrink: 0;
         }
 
-        .detail-user-av {
+            .agent-row:last-child {
+                border-bottom: none;
+            }
+
+        .agent-av {
             width: 32px;
             height: 32px;
+            background: #1a1a1a;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #fff;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
+            color: #fff;
             flex-shrink: 0;
+            position: relative;
         }
 
-        .detail-uname {
-            font-size: 12.5px;
+            .agent-av .dot {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                border: 2px solid #fff;
+            }
+
+        .dot-online {
+            background: #4ade80;
+        }
+
+        .dot-busy {
+            background: #378ADD;
+        }
+
+        .dot-away {
+            background: #f59e0b;
+        }
+
+        .dot-offline {
+            background: #ccc;
+        }
+
+        .agent-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agent-name {
+            font-size: 12px;
             font-weight: 600;
             color: #1a1a1a;
         }
 
-        .detail-uemail {
+        .agent-load {
+            font-size: 10.5px;
+            color: #aaa;
+            margin-top: 1px;
+        }
+
+        .agent-bar-wrap {
+            width: 60px;
+            height: 5px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            margin-top: 4px;
+        }
+
+        .agent-bar {
+            height: 5px;
+            border-radius: 2px;
+            background: #1a1a1a;
+        }
+
+            .agent-bar.full {
+                background: #e24b4a;
+            }
+
+        /* ── SESSION DETAIL STRIP ── */
+        .sess-strip {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            flex-shrink: 0;
+        }
+
+        .ss-top {
+            padding: 11px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ss-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .ss-role {
             font-size: 11px;
             color: #aaa;
+            font-weight: 300;
+            margin-top: 1px;
+        }
+
+        .ss-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .ss-field {
+            padding: 8px 14px;
+            border-bottom: 1px solid #f5f5f5;
+            border-right: 1px solid #f5f5f5;
+        }
+
+            .ss-field:nth-child(even) {
+                border-right: none;
+            }
+
+            .ss-field:nth-last-child(-n+2) {
+                border-bottom: none;
+            }
+
+        .ss-lbl {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #ccc;
+            margin-bottom: 2px;
+        }
+
+        .ss-val {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── LIVE CHAT ── */
+        .chat-panel {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
         }
 
         .chat-msgs {
             flex: 1;
             overflow-y: auto;
-            padding: 16px 20px;
+            padding: 12px 14px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+            background: #f8f8f8;
             min-height: 0;
         }
 
@@ -499,22 +609,35 @@
             }
 
             .chat-msgs::-webkit-scrollbar-thumb {
-                background: #e8e8e8;
+                background: #e0e0e0;
+            }
+
+        .sys-row {
+            text-align: center;
+            padding: 3px 0;
+        }
+
+            .sys-row span {
+                font-size: 10.5px;
+                color: #aaa;
+                background: #efefef;
+                padding: 2px 12px;
+                border-radius: 10px;
             }
 
         .cm {
             display: flex;
-            gap: 8px;
+            gap: 7px;
             align-items: flex-end;
         }
 
-            .cm.cm-admin {
+            .cm.r {
                 flex-direction: row-reverse;
             }
 
         .cm-av {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -525,92 +648,188 @@
             flex-shrink: 0;
         }
 
-        .cm-admin .cm-av {
-            color: #555;
+        .cm-wrap {
+            max-width: 75%;
         }
 
-        .cm-body {
-            max-width: 80%;
+        .cm-sender {
+            font-size: 9.5px;
+            color: #bbb;
+            margin-bottom: 3px;
+            font-weight: 500;
         }
 
-        .cm-bub {
-            padding: 9px 13px;
-            font-size: 12.5px;
-            line-height: 1.55;
-            background: #f5f5f5;
-            color: #1a1a1a;
-            border: 1px solid #eee;
-            border-radius: 3px 14px 14px 14px;
-        }
-
-        .cm-admin .cm-bub {
-            background: #1a1a1a;
-            color: #fff;
-            border-color: #1a1a1a;
-            border-radius: 14px 3px 14px 14px;
-        }
-
-        .cm-bub.resolved {
-            background: #EAF3DE;
-            color: #27500A;
-            border-color: #C0DD97;
-        }
-
-        .cm-time {
-            font-size: 10px;
-            color: #ccc;
-            margin-top: 4px;
-        }
-
-        .cm-admin .cm-time {
+        .cm.r .cm-sender {
             text-align: right;
         }
 
-        .empty-state {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #ccc;
-            gap: 10px;
-            padding: 2rem;
+        .bubble {
+            padding: 8px 11px;
+            font-size: 12.5px;
+            line-height: 1.55;
+        }
+
+        .bub-cust {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1px solid #eee;
+            border-radius: 3px 12px 12px 12px;
+        }
+
+        .bub-agt {
+            background: #1a1a1a;
+            color: #fff;
+            border-radius: 12px 3px 12px 12px;
+        }
+
+        .bub-sys {
+            background: #EAF3DE;
+            color: #27500A;
+            border: 1px solid #C0DD97;
+            border-radius: 8px;
+            font-size: 11.5px;
             text-align: center;
         }
 
-            .empty-state svg {
-                width: 40px;
-                height: 40px;
-                stroke: #ddd;
-                fill: none;
-                stroke-width: 1.5;
+        .bub-end {
+            background: #FCEBEB;
+            color: #791F1F;
+            border: 1px solid #f0c0c0;
+            border-radius: 8px;
+            font-size: 11.5px;
+            text-align: center;
+        }
+
+        .bub-note {
+            background: #FAEEDA;
+            color: #633806;
+            border: 1px solid #f5d08a;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-style: italic;
+        }
+
+        .cm-time {
+            font-size: 9.5px;
+            color: #ccc;
+            margin-top: 3px;
+        }
+
+        .cm.r .cm-time {
+            text-align: right;
+        }
+
+        /* TYPING */
+        .typing-ind {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            font-size: 10.5px;
+            color: #4ade80;
+        }
+
+            .typing-ind.show {
+                display: flex;
             }
 
-            .empty-state p {
-                font-size: 12.5px;
-                color: #bbb;
+        .t-dots {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 7px 10px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 3px 12px 12px 12px;
+        }
+
+        .td {
+            width: 5px;
+            height: 5px;
+            background: #ccc;
+            border-radius: 50%;
+            animation: tdot 1.4s infinite;
+        }
+
+            .td:nth-child(2) {
+                animation-delay: .2s;
             }
 
-        .chat-input-sec {
-            padding: 12px 20px;
-            border-top: 1px solid #f0f0f0;
+            .td:nth-child(3) {
+                animation-delay: .4s;
+            }
+
+        @@keyframes tdot {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: .4;
+            }
+
+            30% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+
+        /* NOTE BAR */
+        .note-bar {
+            padding: 6px 14px;
+            border-top: 1px solid #f5d08a;
+            background: #FAEEDA;
+            display: none;
+            align-items: center;
+            gap: 8px;
             flex-shrink: 0;
         }
 
-        .ci-row {
+            .note-bar.show {
+                display: flex;
+            }
+
+        .note-lbl {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #854F0B;
+            white-space: nowrap;
+        }
+
+        .note-inp {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            font-size: 12px;
+            font-family: 'Poppins', sans-serif;
+            color: #633806;
+        }
+
+            .note-inp::placeholder {
+                color: #c8a060;
+            }
+
+        /* INPUT BAR */
+        .inp-bar {
+            padding: 10px 14px;
+            border-top: 1px solid #f0f0f0;
+            background: #fff;
+            flex-shrink: 0;
+        }
+
+        .inp-row {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             background: #f8f8f8;
             border: 1.5px solid #e8e8e8;
-            padding: 8px 8px 8px 14px;
+            padding: 6px 6px 6px 12px;
             transition: border-color .2s;
         }
 
-            .ci-row:focus-within {
+            .inp-row:focus-within {
                 border-color: #1a1a1a;
             }
 
-        .ci-field {
+        .inp-field {
             flex: 1;
             background: none;
             border: none;
@@ -618,16 +837,16 @@
             font-size: 12.5px;
             font-family: 'Poppins', sans-serif;
             color: #1a1a1a;
-            padding: 4px 0;
+            padding: 3px 0;
         }
 
-            .ci-field::placeholder {
+            .inp-field::placeholder {
                 color: #ccc;
             }
 
-        .ci-send {
-            width: 36px;
-            height: 36px;
+        .inp-send {
+            width: 34px;
+            height: 34px;
             background: #1a1a1a;
             border: none;
             cursor: pointer;
@@ -638,13 +857,13 @@
             transition: background .15s;
         }
 
-            .ci-send:hover {
+            .inp-send:hover {
                 background: #333;
             }
 
-            .ci-send svg {
-                width: 14px;
-                height: 14px;
+            .inp-send svg {
+                width: 13px;
+                height: 13px;
                 fill: none;
                 stroke: #fff;
                 stroke-width: 2;
@@ -652,37 +871,36 @@
                 stroke-linejoin: round;
             }
 
-        .action-btns {
+        .inp-actions {
             display: flex;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 6px;
+            margin-top: 7px;
         }
 
-        .action-btn {
+        .inp-act {
             flex: 1;
             background: #fff;
             border: 1px solid #e0e0e0;
             color: #555;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 600;
-            padding: 7px 0;
+            padding: 6px 0;
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
-            letter-spacing: 0.3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
+            gap: 4px;
             transition: all .15s;
         }
 
-            .action-btn:hover {
+            .inp-act:hover {
                 background: #f5f5f5;
             }
 
-            .action-btn svg {
-                width: 13px;
-                height: 13px;
+            .inp-act svg {
+                width: 12px;
+                height: 12px;
                 fill: none;
                 stroke: currentColor;
                 stroke-width: 2;
@@ -690,339 +908,560 @@
                 stroke-linejoin: round;
             }
 
-            .action-btn.resolve {
+            .inp-act.resolve {
                 background: #1a1a1a;
                 color: #fff;
                 border-color: #1a1a1a;
             }
 
-                .action-btn.resolve:hover {
+                .inp-act.resolve:hover {
                     background: #333;
                 }
+
+            .inp-act.endsess {
+                background: #FCEBEB;
+                color: #791F1F;
+                border-color: #f0c0c0;
+            }
+
+                .inp-act.endsess:hover {
+                    background: #fad4d4;
+                }
+
+                .inp-act.endsess.pulsing {
+                    animation: epulse 1s infinite;
+                }
+
+        @@keyframes epulse {
+            0%, 100% {
+                background: #FCEBEB;
+            }
+
+            50% {
+                background: #f5b5b5;
+            }
+        }
+
+        .canned-sel {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #666;
+            font-size: 11px;
+            font-family: 'Poppins', sans-serif;
+            padding: 4px 8px;
+            cursor: pointer;
+            outline: none;
+            margin-left: auto;
+        }
+
+        .ended-bar {
+            padding: 14px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            background: #f5f5f5;
+            border-top: 1px solid #e8e8e8;
+        }
     </style>
 }
 
 <!-- STATS -->
-<div class="hc-stats">
-    <div class="hc-stat">
-        <div class="hc-stat-label">Total Tickets</div>
-        <div class="hc-stat-val">@Model.Stats.TotalTickets.ToString("N0")</div>
-        <div class="hc-stat-sub"><span class="up">+12%</span> vs last month</div>
+<div class="q-stats">
+    <div class="qs">
+        <div class="qs-lbl">In Queue</div>
+        <div class="qs-val" id="qsInQueue">@Model.Stats.InQueue</div>
+        <div class="qs-sub"><span class="dn">+2</span> vs 30min ago</div>
     </div>
-    <div class="hc-stat">
-        <div class="hc-stat-label">Open</div>
-        <div class="hc-stat-val" id="statOpen">@Model.Stats.OpenTickets</div>
-        <div class="hc-stat-sub"><span class="down">+8</span> since yesterday</div>
+    <div class="qs">
+        <div class="qs-lbl">Active Sessions</div>
+        <div class="qs-val">@Model.Stats.ActiveSessions</div>
+        <div class="qs-sub"><span class="up">@Model.Stats.AgentsOnline agents</span> online</div>
     </div>
-    <div class="hc-stat">
-        <div class="hc-stat-label">Avg. Response</div>
-        <div class="hc-stat-val">@Model.Stats.AvgResponse</div>
-        <div class="hc-stat-sub"><span class="up">&#8722;18min</span> faster</div>
+    <div class="qs">
+        <div class="qs-lbl">Avg. Wait Time</div>
+        <div class="qs-val">@Model.Stats.AvgWaitTime</div>
+        <div class="qs-sub warn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            Target: 2:00
+        </div>
     </div>
-    <div class="hc-stat">
-        <div class="hc-stat-label">Resolved Today</div>
-        <div class="hc-stat-val" id="statResolved">@Model.Stats.ResolvedToday</div>
-        <div class="hc-stat-sub"><span class="up">+5</span> vs yesterday</div>
+    <div class="qs">
+        <div class="qs-lbl">Resolved Today</div>
+        <div class="qs-val">@Model.Stats.ResolvedToday</div>
+        <div class="qs-sub"><span class="up">+5</span> vs yesterday</div>
+    </div>
+    <div class="qs">
+        <div class="qs-lbl">Abandonment</div>
+        <div class="qs-val">@Model.Stats.AbandonRate.ToString("0.0")%</div>
+        <div class="qs-sub"><span class="up">&#8722;1.1%</span> vs yesterday</div>
     </div>
 </div>
 
-<!-- MAIN GRID -->
-<div class="hc-grid">
+<!-- MAIN SHELL -->
+<div class="q-shell">
 
-    <!-- LEFT: TICKET LIST -->
-    <div class="hc-panel">
-        <div class="hc-panel-hd">
-            <div>
-                <div class="hc-panel-title">Support Tickets</div>
-                <div class="hc-panel-sub">
-                    @Model.Stats.OpenTickets open &middot;
-                    @Model.Stats.PendingTickets pending &middot;
-                    @Model.Stats.UrgentTickets urgent
+    <!-- LEFT -->
+    <div class="q-left">
+
+        <!-- QUEUE TABLE -->
+        <div class="panel" style="flex:1;min-height:0;">
+            <div class="panel-hd">
+                <div>
+                    <div class="panel-title">Live Queue</div>
+                    <div class="panel-sub" id="qMeta">@Model.Stats.InQueue waiting</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button class="pbtn out" onclick="autoAssign()">Auto-Assign</button>
                 </div>
             </div>
-      
-        </div>
 
-        <div class="hc-tabs">
-            <button class="hc-tab active" data-filter="all" onclick="setTab(this)">All</button>
-            <button class="hc-tab" data-filter="open" onclick="setTab(this)">Open</button>
-            <button class="hc-tab" data-filter="pending" onclick="setTab(this)">Pending</button>
-            <button class="hc-tab" data-filter="urgent" onclick="setTab(this)">Urgent</button>
-            <button class="hc-tab" data-filter="closed" onclick="setTab(this)">Closed</button>
-        </div>
+            <div class="wait-warn" id="waitWarn">
+                <div class="ww-left">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    Customers waiting over 5 minutes &mdash; assign an agent immediately
+                </div>
+            </div>
 
-        <div class="hc-filters">
-            <button class="hc-filter active" data-cat="all" onclick="setCat(this)">All Types</button>
-            <button class="hc-filter" data-cat="orders" onclick="setCat(this)">Orders</button>
-            <button class="hc-filter" data-cat="returns" onclick="setCat(this)">Returns</button>
-            <button class="hc-filter" data-cat="payments" onclick="setCat(this)">Payments</button>
-            <div class="hc-search">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                <input type="text" id="searchInput" placeholder="Search tickets..." oninput="applyFilters()" />
+            <div class="q-scroll">
+                <table class="qtbl">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Wait Time</th>
+                            <th>Position</th>
+                            <th>SLA</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="qBody"></tbody>
+                </table>
             </div>
         </div>
 
-        <div class="ticket-scroll">
-            <table class="ticket-tbl">
-                <thead>
-                    <tr>
-                        <th>Customer</th>
-                        <th>Subject</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="ticketBody"></tbody>
-            </table>
+        <!-- AGENTS -->
+        <div class="panel" style="flex-shrink:0;">
+            <div class="panel-hd">
+                <div>
+                    <div class="panel-title">Agent Status</div>
+                    <div class="panel-sub" id="agentMeta">@Model.Stats.AgentsOnline online</div>
+                </div>
+                <div style="font-size:10px;color:#aaa;">Max per agent: <strong style="color:#1a1a1a;">3</strong></div>
+            </div>
+            <div class="agent-list" id="agentList"></div>
         </div>
     </div>
 
-    <!-- RIGHT: TICKET DETAIL -->
-    <div class="hc-panel">
-        <div class="hc-panel-hd">
-            <div class="hc-panel-title">Ticket Detail</div>
-            <span class="badge" id="detailStatusBadge"></span>
+    <!-- RIGHT -->
+    <div class="q-right">
+
+        <!-- SESSION DETAIL STRIP -->
+        <div class="sess-strip">
+            <div class="ss-top">
+                <div>
+                    <div class="ss-name" id="ssName">Select a session</div>
+                    <div class="ss-role" id="ssRole">&mdash;</div>
+                </div>
+                <span class="badge b-waiting" id="ssStatus">Waiting</span>
+            </div>
+            <div class="ss-grid">
+                <div class="ss-field"><div class="ss-lbl">Session ID</div><div class="ss-val" id="ssId">&mdash;</div></div>
+                <div class="ss-field"><div class="ss-lbl">Assigned To</div><div class="ss-val" id="ssAgent">&mdash;</div></div>
+                <div class="ss-field"><div class="ss-lbl">Session Time</div><div class="ss-val" id="ssSessTime">00:00</div></div>
+                <div class="ss-field"><div class="ss-lbl">Customer Idle</div><div class="ss-val" id="ssIdle" style="color:#4ade80;">Active</div></div>
+                <div class="ss-field"><div class="ss-lbl">Category</div><div class="ss-val" id="ssCat">&mdash;</div></div>
+                <div class="ss-field"><div class="ss-lbl">CSAT</div><div class="ss-val" id="ssCsat">Pending</div></div>
+            </div>
         </div>
 
-        <div class="detail-wrap">
-            <div class="detail-hd">
-                <div class="detail-no" id="detailNo">Select a ticket to view</div>
-                <div class="detail-subj" id="detailSubj"></div>
-                <div class="detail-meta">
-                    <span class="badge" id="detailBadge"></span>
-                    <span class="detail-meta-txt" id="detailMetaTxt"></span>
-                </div>
-            </div>
-
-            <div class="detail-user" id="detailUser" style="display:none;">
-                <div class="detail-user-av" id="detailAv"></div>
-                <div>
-                    <div class="detail-uname" id="detailName"></div>
-                    <div class="detail-uemail" id="detailEmail"></div>
+        <!-- LIVE CHAT -->
+        <div class="chat-panel">
+            <div class="panel-hd">
+                <div class="panel-title">Live Chat</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <select class="canned-sel" onchange="useCanned(this)">
+                        <option value="">Canned responses...</option>
+                        <option value="Thank you for reaching out to Next Horizon! I'll look into this right away.">Greeting</option>
+                        <option value="I've escalated this to our logistics team. You'll receive an update within 2 hours.">Escalate to logistics</option>
+                        <option value="Your refund has been processed and should reflect within 5–7 business days.">Refund processed</option>
+                        <option value="Could you please provide your order number so I can assist you better?">Request order number</option>
+                        <option value="Is there anything else I can help you with today?">Closing</option>
+                    </select>
+                    <button class="pbtn out" style="font-size:10px;padding:4px 9px;" onclick="toggleNote()">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:3px;vertical-align:-1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                        Internal Note
+                    </button>
+                    <div class="typing-ind" id="typingInd">
+                        <div class="t-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>
+                        <span>typing...</span>
+                    </div>
                 </div>
             </div>
 
             <div class="chat-msgs" id="chatMsgs">
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                    <p>Select a ticket from the list<br>to view the conversation.</p>
-                </div>
+                <div class="sys-row"><span>Select a session from the queue to start chatting.</span></div>
             </div>
 
-            <div class="chat-input-sec" id="chatInputSec" style="display:none;">
-                <div class="ci-row">
-                    <input class="ci-field" id="replyInput"
-                           placeholder="Type a reply to the customer..."
-                           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}" />
-                    <button class="ci-send" onclick="sendReply()" title="Send">
-                        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                    </button>
-                </div>
-                <div class="action-btns">
-                    <button class="action-btn">
-                        <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                        Attach
-                    </button>
-                    <button class="action-btn">
-                        <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
-                        Transfer
-                    </button>
-                    <button class="action-btn resolve" id="resolveBtn" onclick="resolveTicket()">
-                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-                        Resolve
-                    </button>
+            <div class="note-bar" id="noteBar">
+                <span class="note-lbl">Internal Note</span>
+                <input class="note-inp" type="text" placeholder="Add a private note (not visible to customer)..."
+                       onkeydown="if(event.key==='Enter')addNote(this)" />
+            </div>
+
+            <div id="inputSection">
+                <div class="inp-bar">
+                    <div class="inp-row">
+                        <input class="inp-field" id="chatField" placeholder="Type a message to the customer..."
+                               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" />
+                        <button class="inp-send" onclick="sendMsg()" title="Send">
+                            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                        </button>
+                    </div>
+                    <div class="inp-actions">
+                        <button class="inp-act endsess" id="endBtn" onclick="endSession()">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                            End Session
+                        </button>
+                        <button class="inp-act resolve" onclick="resolveSession()">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                            Resolve
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
 </div>
 
 @section Scripts {
     <script>
-        var TICKETS   = @Html.Raw(ticketsJson);
+        var SESSIONS  = @Html.Raw(sessionsJson);
+        var AGENTS    = @Html.Raw(agentsJson);
         var activeId  = null;
-        var statusTab = 'all';
-        var catFilter = 'all';
+        var sessEnded = false, sessSeconds = 0, idleSeconds = 0;
+        var IDLE_LIMIT = 180, idleShown = false;
+        var sessTimer = null, idleTimer = null;
+        var noteVisible = false;
 
-        function badgeClass(s) { return 'badge badge-' + s; }
-        function badgeLabel(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+        function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+        function nowTime(){ return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+        function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
 
-        function renderTable() {
-            var q = (document.getElementById('searchInput').value || '').toLowerCase();
-            var rows = TICKETS.filter(function (t) {
-                return (statusTab === 'all' || t.status === statusTab)
-                    && (catFilter === 'all' || t.cat === catFilter)
-                    && (!q || t.name.toLowerCase().includes(q) || t.subj.toLowerCase().includes(q) || t.no.toLowerCase().includes(q));
-            });
+        function slaClass(s){ return s<120?'sla-ok':s<300?'sla-warn':'sla-breach'; }
+        function slaPct(s)  { return Math.min(100,Math.round(s/360*100)); }
 
-            var tbody = document.getElementById('ticketBody');
-            tbody.innerHTML = '';
-            rows.forEach(function (t) {
-                var isClosed = t.status === 'closed';
+        /* ── QUEUE ── */
+        function renderQueue(){
+            var body = document.getElementById('qBody');
+            body.innerHTML = '';
+            var over5 = 0;
+            SESSIONS.forEach(function(s){
+                if(s.waitSec >= 300) over5++;
                 var tr = document.createElement('tr');
-                if (t.id === activeId) tr.classList.add('selected');
-                tr.onclick = function () { selectTicket(t.id); };
+                if(s.id === activeId) tr.classList.add('sel');
+                tr.onclick = function(){ switchSession(s.id); };
+                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
+                var sb  = s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
+                var sl  = s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
+                var pct = slaPct(s.waitSec);
+                var sc  = slaClass(s.waitSec);
                 tr.innerHTML =
-                    '<td><div class="t-user">'
-                    + '<div class="t-av" style="background:' + t.avBg + '">' + t.av + '</div>'
-                    + '<div><div class="t-name">' + t.name + '</div><div class="t-email">' + t.role + '</div></div></div></td>'
-                    + '<td><div class="t-subj">' + t.subj + '</div><div class="t-ref">' + t.no + '</div></td>'
-                    + '<td><span class="' + badgeClass(t.status) + '">' + badgeLabel(t.status) + '</span></td>'
-                    + '<td class="t-date">' + t.date + '</td>'
-                    + '<td><button class="btn-view' + (isClosed ? ' outline' : '') + '">'
-                    + (isClosed ? 'Reopen' : 'View') + '</button></td>';
-                tbody.appendChild(tr);
+                    '<td><div class="q-cust"><div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
+                    +'<div><div class="q-name">'+s.name+'</div><div class="q-role">'+s.role+'</div></div></div></td>'
+                    +'<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
+                    +'<td style="font-size:11px;color:#aaa;">#'+s.pos+' of '+SESSIONS.length+'</td>'
+                    +'<td><div class="sla"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div>'
+                    +'<span class="sla-txt">'+fmt(s.waitSec)+'</span></div></td>'
+                    +'<td><span class="badge '+sb+'">'+sl+'</span></td>'
+                    +'<td style="font-size:11.5px;color:#1a1a1a;font-weight:500;">'+s.agent+'</td>'
+                    +'<td><button class="pbtn out" style="font-size:10px;padding:4px 9px;" onclick="event.stopPropagation();assignSession('+s.id+')">'
+                    +(s.agent==='Unassigned'?'Assign':'Reassign')+'</button></td>';
+                body.appendChild(tr);
+            });
+            var w = document.getElementById('waitWarn');
+            w.classList.toggle('show', over5 > 0);
+            if(over5 > 0) w.querySelector('.ww-left').lastChild.textContent = ' '+over5+' customer(s) waiting over 5 minutes \u2014 assign an agent immediately';
+            var longest = Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; }));
+            document.getElementById('qMeta').textContent = SESSIONS.length+' waiting \u00b7 longest: '+fmt(longest);
+            document.getElementById('qsInQueue').textContent = SESSIONS.length;
+        }
+
+        /* ── AGENTS ── */
+        function renderAgents(){
+            var list = document.getElementById('agentList');
+            list.innerHTML = '';
+            var online = AGENTS.filter(function(a){ return a.status==='online'||a.status==='busy'; }).length;
+            document.getElementById('agentMeta').textContent = online+' online';
+            AGENTS.forEach(function(a){
+                var d = document.createElement('div');
+                d.className = 'agent-row';
+                var pct = Math.round(a.sessions/a.max*100);
+                var bc  = pct >= 100 ? 'agent-bar full' : 'agent-bar';
+                d.innerHTML =
+                    '<div class="agent-av"><span>'+a.initials+'</span><div class="dot dot-'+a.status+'"></div></div>'
+                    +'<div class="agent-info">'
+                        +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+                            +'<div class="agent-name">'+a.name+'</div>'
+                            +'<span class="badge b-'+a.status+'" style="font-size:9px;padding:1px 7px;">'+a.status+'</span>'
+                        +'</div>'
+                        +'<div class="agent-load">'+a.sessions+'/'+a.max+' sessions</div>'
+                        +'<div class="agent-bar-wrap"><div class="'+bc+'" style="width:'+pct+'%"></div></div>'
+                    +'</div>';
+                list.appendChild(d);
             });
         }
 
-        function selectTicket(id) {
+        /* ── SWITCH SESSION ── */
+        function switchSession(id){
             activeId = id;
-            var t = TICKETS.find(function (x) { return x.id === id; });
-            if (!t) return;
+            sessEnded = false; idleShown = false;
+            idleSeconds = 0; sessSeconds = 0;
+            clearInterval(sessTimer); clearInterval(idleTimer);
+            document.getElementById('ssIdle').textContent = 'Active';
+            document.getElementById('ssIdle').style.color = '#4ade80';
+            document.getElementById('endBtn').classList.remove('pulsing');
+            document.getElementById('ssSessTime').textContent = '00:00';
 
-            renderTable();
+            var s = SESSIONS.find(function(x){ return x.id===id; });
+            document.getElementById('ssName').textContent  = s.name;
+            document.getElementById('ssRole').textContent  = s.role+' \u2014 '+s.email;
+            document.getElementById('ssId').textContent    = s.no;
+            document.getElementById('ssAgent').textContent = s.agent;
+            document.getElementById('ssCat').textContent   = s.cat;
+            document.getElementById('ssCsat').textContent  = 'Pending';
 
-            document.getElementById('detailNo').textContent   = 'Ticket #' + t.no;
-            document.getElementById('detailSubj').textContent = t.subj;
+            var sb = document.getElementById('ssStatus');
+            sb.className = 'badge '+(s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting');
+            sb.textContent = cap(s.status);
 
-            var db = document.getElementById('detailBadge');
-            db.className = badgeClass(t.status); db.textContent = badgeLabel(t.status);
-
-            var dsb = document.getElementById('detailStatusBadge');
-            dsb.className = badgeClass(t.status); dsb.textContent = badgeLabel(t.status);
-
-            document.getElementById('detailMetaTxt').textContent =
-                t.cat.charAt(0).toUpperCase() + t.cat.slice(1) + ' · ' + t.date + ', 2025';
-
-            var userRow = document.getElementById('detailUser');
-            userRow.style.display = 'flex';
-
-            var av = document.getElementById('detailAv');
-            av.textContent = t.av; av.style.background = t.avBg;
-
-            document.getElementById('detailName').textContent  = t.name;
-            document.getElementById('detailEmail').textContent = t.role;
-
-            renderMsgs(t);
-
-            document.getElementById('chatInputSec').style.display = 'block';
-            document.getElementById('replyInput').value = '';
-
-            var rb = document.getElementById('resolveBtn');
-            if (t.status === 'closed') {
-                rb.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> Reopen';
-                rb.onclick = reopenTicket;
-            } else {
-                rb.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg> Resolve';
-                rb.onclick = resolveTicket;
-            }
+            renderChat(s);
+            renderQueue();
+            restoreInput();
+            startTimers();
         }
 
-        function renderMsgs(t) {
+        /* ── CHAT ── */
+        function renderChat(s){
             var area = document.getElementById('chatMsgs');
             area.innerHTML = '';
-            t.msgs.forEach(function (m) {
-                var isAdmin = m.from === 'admin';
-                var d = document.createElement('div');
-                d.className = 'cm' + (isAdmin ? ' cm-admin' : '');
-                d.innerHTML =
-                    '<div class="cm-av" style="background:' + m.avBg + ';' + (isAdmin ? 'color:#555;' : '') + '">' + m.av + '</div>'
-                    + '<div class="cm-body"><div class="cm-bub' + (m.resolved ? ' resolved' : '') + '">' + m.text + '</div>'
-                    + '<div class="cm-time">' + m.time + '</div></div>';
-                area.appendChild(d);
-            });
+            addSys('Session started \u2014 '+s.name+' connected');
+            s.msgs.forEach(function(m){ addBubble(m.f, m.t, m.time, false, s); });
             area.scrollTop = area.scrollHeight;
         }
 
-        function sendReply() {
-            var input = document.getElementById('replyInput');
-            var text  = input.value.trim();
-            if (!text || activeId === null) return;
-
-            var t = TICKETS.find(function (x) { return x.id === activeId; });
-            if (!t) return;
-
-            var ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            t.msgs.push({ from: 'admin', av: 'JC', avBg: '#e8e8e8', text: text, time: 'Today, ' + ts, resolved: false });
-            renderMsgs(t);
-            input.value = '';
-            input.disabled = true;
-
-            fetch('/Admin/HelpCenterReply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticketId: activeId, message: text })
-            })
-            .catch(function () { return { success: true }; })
-            .finally(function () { input.disabled = false; input.focus(); });
+        function addSys(html){
+            var area = document.getElementById('chatMsgs');
+            var d = document.createElement('div');
+            d.className = 'sys-row'; d.innerHTML = '<span>'+html+'</span>';
+            area.appendChild(d);
         }
 
-        function resolveTicket() {
-            if (activeId === null) return;
-            fetch('/Admin/HelpCenterResolve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticketId: activeId })
-            })
-            .catch(function () { return {}; })
-            .then(function () {
-                var t = TICKETS.find(function (x) { return x.id === activeId; });
-                t.status = 'closed';
-                var now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                t.msgs.push({ from: 'admin', av: 'JC', avBg: '#e8e8e8',
-                    text: 'This ticket has been marked as <strong>resolved</strong>. Thank you for contacting Next Horizon!',
-                    time: 'Today, ' + now, resolved: true });
-                renderMsgs(t);
-                selectTicket(activeId);
-                renderTable();
-            });
-        }
+        function addBubble(from, text, ts, scroll, s){
+            var area = document.getElementById('chatMsgs');
+            s = s || SESSIONS.find(function(x){ return x.id===activeId; });
+            if(!s) return;
 
-        function reopenTicket() {
-            if (activeId === null) return;
-            fetch('/Admin/HelpCenterReopen', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticketId: activeId })
-            })
-            .catch(function () { return {}; })
-            .then(function () {
-                var t = TICKETS.find(function (x) { return x.id === activeId; });
-                t.status = 'open';
-                var now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                t.msgs.push({ from: 'admin', av: 'JC', avBg: '#e8e8e8',
-                    text: 'This ticket has been reopened. Our team will follow up shortly.',
-                    time: 'Today, ' + now, resolved: false });
-                renderMsgs(t);
-                selectTicket(activeId);
-                renderTable();
-            });
-        }
-
-        function setTab(el) {
-            document.querySelectorAll('.hc-tab').forEach(function (t) { t.classList.remove('active'); });
-            el.classList.add('active');
-            statusTab = el.getAttribute('data-filter');
-            applyFilters();
-        }
-
-        function setCat(el) {
-            document.querySelectorAll('.hc-filter').forEach(function (b) { b.classList.remove('active'); });
-            el.classList.add('active');
-            catFilter = el.getAttribute('data-cat');
-            applyFilters();
-        }
-
-        function applyFilters() { renderTable(); }
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                var s = document.getElementById('searchInput');
-                if (s && s.value) { s.value = ''; applyFilters(); }
+            if(from==='sys'||from==='end'){
+                var d = document.createElement('div');
+                d.className = 'cm';
+                d.innerHTML = '<div style="flex:1"><div class="bubble '+(from==='end'?'bub-end':'bub-sys')+'">'+text+'</div></div>';
+                area.appendChild(d);
+                if(scroll) area.scrollTop = area.scrollHeight;
+                return;
             }
-        });
+            if(from==='note'){
+                var d = document.createElement('div');
+                d.className = 'cm';
+                d.innerHTML = '<div style="flex:1"><div class="bubble bub-note">&#128274; Internal note: '+text+'</div></div>';
+                area.appendChild(d);
+                if(scroll) area.scrollTop = area.scrollHeight;
+                return;
+            }
 
-        renderTable();
+            var isAgt = from==='agt';
+            var d = document.createElement('div');
+            d.className = 'cm'+(isAgt?' r':'');
+            d.innerHTML =
+                '<div class="cm-av" style="background:'+(isAgt?'#1a1a1a':s.bg)+'">'+(isAgt?'JC':s.av)+'</div>'
+                +'<div class="cm-wrap">'
+                    +'<div class="cm-sender">'+(isAgt?'You (Agent)':s.name)+'</div>'
+                    +'<div class="bubble '+(isAgt?'bub-agt':'bub-cust')+'">'+text+'</div>'
+                    +'<div class="cm-time">'+(ts||nowTime())+'</div>'
+                +'</div>';
+            area.appendChild(d);
+            if(scroll) area.scrollTop = area.scrollHeight;
+        }
+
+        function sendMsg(){
+            var f = document.getElementById('chatField');
+            if(!f||sessEnded) return;
+            var txt = f.value.trim(); if(!txt) return;
+            f.value = '';
+            var s = SESSIONS.find(function(x){ return x.id===activeId; });
+            if(!s) return;
+            s.msgs.push({f:'agt',t:txt,time:nowTime()});
+            addBubble('agt', txt, nowTime(), true);
+            resetIdle();
+
+            fetch('/Admin/QueueSend', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({sessionId: activeId, message: txt, isNote: false})
+            }).catch(function(){});
+
+            simulateCustomerReply();
+        }
+
+        function simulateCustomerReply(){
+            var ind = document.getElementById('typingInd');
+            ind.classList.add('show');
+            setTimeout(function(){
+                ind.classList.remove('show');
+                var s = SESSIONS.find(function(x){ return x.id===activeId; });
+                if(!s||sessEnded) return;
+                var replies = ["Thank you for the update!","Okay, I'll wait for your response.","Got it, appreciate your help!","Understood, thank you so much!"];
+                var r = replies[Math.floor(Math.random()*replies.length)];
+                s.msgs.push({f:'cust',t:r,time:nowTime()});
+                addBubble('cust', r, nowTime(), true);
+                resetIdle();
+            }, 1800+Math.random()*1200);
+        }
+
+        function useCanned(sel){
+            var v = sel.value; sel.value='';
+            if(!v) return;
+            var f = document.getElementById('chatField');
+            if(f){ f.value=v; f.focus(); }
+        }
+
+        function toggleNote(){
+            noteVisible = !noteVisible;
+            document.getElementById('noteBar').classList.toggle('show', noteVisible);
+        }
+
+        function addNote(inp){
+            var txt = inp.value.trim(); if(!txt) return;
+            inp.value = '';
+            addBubble('note', txt, '', true);
+            noteVisible = false;
+            document.getElementById('noteBar').classList.remove('show');
+        }
+
+        /* ── TIMERS ── */
+        function startTimers(){
+            sessTimer = setInterval(function(){
+                sessSeconds++;
+                document.getElementById('ssSessTime').textContent = fmt(sessSeconds);
+                SESSIONS.forEach(function(s){ s.waitSec++; });
+                renderQueue();
+            }, 1000);
+
+            idleTimer = setInterval(function(){
+                idleSeconds++;
+                var el = document.getElementById('ssIdle');
+                if(idleSeconds < 60){
+                    el.textContent='Active'; el.style.color='#4ade80';
+                } else if(idleSeconds < IDLE_LIMIT){
+                    el.textContent=Math.floor(idleSeconds/60)+'m idle'; el.style.color='#854F0B';
+                } else {
+                    el.textContent=Math.floor(idleSeconds/60)+'m '+idleSeconds%60+'s idle'; el.style.color='#791F1F';
+                    if(!idleShown){ idleShown=true; document.getElementById('endBtn').classList.add('pulsing'); }
+                }
+            }, 1000);
+        }
+
+        function resetIdle(){
+            idleSeconds=0; idleShown=false;
+            document.getElementById('ssIdle').textContent='Active';
+            document.getElementById('ssIdle').style.color='#4ade80';
+            document.getElementById('endBtn').classList.remove('pulsing');
+        }
+
+        /* ── ACTIONS ── */
+        function endSession(){
+            if(sessEnded||!activeId) return;
+            sessEnded=true;
+            clearInterval(sessTimer); clearInterval(idleTimer);
+            var s = SESSIONS.find(function(x){ return x.id===activeId; });
+            addBubble('end','Session ended at '+nowTime()+'. '+s.name+' has been notified and a transcript sent via email.','',true);
+            document.getElementById('ssStatus').className='badge b-done';
+            document.getElementById('ssStatus').textContent='Ended';
+            document.getElementById('ssCsat').textContent='Survey sent';
+            document.getElementById('inputSection').innerHTML='<div class="ended-bar">Session ended \u2014 select another session from the queue.</div>';
+
+            fetch('/Admin/QueueEndSession', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({sessionId: activeId, reason:'agent_ended'})
+            }).catch(function(){});
+
+            SESSIONS = SESSIONS.filter(function(x){ return x.id!==activeId; });
+            renderQueue();
+        }
+
+        function resolveSession(){
+            if(!activeId) return;
+            var s = SESSIONS.find(function(x){ return x.id===activeId; });
+            if(!s) return;
+            addBubble('sys','Session resolved at '+nowTime()+'. CSAT survey sent to '+s.name+'.','',true);
+            document.getElementById('ssStatus').className='badge b-resolved';
+            document.getElementById('ssStatus').textContent='Resolved';
+            document.getElementById('ssCsat').textContent='Survey sent';
+
+            fetch('/Admin/QueueResolve', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({sessionId: activeId})
+            }).catch(function(){});
+
+            setTimeout(function(){ endSession(); }, 500);
+        }
+
+        function assignSession(id){
+            var s = SESSIONS.find(function(x){ return x.id===id; });
+            var avail = AGENTS.find(function(a){ return (a.status==='online'||a.status==='busy')&&a.sessions<a.max; });
+            if(!avail){ alert('No available agents. All agents are at capacity.'); return; }
+            s.agent = avail.name; s.status='active';
+            avail.sessions++;
+            fetch('/Admin/QueueAssign', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({sessionId:id, agentName:avail.name})
+            }).catch(function(){});
+            renderQueue(); renderAgents();
+            switchSession(id);
+        }
+
+        function autoAssign(){
+            var waiting = SESSIONS.filter(function(s){ return s.status==='waiting'; });
+            var count=0;
+            waiting.forEach(function(s){
+                var avail=AGENTS.find(function(a){return (a.status==='online'||a.status==='busy')&&a.sessions<a.max;});
+                if(avail){s.agent=avail.name;s.status='active';avail.sessions++;count++;}
+            });
+            fetch('/Admin/QueueAutoAssign',{method:'POST'}).catch(function(){});
+            renderQueue(); renderAgents();
+            if(count>0 && activeId) addSys(count+' session(s) auto-assigned to available agents.');
+        }
+
+        function doTransfer(){
+            addBubble('sys','Transfer request sent. Waiting for an available agent...','',true);
+        }
+
+        function restoreInput(){
+            document.getElementById('inputSection').innerHTML =
+                '<div class="inp-bar">'
+                +'<div class="inp-row">'
+                    +'<input class="inp-field" id="chatField" placeholder="Type a message to the customer..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendMsg();}"/>'
+                    +'<button class="inp-send" onclick="sendMsg()"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+                +'</div>'
+                +'<div class="inp-actions">'
+                    +'<button class="inp-act" onclick="doTransfer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg> Transfer</button>'
+                    +'<button class="inp-act endsess" id="endBtn" onclick="endSession()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> End Session</button>'
+                    +'<button class="inp-act resolve" onclick="resolveSession()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg> Resolve</button>'
+                +'</div>'
+            +'</div>';
+        }
+
+        renderQueue();
+        renderAgents();
     </script>
 }
