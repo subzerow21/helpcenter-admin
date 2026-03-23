@@ -40,6 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) {
         searchInput.addEventListener('keyup', filterAdminTable);
     }
+
+    // --- 4. HASH-BASED TAB NAVIGATION ---
+    var hash = window.location.hash;
+    if (hash) {
+        var tabTriggerEl = document.querySelector(`[data-bs-target="${hash}"]`);
+        if (tabTriggerEl) {
+            var tab = new bootstrap.Tab(tabTriggerEl);
+            tab.show();
+        }
+    }
 });
 
 /**
@@ -182,32 +192,17 @@ function requestPasswordChange() {
  * 4. PERMISSIONS / ADMINISTRATIVE ACCESS
  */
 
-// --- CUSTOM DROPDOWN TOGGLE LOGIC ---
-
 function updateRoleUI(roleName, roleValue) {
     document.getElementById('selectedRoleText').innerText = roleName;
     document.getElementById('accessLevelInput').value = roleValue;
-
-    const supportSection = document.getElementById('supportAssignmentSection');
-
-    // Toggle support assignment visibility if "Support Agent" is chosen
-    if (roleName === "Support Agent") {
-        supportSection.classList.remove('d-none');
-    } else {
-        supportSection.classList.add('d-none');
-        updateSupportUI('-- Select Assignment --', ''); // Reset child dropdown
-    }
-}
-
-function updateSupportUI(supportName, supportValue) {
-    document.getElementById('selectedSupportText').innerText = supportName;
-    document.getElementById('supportType').value = supportValue;
+    // Support Assignment visibility logic removed as requested
 }
 
 // Toggle for the credential override section
 function toggleCredentialOverride() {
     const section = document.getElementById('credentialOverrideSection');
     const btn = document.getElementById('overrideToggleBtn');
+    const isEditAction = document.getElementById('modModalLabel').innerText.includes("Edit");
 
     if (section.classList.contains('d-none')) {
         section.classList.remove('d-none');
@@ -215,7 +210,11 @@ function toggleCredentialOverride() {
         btn.classList.replace('btn-outline-dark', 'btn-outline-danger');
     } else {
         section.classList.add('d-none');
-        btn.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Update User\'s Login Credentials';
+
+        // Reset label based on whether we are adding or editing
+        const label = isEditAction ? "Update User's Login Credentials" : "Manually assign login credentials";
+        btn.innerHTML = `<i class="bi bi-shield-lock me-1"></i> ${label}`;
+
         btn.classList.replace('btn-outline-danger', 'btn-outline-dark');
         document.getElementById('overrideUsername').value = "";
         document.getElementById('overridePassword').value = "";
@@ -224,7 +223,10 @@ function toggleCredentialOverride() {
 
 function openInviteModal() {
     const modalEl = document.getElementById('inviteModModal');
+    const btn = document.getElementById('overrideToggleBtn');
+
     document.getElementById('modModalLabel').innerText = "Add New User";
+    btn.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Manually assign login credentials';
 
     // Reset standard inputs
     document.getElementById('modName').value = "";
@@ -233,17 +235,23 @@ function openInviteModal() {
 
     // Reset Custom Dropdowns
     updateRoleUI('Moderator', 'mod');
-    updateSupportUI('-- Select Assignment --', '');
 
     const section = document.getElementById('credentialOverrideSection');
-    if (!section.classList.contains('d-none')) toggleCredentialOverride();
+    if (!section.classList.contains('d-none')) {
+        section.classList.add('d-none');
+        btn.classList.replace('btn-outline-danger', 'btn-outline-dark');
+    }
 
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
-function editModerator(name, email, role, phone, supportType = "") {
+function editModerator(name, email, role, phone) {
     const modalEl = document.getElementById('inviteModModal');
+    const btn = document.getElementById('overrideToggleBtn');
+
     document.getElementById('modModalLabel').innerText = "Edit Permissions: " + name;
+    btn.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Update User\'s Login Credentials';
+
     document.getElementById('modName').value = name;
     document.getElementById('modEmail').value = email;
     document.getElementById('modPhone').value = phone || "";
@@ -251,13 +259,11 @@ function editModerator(name, email, role, phone, supportType = "") {
     // Update Custom Role UI
     updateRoleUI(role, role.toLowerCase());
 
-    // Update Custom Support UI if applicable
-    if (role === "Support Agent" && supportType) {
-        updateSupportUI(supportType, supportType);
-    }
-
     const section = document.getElementById('credentialOverrideSection');
-    if (!section.classList.contains('d-none')) toggleCredentialOverride();
+    if (!section.classList.contains('d-none')) {
+        section.classList.add('d-none');
+        btn.classList.replace('btn-outline-danger', 'btn-outline-dark');
+    }
 
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
@@ -266,7 +272,6 @@ function processModerator() {
     const name = document.getElementById('modName').value;
     const email = document.getElementById('modEmail').value;
     const role = document.getElementById('selectedRoleText').innerText;
-    const supportType = document.getElementById('supportType').value;
     const isOverriding = !document.getElementById('credentialOverrideSection').classList.contains('d-none');
 
     if (!name || !email) {
@@ -274,14 +279,7 @@ function processModerator() {
         return;
     }
 
-    // Mandatory Field Check for Support Agents
-    if (role === "Support Agent" && !supportType) {
-        showActionToast("Error: Please assign a Support Type (Consumer or Seller).");
-        return;
-    }
-
     let confirmationMsg = `Apply ${role} settings for ${name}?`;
-    if (role === "Support Agent") confirmationMsg += ` (Assigned to: ${supportType})`;
     if (isOverriding) confirmationMsg += ` [Login Credentials Updated]`;
 
     openConfirmModal(
@@ -291,16 +289,8 @@ function processModerator() {
             hideModal();
             hideModal('inviteModModal');
 
-            // Logic to add to table with current date
-            const today = new Date().toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric'
-            });
-
-            addAuditEntry("System Admin", "Moderator Access Update", `${name} (${role}${supportType ? ' - ' + supportType : ''})`);
-            showActionToast("Permissions updated successfully.");
-
-            // Note: In a real app, you would append the new HTML row here 
-            // including the <td>${today}</td> column.
+            addAuditEntry("System Admin", "Moderator Access Update", `${name} (${role})`);
+            showActionToast("Saved successfully.");
         },
         'bi-person-gear', 'text-dark'
     );
@@ -322,7 +312,7 @@ function requestRemoveAccess(name, rowId) {
             }
             hideModal();
         },
-        'bi-person-x', 'text-danger'
+        'bi-trash', 'text-danger' // Updated to trash icon per your request
     );
 }
 
@@ -338,17 +328,3 @@ function reinstateAccess(name) {
         'bi-arrow-counterclockwise', 'text-dark'
     );
 }
-
-
-document.addEventListener("DOMContentLoaded", function () {
-    // Check if URL has a hash (like #tab-audit)
-    var hash = window.location.hash;
-    if (hash) {
-        // Find the tab button that targets this ID
-        var tabTrigger = document.querySelector(`[data-bs-target="${hash}"]`);
-        if (tabTrigger) {
-            var tab = new bootstrap.Tab(tabTrigger);
-            tab.show();
-        }
-    }
-});

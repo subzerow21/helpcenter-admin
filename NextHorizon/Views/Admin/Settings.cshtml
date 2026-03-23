@@ -87,7 +87,7 @@
                                     <input type="text" id="adminSearchInput" class="form-control bg-light border-start-0 rounded-end-pill" placeholder="Search...">
                                 </div>
                                 <button class="btn btn-sm btn-dark rounded-pill px-3 btn-add-user" onclick="openInviteModal()">
-                                    <i class="bi bi-person-plus"></i> <span class="d-none d-md-inline">Add User</span>
+                                    <i class="bi bi-person-plus"></i> <span class="d-none d-md-inline"> </span>
                                 </button>
                             </div>
                         </div>
@@ -128,9 +128,10 @@
                                                             onclick="editModerator('Sarah Chen', 'sarah.c@nexthorizon.com', 'Moderator', '+1 234 567 890')">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
+                                                    @* Updated to Trash Icon *@
                                                     <button class="btn btn-sm btn-outline-danger border-0"
                                                             onclick="requestRemoveAccess('Sarah Chen', 'modRow1')">
-                                                        <i class="bi bi-slash-circle"></i>
+                                                        <i class="bi bi-trash"></i>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -250,32 +251,17 @@
                             <input type="hidden" id="accessLevelInput" value="">
                         </div>
                     </div>
-
-                    <div id="supportAssignmentSection" class="mb-3 d-none">
-                        <label class="small fw-bold mb-1">Support Assignment <span class="text-danger">*</span></label>
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle-custom shadow-none w-100" type="button" id="supportDropdown" data-bs-toggle="dropdown">
-                                <span id="selectedSupportText">-- Select Assignment --</span>
-                                <i class="bi bi-chevron-down small text-muted"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-custom shadow-lg w-100">
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateSupportUI('Consumer Support', 'Consumer')">Consumer Support</a></li>
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateSupportUI('Seller Support', 'Seller')">Seller Support</a></li>
-                                <li><a class="dropdown-item dropdown-item-custom" onclick="updateSupportUI('General (Both)', 'Both')">General (Both)</a></li>
-                            </ul>
-                            <input type="hidden" id="supportType" value="">
-                        </div>
-                        <div class="x-small text-muted mt-2">Mandatory for Support Agent roles.</div>
-                    </div>
+                    @* Support Assignment Section Removed *@
                 </div>
 
                 <div class="mt-3">
+                    @* This button label and visibility now handled by JS *@
                     <button type="button" id="overrideToggleBtn" class="btn btn-sm btn-outline-dark rounded-pill w-100 mb-2" onclick="toggleCredentialOverride()">
-                        <i class="bi bi-shield-lock me-1"></i> Update User's Login Credentials
+                        <i class="bi bi-shield-lock me-1"></i> <span id="overrideBtnText">Update User's Login Credentials</span>
                     </button>
 
                     <div id="credentialOverrideSection" class="d-none bg-light p-3 rounded-3 border border-warning-subtle">
-                        <p class="x-small text-muted mb-3"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Warning: Overriding credentials will change the user's login access immediately.</p>
+                        <p class="x-small text-muted mb-3"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Warning: Overriding credentials will change access immediately.</p>
                         <div class="mb-2">
                             <label class="x-small fw-bold mb-1">New Username</label>
                             <input type="text" id="overrideUsername" class="form-control form-control-sm rounded-2">
@@ -294,6 +280,7 @@
         </div>
     </div>
 </div>
+
 
 <div class="modal fade" id="confirmActionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
