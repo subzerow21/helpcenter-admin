@@ -1,8 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NextHorizon.Models.Admin_Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Data.SqlClient;
 using NextHorizon.Services.AdminServices;
+using System.Data;
+using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using NextHorizon.Models;
 using System.Linq;
 
 namespace NextHorizon.Controllers
@@ -10,6 +15,15 @@ namespace NextHorizon.Controllers
     public class AdminController : Controller
     {
         private readonly DashboardService _dashboardService = new DashboardService();
+        private readonly IConfiguration _configuration;
+        private readonly string _connectionString;
+
+        // Constructor to inject configuration
+        public AdminController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+            _connectionString = _configuration.GetConnectionString("DefaultConnection");
+        }
 
         // Helper method to check if user is logged in
         private bool IsUserLoggedIn()
@@ -211,6 +225,142 @@ namespace NextHorizon.Controllers
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetConsumers(string viewType = "active")
+        {
+            try
+            {
+                var consumers = new List<ConsumerViewModel>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetConsumers", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ViewType", viewType);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                if (viewType == "active")
+                                {
+                                    consumers.Add(new ConsumerViewModel
+                                    {
+                                        ConsumerId = reader.GetInt32(reader.GetOrdinal("consumer_id")),
+                                        FullName = reader.GetString(reader.GetOrdinal("full_name")),
+                                        PhoneNumber = reader.GetString(reader.GetOrdinal("phone_number")),
+                                        Email = reader.GetString(reader.GetOrdinal("email")),
+                                        Address = reader.GetString(reader.GetOrdinal("address")),
+                                        DateJoined = reader.GetString(reader.GetOrdinal("date_joined"))
+                                    });
+                                }
+                                else
+                                {
+                                    consumers.Add(new ConsumerViewModel
+                                    {
+                                        ConsumerId = reader.GetInt32(reader.GetOrdinal("consumer_id")),
+                                        FullName = reader.GetString(reader.GetOrdinal("full_name")),
+                                        PhoneNumber = reader.GetString(reader.GetOrdinal("phone_number")),
+                                        Email = reader.GetString(reader.GetOrdinal("email")),
+                                        Address = reader.GetString(reader.GetOrdinal("address"))
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return Json(consumers);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteConsumer([FromBody] DeleteConsumerRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_DeleteConsumer", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ConsumerId", request.ConsumerId);
+                        command.Parameters.AddWithValue("@StaffId", staffId);
+                        command.Parameters.AddWithValue("@AdminName", adminName);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Delete failed" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RestoreConsumer([FromBody] RestoreConsumerRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_RestoreConsumer", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ConsumerId", request.ConsumerId);
+                        command.Parameters.AddWithValue("@StaffId", staffId);
+                        command.Parameters.AddWithValue("@AdminName", adminName);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Restore failed" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         // Sellers - Accessible by SuperAdmin, Admin, and Support Agent
         public IActionResult Sellers()
         {
@@ -338,5 +488,16 @@ namespace NextHorizon.Controllers
             // Redirect to login page
             return RedirectToAction("AdminLogin", "Login");
         }
+    }
+
+    // Request Models
+    public class DeleteConsumerRequest
+    {
+        public int ConsumerId { get; set; }
+    }
+
+    public class RestoreConsumerRequest
+    {
+        public int ConsumerId { get; set; }
     }
 }

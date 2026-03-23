@@ -1,37 +1,126 @@
-﻿
-document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.querySelector('.search-container input');
+﻿// Global variables
+let currentViewType = 'active';
 
+// Load consumers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadConsumers('active');
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-        searchInput.addEventListener('keyup', function () {
-            const filter = this.value.toLowerCase();
-            // Target the rows in the active view table
-            const rows = document.querySelectorAll('#view-active tbody tr');
-
-            rows.forEach(row => {
-                // Mapping the data based on your table structure:
-                // Column 0: Name
-                // Column 1: Number
-                // Column 2: Email
-                // Column 3: Address
-                const name = row.cells[0].textContent.toLowerCase();
-                const number = row.cells[1].textContent.toLowerCase();
-                const email = row.cells[2].textContent.toLowerCase();
-                const address = row.cells[3].textContent.toLowerCase();
-
-                // If any of these columns contain the search term, show the row
-                if (name.includes(filter) ||
-                    number.includes(filter) ||
-                    email.includes(filter) ||
-                    address.includes(filter)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
-            });
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = this.value;
+            filterConsumers(searchTerm);
         });
     }
 });
+
+// Load consumers from server
+async function loadConsumers(viewType) {
+    currentViewType = viewType;
+    
+    try {
+        const response = await fetch(`/Admin/GetConsumers?viewType=${viewType}`);
+        const data = await response.json();
+        
+        if (viewType === 'active') {
+            renderActiveConsumers(data);
+        } else {
+            renderArchivedConsumers(data);
+        }
+    } catch (error) {
+        console.error('Error loading consumers:', error);
+        triggerToast('Error loading consumers', 'text-danger', 'bi-exclamation-triangle-fill');
+    }
+}
+
+// Render active consumers table
+function renderActiveConsumers(consumers) {
+    const tbody = document.getElementById('activeConsumersBody');
+    if (!tbody) return;
+    
+    if (!consumers || consumers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No active consumers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    consumers.forEach(consumer => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="border-start text-secondary">${escapeHtml(consumer.fullName)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.phoneNumber)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.email)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.address)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.dateJoined)}</td>
+            <td class="border-start">
+                <div class="action-icons">
+                    <i class="bi bi-pencil me-3 text-primary" onclick="openEditModal(${consumer.consumerId})" style="cursor: pointer;"></i>
+                    <i class="bi bi-trash text-danger" onclick="openConfirmModal('delete', '${escapeHtml(consumer.fullName)}', ${consumer.consumerId})" style="cursor: pointer;"></i>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Render archived consumers table
+function renderArchivedConsumers(consumers) {
+    const tbody = document.getElementById('archivedConsumersBody');
+    if (!tbody) return;
+    
+    if (!consumers || consumers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No archived consumers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    consumers.forEach(consumer => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="border-start text-secondary">${escapeHtml(consumer.fullName)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.phoneNumber)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.email)}</td>
+            <td class="border-start text-secondary">${escapeHtml(consumer.address)}</td>
+            <td class="border-start">
+                <button class="btn btn-sm btn-outline-dark rounded-pill py-0 px-3"
+                        onclick="openConfirmModal('restore', '${escapeHtml(consumer.fullName)}', ${consumer.consumerId})" 
+                        style="font-size: 0.7rem;">
+                    Restore
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Filter consumers on current view
+function filterConsumers(searchTerm) {
+    const viewType = currentViewType;
+    const tbody = document.getElementById(viewType === 'active' ? 'activeConsumersBody' : 'archivedConsumersBody');
+    if (!tbody) return;
+    
+    const rows = tbody.getElementsByTagName('tr');
+    const searchLower = searchTerm.toLowerCase();
+    
+    for (let row of rows) {
+        if (row.cells.length === 0) continue;
+        
+        const name = row.cells[0]?.textContent.toLowerCase() || '';
+        const number = row.cells[1]?.textContent.toLowerCase() || '';
+        const email = row.cells[2]?.textContent.toLowerCase() || '';
+        const address = row.cells[3]?.textContent.toLowerCase() || '';
+        
+        if (name.includes(searchLower) || number.includes(searchLower) || 
+            email.includes(searchLower) || address.includes(searchLower)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
 
 // Tab Switching
 function switchUserTab(viewName) {
@@ -47,6 +136,7 @@ function switchUserTab(viewName) {
         activeTabBtn.classList.remove('text-muted');
         archivedTabBtn.classList.add('text-muted');
         archivedTabBtn.classList.remove('bg-dark', 'text-white', 'fw-bold');
+        loadConsumers('active');
     } else {
         archivedView.classList.remove('d-none');
         activeView.classList.add('d-none');
@@ -54,32 +144,44 @@ function switchUserTab(viewName) {
         archivedTabBtn.classList.remove('text-muted');
         activeTabBtn.classList.add('text-muted');
         activeTabBtn.classList.remove('bg-dark', 'text-white', 'fw-bold');
+        loadConsumers('archived');
     }
+    
+    // Clear search input
+    document.getElementById('searchInput').value = '';
 }
 
 // Toast Helper
 function triggerToast(msg, iconClass = "text-success", iconType = "bi-check-circle-fill") {
-    document.getElementById('toastMessage').innerText = msg;
-    const icon = document.getElementById('toastIcon');
-    icon.className = `bi ${iconType} ${iconClass} fs-5`;
+    const toastMessage = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+    
+    if (toastMessage) toastMessage.innerText = msg;
+    if (toastIcon) {
+        toastIcon.className = `bi ${iconType} ${iconClass} fs-5`;
+    }
 
     const toastEl = document.getElementById('actionToast');
-    const toast = new bootstrap.Toast(toastEl);
-    toast.show();
+    if (toastEl) {
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
 }
 
-// Modal Handlers
-function openEditModal(name) {
-    document.getElementById('editName').value = name;
-    new bootstrap.Modal(document.getElementById('editModal')).show();
+// Open Edit Modal (implement later)
+function openEditModal(consumerId) {
+    // Fetch consumer details and populate modal
+    triggerToast('Edit functionality coming soon', 'text-warning', 'bi-exclamation-triangle-fill');
 }
 
+// Save Changes (implement later)
 function saveChanges() {
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
     triggerToast("Changes saved successfully!");
 }
 
-function openConfirmModal(type, name) {
+// Open Confirm Modal
+function openConfirmModal(type, name, consumerId) {
     const title = document.getElementById('confirmTitle');
     const msg = document.getElementById('confirmMessage');
     const icon = document.getElementById('confirmIcon');
@@ -91,8 +193,7 @@ function openConfirmModal(type, name) {
         icon.innerHTML = '<i class="bi bi-trash text-danger" style="font-size: 3rem;"></i>';
         btn.className = "btn btn-danger rounded-pill px-4";
         btn.onclick = () => {
-            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-            triggerToast(`${name} deleted!`, "text-danger", "bi-archive-fill");
+            deleteConsumer(consumerId, name);
         };
     } else {
         title.innerText = "Restore User?";
@@ -100,9 +201,62 @@ function openConfirmModal(type, name) {
         icon.innerHTML = '<i class="bi bi-arrow-counterclockwise text-success" style="font-size: 3rem;"></i>';
         btn.className = "btn btn-success rounded-pill px-4";
         btn.onclick = () => {
-            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-            triggerToast(`${name} restored!`);
+            restoreConsumer(consumerId, name);
         };
     }
     new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// Delete consumer function
+async function deleteConsumer(consumerId, name) {
+    try {
+        const response = await fetch('/Admin/DeleteConsumer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ consumerId: consumerId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            triggerToast(`${name} moved to archive!`, "text-danger", "bi-archive-fill");
+            loadConsumers(currentViewType);
+        } else {
+            triggerToast(data.message, "text-danger", "bi-exclamation-triangle-fill");
+        }
+    } catch (error) {
+        triggerToast('Error deleting consumer', "text-danger", "bi-exclamation-triangle-fill");
+    }
+}
+
+// Restore consumer function
+async function restoreConsumer(consumerId, name) {
+    try {
+        const response = await fetch('/Admin/RestoreConsumer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ consumerId: consumerId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            triggerToast(`${name} restored!`, "text-success", "bi-check-circle-fill");
+            loadConsumers(currentViewType);
+        } else {
+            triggerToast(data.message, "text-danger", "bi-exclamation-triangle-fill");
+        }
+    } catch (error) {
+        triggerToast('Error restoring consumer', "text-danger", "bi-exclamation-triangle-fill");
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
