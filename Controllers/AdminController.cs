@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NextHorizon.Models.Admin_Models;
 using NextHorizon.Services.AdminServices;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,12 @@ namespace NextHorizon.Controllers
     public class AdminController : Controller
     {
         private readonly DashboardService _dashboardService = new DashboardService();
+        private readonly AppDbContext _context;
+
+        public AdminController(AppDbContext context)
+        {
+            _context = context;
+        }
 
         public IActionResult Dashboard()
         {
@@ -85,6 +92,8 @@ namespace NextHorizon.Controllers
 
         public IActionResult HelpCenter()
         {
+            var faqs = _context.FAQs.ToList();
+
             var viewModel = new HelpCenterV2ViewModel
             {
                 Stats = new QueueDashboardStatsViewModel
@@ -156,15 +165,7 @@ namespace NextHorizon.Controllers
                     new AgentStatusViewModel { Name="K. Bautista", Initials="KB", Status="away",    ActiveSessions=0, MaxSessions=3 },
                     new AgentStatusViewModel { Name="L. Torres",   Initials="LT", Status="offline", ActiveSessions=0, MaxSessions=3 }
                 },
-                Faqs = new List<FaqItem>
-                {
-                    new FaqItem { Id=1, Question="How do I track my order?",                 Answer="Go to My Orders in your account dashboard. Click the order and select Track Shipment. You'll get a real-time update and a tracking link via email.",                        Category="orders"   },
-                    new FaqItem { Id=2, Question="What is your return policy?",              Answer="We offer a 30-day hassle-free return policy. Items must be unused and in original packaging. Initiate returns from My Orders → Request Return.",                           Category="returns"  },
-                    new FaqItem { Id=3, Question="Do you offer free shipping?",              Answer="Yes! Free standard shipping on all orders over ₱1,500. Express delivery (1–2 days) is available for ₱150. Same-day delivery available in Metro Manila.",                   Category="shipping" },
-                    new FaqItem { Id=4, Question="My GCash payment failed but was debited.", Answer="Please provide your transaction reference number. Our finance team will verify within 24 hours and your order will not be cancelled in the meantime.",                      Category="payments" },
-                    new FaqItem { Id=5, Question="How do I cancel my order?",                Answer="Orders can be cancelled within 1 hour of placing if not yet processed. Go to My Orders → Cancel Order. After processing, use our return flow.",                            Category="orders"   },
-                    new FaqItem { Id=6, Question="How long does delivery take?",             Answer="Standard: 3–5 business days. Express: 1–2 days. Same-day Metro Manila only (orders before 12 NN). You'll receive a tracking link once shipped.",                          Category="shipping" }
-                }
+                Faqs = faqs
             };
 
             return View(viewModel);
@@ -231,16 +232,28 @@ namespace NextHorizon.Controllers
             if (model.Answer.Length > 500)
                 return BadRequest(new { success = false, message = "Answer exceeds 500 characters." });
 
-            // TODO: Save to database
-            var newId = new Random().Next(100, 9999);
+            var faq = new FaqItem
+            {
+                Question = model.Question,
+                Answer = model.Answer,
+                Category = model.Category,
+                Status = model.Status,
+                UserType = model.UserType,
+                user_id = 1,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
+            _context.FAQs.Add(faq);
+            _context.SaveChanges();
 
             return Json(new
             {
                 success = true,
-                id = newId,
-                question = model.Question,
-                answer = model.Answer,
-                category = model.Category,
+                id = faq.Id,
+                question = faq.Question,
+                answer = faq.Answer,
+                category = faq.Category,
                 message = "FAQ added successfully."
             });
         }
@@ -251,7 +264,18 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0 || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Invalid request." });
 
-            // TODO: Update in database
+            var faq = _context.FAQs.Find(model.Id);
+            if (faq == null)
+                return NotFound(new { success = false, message = "FAQ not found." });
+
+            faq.Question = model.Question;
+            faq.Answer = model.Answer;
+            faq.Category = model.Category;
+            faq.Status = model.Status;
+            faq.UserType = model.UserType;
+            faq.UpdatedAt = DateTime.Now;
+
+            _context.SaveChanges();
 
             return Json(new { success = true, id = model.Id, message = "FAQ updated." });
         }
@@ -262,7 +286,12 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0)
                 return BadRequest(new { success = false });
 
-            // TODO: Delete from database
+            var faq = _context.FAQs.Find(model.Id);
+            if (faq == null)
+                return NotFound(new { success = false, message = "FAQ not found." });
+
+            _context.FAQs.Remove(faq);
+            _context.SaveChanges();
 
             return Json(new { success = true, id = model.Id, message = "FAQ deleted." });
         }

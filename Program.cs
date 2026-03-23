@@ -1,18 +1,19 @@
 using NextHorizon.Services;
+using NextHorizon.Models.Admin_Models;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add MVC
 builder.Services.AddControllersWithViews();
-
-// Your existing services
 builder.Services.AddScoped<OrderService>();
-
-// Antiforgery (needed for AJAX POST actions)
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "RequestVerificationToken";
 });
+
+// Connect to database
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -25,7 +26,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
-
 app.MapStaticAssets();
 
 app.MapControllerRoute(
