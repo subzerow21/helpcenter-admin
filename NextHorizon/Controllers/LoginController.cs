@@ -107,6 +107,7 @@ namespace NextHorizon.Controllers
                                         HttpContext.Session.SetInt32("UserId", Convert.ToInt32(reader["UserId"]));
                                         HttpContext.Session.SetString("Username", reader["Username"].ToString());
                                         HttpContext.Session.SetString("FullName", reader["FullName"].ToString());
+                                        HttpContext.Session.SetString("Email", reader["Email"].ToString()); 
                                         HttpContext.Session.SetString("UserType", userType);
 
                                         await LogAdminAction(

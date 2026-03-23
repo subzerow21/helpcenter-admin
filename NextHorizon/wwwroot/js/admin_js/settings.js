@@ -75,18 +75,31 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadActiveAdmins() {
     try {
         const response = await fetch('/Admin/GetActiveAdmins');
-        const admins = await response.json();
+        const data = await response.json();
         
         const tbody = document.getElementById('adminTableBody');
         if (!tbody) return;
         
-        if (admins.length === 0) {
+        // Check if data has error
+        if (data.error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+            return;
+        }
+        
+        // Check if data is an array
+        if (!Array.isArray(data)) {
+            console.error('Expected array but got:', data);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No active admins found</td></tr>';
+            return;
+        }
+        
+        if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No active admins found</td></tr>';
             return;
         }
         
         tbody.innerHTML = '';
-        admins.forEach(admin => {
+        data.forEach(admin => {
             const row = document.createElement('tr');
             row.className = 'admin-row';
             row.id = `adminRow_${admin.staffId}`;
@@ -112,7 +125,10 @@ async function loadActiveAdmins() {
         });
     } catch (error) {
         console.error('Error loading active admins:', error);
-        showToast('Error loading admins', true);
+        const tbody = document.getElementById('adminTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error loading active admins</td></tr>';
+        }
     }
 }
 
@@ -122,18 +138,31 @@ async function loadActiveAdmins() {
 async function loadRevokedAdmins() {
     try {
         const response = await fetch('/Admin/GetRevokedAdmins');
-        const admins = await response.json();
+        const data = await response.json();
         
         const tbody = document.getElementById('revokedTableBody');
         if (!tbody) return;
         
-        if (admins.length === 0) {
+        // Check if data has error
+        if (data.error) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Error: ${data.error}</td></tr>`;
+            return;
+        }
+        
+        // Check if data is an array
+        if (!Array.isArray(data)) {
+            console.error('Expected array but got:', data);
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No revoked admins found</td></tr>';
+            return;
+        }
+        
+        if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No revoked admins found</td></tr>';
             return;
         }
         
         tbody.innerHTML = '';
-        admins.forEach(admin => {
+        data.forEach(admin => {
             const row = document.createElement('tr');
             row.id = `revokedRow_${admin.staffId}`;
             row.innerHTML = `
@@ -154,9 +183,12 @@ async function loadRevokedAdmins() {
         });
     } catch (error) {
         console.error('Error loading revoked admins:', error);
-        showToast('Error loading revoked admins', true);
+        const tbody = document.getElementById('revokedTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Error loading revoked admins</td></tr>';
+        }
     }
-}
+}   
 
 /**
  * Load Audit Logs

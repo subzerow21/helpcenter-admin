@@ -1280,6 +1280,9 @@ namespace NextHorizon.Controllers
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
 
+            var unauthorized = RedirectIfUnauthorized(new[] { "Support Agent" });
+            if (unauthorized != null) return unauthorized;
+
             ViewBag.UserRole = GetCurrentUserRole();
             return View();
         }
@@ -1296,9 +1299,12 @@ namespace NextHorizon.Controllers
             var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin" });
             if (unauthorized != null) return unauthorized;
 
+            // Get from session (already stored during login)
             ViewBag.UserRole = GetCurrentUserRole();
             ViewBag.CurrentAdminName = HttpContext.Session.GetString("FullName");
-            ViewBag.CurrentAdminEmail = HttpContext.Session.GetString("Username") + "@nexthorizon.com";    
+            ViewBag.CurrentAdminEmail = HttpContext.Session.GetString("Email");
+            ViewBag.CurrentAdminUsername = HttpContext.Session.GetString("Username");
+            
             return View();
         }
 
