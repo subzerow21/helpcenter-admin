@@ -91,19 +91,19 @@
                 return null;
             }
 
-            // URL: /Admin/Dashboard - Accessible by all admin roles
-            public IActionResult Dashboard()
-            {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
+        // URL: /Admin/Dashboard - Accessible by all admin roles
+        public IActionResult Dashboard()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
 
-                var model = _dashboardService.GetHeroStats();
-                
-                // Pass user role to view for UI customization
-                ViewBag.UserRole = GetCurrentUserRole();
-                
-                return View(model);
-            }
+            var model = _dashboardService.GetHeroStats();
+            
+            // Pass user role to view for UI customization
+            ViewBag.UserRole = GetCurrentUserRole();
+            
+            return View(model);
+        }
 
             // URL: /Admin/Analytics - Accessible by SuperAdmin, Admin, and Finance Officer
             public async Task<IActionResult> Analytics()

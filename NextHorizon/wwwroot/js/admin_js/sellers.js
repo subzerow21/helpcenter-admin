@@ -394,16 +394,28 @@ function filterSellers(type) {
     switchSellerTab('active');
 
     setTimeout(() => {
-        const rows = document.querySelectorAll('#view-active tbody tr');
-        rows.forEach(row => {
-            if (type === 'all') {
-                row.style.display = '';
-            } else if (type === 'top') {
-                const salesCell = row.cells[4]?.innerText?.trim();
-                const sales     = parseFloat(salesCell?.replace(/[^0-9.]/g, '')) || 0;
+        const tbody = document.querySelector('#view-active tbody');
+        const rows  = Array.from(tbody.querySelectorAll('tr'));
+
+        if (type === 'all') {
+            rows.forEach(row => row.style.display = '');
+        } else if (type === 'top') {
+            // Parse sales value from each row
+            const rowsWithSales = rows.map(row => {
+                const salesText = row.cells[4]?.innerText?.trim() ?? '0';
+                const sales     = parseFloat(salesText.replace(/[^0-9.]/g, '')) || 0;
+                return { row, sales };
+            });
+
+            // Sort by sales descending
+            rowsWithSales.sort((a, b) => b.sales - a.sales);
+
+            // Re-append rows in sorted order and hide those under 5000
+            rowsWithSales.forEach(({ row, sales }) => {
                 row.style.display = sales > 5000 ? '' : 'none';
-            }
-        });
+                tbody.appendChild(row);
+            });
+        }
     }, 500);
 }
 
