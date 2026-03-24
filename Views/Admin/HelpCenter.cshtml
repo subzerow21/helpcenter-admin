@@ -42,8 +42,15 @@
 
 @section Styles {
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         .admin-content {
             padding: 20px !important;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
         }
 
         /* ── Stats ── */
@@ -257,7 +264,7 @@
             color: #fff;
             flex-shrink: 0;
         }
-        /* FIX 1: capitalize */
+
         .q-name {
             font-size: 12px;
             font-weight: 600;
@@ -533,7 +540,7 @@
             flex: 1;
             min-width: 0;
         }
-        /* FIX 1: capitalize */
+
         .ag-name {
             font-size: 11px;
             font-weight: 600;
@@ -594,7 +601,7 @@
             gap: 7px;
             margin-bottom: 8px;
         }
-        /* FIX 1: capitalize category input */
+
         .cat-text-inp {
             flex: 1;
             background: #f8f8f8;
@@ -639,7 +646,7 @@
             gap: 5px;
             flex-wrap: wrap;
         }
-        /* FIX 1: capitalize chips */
+
         .cat-chip {
             background: #f5f5f5;
             border: 1px solid #e8e8e8;
@@ -700,7 +707,7 @@
             .faq-inp::placeholder {
                 color: #ccc;
             }
-        /* FIX 1: capitalize question input */
+
         #faqQ {
             text-transform: capitalize;
         }
@@ -799,7 +806,7 @@
             flex-shrink: 0;
             flex-wrap: wrap;
         }
-        /* FIX 1: capitalize filter buttons */
+
         .ff {
             background: #f5f5f5;
             border: 1px solid #e8e8e8;
@@ -853,7 +860,7 @@
             gap: 8px;
             margin-bottom: 4px;
         }
-        /* FIX 1: capitalize FAQ question */
+
         .faq-q {
             font-size: 12.5px;
             font-weight: 600;
@@ -912,7 +919,7 @@
             gap: 6px;
             flex-wrap: wrap;
         }
-        /* FIX 1: capitalize badges */
+
         .faq-cat-badge {
             display: inline-flex;
             align-items: center;
@@ -1122,190 +1129,505 @@
                 opacity: 1;
             }
 
-        /* ══════════════════════════════════════
-           FIX 3: RESPONSIVE BREAKPOINTS
-        ══════════════════════════════════════ */
+        /* ============================================
+           ENHANCED RESPONSIVE BREAKPOINTS
+           ============================================ */
 
-        /* Tablet landscape: 2-col → 1-col */
-        @@media (max-width: 1100px) {
+        /* Large Desktop */
+        @@media (min-width: 1400px) {
+            .hc-shell {
+                grid-template-columns: 1fr 420px;
+                gap: 20px;
+            }
+            
+            .qs-val {
+                font-size: 24px;
+            }
+            
+            .qtbl th, .qtbl td {
+                padding: 12px 20px;
+            }
+        }
+
+        /* Desktop */
+        @@media (max-width: 1200px) {
+            .hc-shell {
+                grid-template-columns: 1fr 360px;
+                gap: 12px;
+            }
+            
+            .q-stats {
+                gap: 10px;
+            }
+            
+            .qs {
+                padding: 10px 14px;
+            }
+            
+            .qs-val {
+                font-size: 18px;
+            }
+        }
+
+        /* Tablet Landscape */
+        @@media (max-width: 1024px) {
+            .admin-content {
+                padding: 15px !important;
+            }
+            
             .hc-shell {
                 grid-template-columns: 1fr;
                 height: auto;
                 min-height: unset;
+                gap: 20px;
             }
-
+            
             .hc-left, .hc-right {
                 overflow: visible;
+                max-height: none;
             }
-
-                .hc-left .panel:first-child {
-                    min-height: 320px;
-                }
-
-            .hc-right {
-                overflow: visible;
+            
+            .hc-left .panel:first-child {
+                min-height: 400px;
             }
-        }
-
-        /* Tablet portrait: 5-col stats → 3 */
-        @@media (max-width: 900px) {
-            .q-stats {
-                grid-template-columns: repeat(3, 1fr);
+            
+            .panel {
+                max-height: none;
             }
-            /* Agent panel: stack columns */
+            
             .agent-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, 1fr);
+                max-height: none;
             }
-
-            .agent-col {
-                border-right: none;
-                border-bottom: 1px solid #f0f0f0;
-            }
-
-                .agent-col:last-child {
-                    border-bottom: none;
-                }
-
-            .panel[style*="height:240px"] {
-                height: auto !important;
-            }
-
+            
             .agent-col-body {
-                max-height: 100px;
+                max-height: 200px;
             }
         }
 
-        /* Mobile: full single column */
-        @@media (max-width: 640px) {
+        /* Tablet Portrait */
+        @@media (max-width: 768px) {
             .admin-content {
-                padding: 10px !important;
+                padding: 12px !important;
             }
-
+            
             .q-stats {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                margin-bottom: 10px;
+                gap: 10px;
+                margin-bottom: 15px;
             }
-
+            
             .qs {
-                padding: 10px 12px;
+                padding: 12px;
             }
-
+            
             .qs-val {
-                font-size: 17px;
+                font-size: 20px;
             }
-
+            
+            .qs-lbl {
+                font-size: 10px;
+            }
+            
+            .qs-sub {
+                font-size: 9px;
+            }
+            
             .hc-shell {
-                gap: 10px;
+                gap: 15px;
             }
-
+            
             .hc-left, .hc-right {
-                gap: 10px;
+                gap: 15px;
             }
-
+            
             .ph {
-                padding: 10px 12px;
+                padding: 10px 15px;
                 flex-wrap: wrap;
-                gap: 6px;
+                gap: 8px;
             }
-
+            
             .ph-title {
+                font-size: 11px;
+            }
+            
+            .ph-sub {
                 font-size: 10px;
             }
-            /* Tighten queue table */
+            
+            .q-scroll {
+                overflow-x: auto;
+                overflow-y: auto;
+            }
+            
+            .qtbl {
+                min-width: 600px;
+            }
+            
             .qtbl th, .qtbl td {
-                padding: 8px 8px;
-                font-size: 10px;
+                padding: 10px 12px;
+                font-size: 11px;
             }
-                /* Hide SLA col on mobile to save space */
-                .qtbl th:nth-child(4), .qtbl td:nth-child(4) {
-                    display: none;
-                }
-            /* Agent: 2-col grid */
+            
             .agent-grid {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0;
             }
-
+            
             .agent-col {
                 border-right: 1px solid #f0f0f0;
                 border-bottom: none;
             }
-
-                .agent-col:nth-child(2) {
-                    border-right: none;
-                }
-
-                .agent-col:last-child {
-                    grid-column: 1 / -1;
-                    border-top: 1px solid #f0f0f0;
-                    border-right: none;
-                }
-            /* FAQ form */
-            .form-body {
-                padding: 10px 12px;
-                gap: 8px;
+            
+            .agent-col:nth-child(2) {
+                border-right: none;
             }
-
+            
+            .agent-col:last-child {
+                grid-column: 1 / -1;
+                border-top: 1px solid #f0f0f0;
+                border-right: none;
+                margin-top: -1px;
+            }
+            
+            .agent-col-hd {
+                padding: 8px 10px;
+                font-size: 9px;
+            }
+            
+            .agent-slot {
+                padding: 8px 10px;
+            }
+            
+            .ag-av {
+                width: 32px;
+                height: 32px;
+                font-size: 11px;
+            }
+            
+            .ag-name {
+                font-size: 11px;
+            }
+            
+            .ag-chat {
+                font-size: 9px;
+            }
+            
+            .form-body {
+                padding: 12px;
+                gap: 12px;
+            }
+            
             .cat-add-row {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 6px;
+                gap: 8px;
             }
-
+            
             .cat-text-inp, .cat-add-btn {
                 width: 100%;
             }
-
-            .faq-filter {
-                padding: 6px 10px;
-                gap: 4px;
+            
+            .cat-add-btn {
+                padding: 8px 12px;
             }
-
-            .ff {
-                font-size: 9.5px;
-                padding: 3px 8px;
-            }
-            /* Modal stacked buttons */
-            .nh-modal-foot {
-                flex-direction: column-reverse;
+            
+            .cat-chips {
                 gap: 6px;
             }
-
-            .nh-modal-cancel, .nh-modal-confirm {
-                width: 100%;
-                justify-content: center;
+            
+            .cat-chip {
+                padding: 5px 10px;
+                font-size: 10px;
             }
-            /* Toast full-width */
-            .nh-toast {
-                right: 10px;
-                left: 10px;
-                bottom: 10px;
-                text-align: center;
+            
+            .faq-inp {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            textarea.faq-inp {
+                height: 80px;
+            }
+            
+            .radio-row {
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+            
+            .faq-search {
+                padding: 8px 12px;
+            }
+            
+            .faq-filter {
+                padding: 8px 12px;
+                gap: 6px;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .ff {
+                font-size: 10px;
+                padding: 5px 10px;
+                white-space: nowrap;
+            }
+            
+            .faq-item {
+                padding: 12px;
+            }
+            
+            .faq-q {
+                font-size: 12px;
+            }
+            
+            .faq-a {
+                font-size: 11px;
+            }
+            
+            .nh-modal {
+                width: 90%;
+                max-width: 400px;
+                margin: 20px;
             }
         }
 
-        /* Very small phones */
-        @@media (max-width: 400px) {
-            .q-stats {
-                grid-template-columns: 1fr 1fr;
+        /* Mobile Landscape */
+        @@media (max-width: 640px) {
+            .admin-content {
+                padding: 10px !important;
             }
-
+            
+            .q-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            
+            .qs {
+                padding: 10px;
+            }
+            
             .agent-grid {
                 grid-template-columns: 1fr;
             }
-
+            
             .agent-col {
                 border-right: none;
                 border-bottom: 1px solid #f0f0f0;
             }
+            
+            .agent-col:last-child {
+                grid-column: auto;
+                border-top: none;
+                border-bottom: none;
+            }
+            
+            .agent-col:nth-child(2) {
+                border-right: none;
+            }
+            
+            .agent-col-body {
+                max-height: 150px;
+            }
+            
+            .faq-filter {
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+            }
+            
+            .nh-modal-foot {
+                flex-direction: column-reverse;
+                gap: 8px;
+            }
+            
+            .nh-modal-cancel, .nh-modal-confirm {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
+            }
+            
+            .nh-toast {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                text-align: center;
+                width: auto;
+            }
+        }
 
-                .agent-col:last-child {
-                    grid-column: auto;
-                    border-top: none;
-                }
-            /* Hide category col on tiny screens too */
-            .qtbl th:nth-child(5), .qtbl td:nth-child(5) {
+        /* Small Mobile */
+        @@media (max-width: 480px) {
+            .admin-content {
+                padding: 8px !important;
+            }
+            
+            .qtbl th:nth-child(5), 
+            .qtbl td:nth-child(5) {
                 display: none;
+            }
+            
+            .qtbl th:nth-child(4), 
+            .qtbl td:nth-child(4) {
+                display: none;
+            }
+            
+            .qtbl {
+                min-width: 400px;
+            }
+            
+            .qtbl th, .qtbl td {
+                padding: 8px 8px;
+                font-size: 10px;
+            }
+            
+            .q-cust {
+                gap: 6px;
+            }
+            
+            .q-av {
+                width: 24px;
+                height: 24px;
+                font-size: 9px;
+            }
+            
+            .q-name {
+                font-size: 11px;
+            }
+            
+            .q-role {
+                font-size: 9px;
+            }
+            
+            .agent-slot, .empty-slot {
+                padding: 6px 8px;
+            }
+            
+            .ag-av {
+                width: 28px;
+                height: 28px;
+                font-size: 10px;
+            }
+            
+            .ag-name {
+                font-size: 10px;
+            }
+            
+            .ag-chat {
+                font-size: 8px;
+            }
+            
+            .badge {
+                font-size: 8px;
+                padding: 1px 5px;
+            }
+            
+            .form-body {
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .field-lbl {
+                font-size: 9px;
+                margin-bottom: 3px;
+            }
+            
+            .cat-chip {
+                padding: 4px 8px;
+                font-size: 9px;
+            }
+            
+            .faq-inp {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            
+            .faq-item {
+                padding: 10px;
+            }
+            
+            .faq-q {
+                font-size: 11px;
+            }
+            
+            .faq-a {
+                font-size: 10px;
+            }
+            
+            .ph {
+                padding: 8px 12px;
+            }
+            
+            .ph-title {
+                font-size: 10px;
+            }
+            
+            .pbtn {
+                padding: 5px 10px;
+                font-size: 10px;
+            }
+        }
+
+        /* Touch device optimizations */
+        @@media (hover: none) and (pointer: coarse) {
+            .pbtn, 
+            .cat-add-btn,
+            .cat-chip,
+            .ff,
+            .faq-act,
+            .nh-modal-cancel,
+            .nh-modal-confirm {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .cat-chip {
+                padding: 8px 12px;
+            }
+            
+            .ff {
+                padding: 8px 12px;
+            }
+            
+            .faq-act {
+                padding: 8px;
+            }
+        }
+
+        /* Smooth transitions */
+        .hc-shell,
+        .q-stats,
+        .agent-grid,
+        .faq-filter,
+        .cat-chips {
+            transition: all 0.2s ease;
+        }
+
+        /* Improve scrolling on mobile */
+        .q-scroll,
+        .faq-scroll,
+        .agent-col-body {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Fix for sticky headers on mobile */
+        .qtbl th {
+            position: sticky;
+            top: 0;
+            background: #fafafa;
+            z-index: 10;
+        }
+
+        /* Better modal backdrop on mobile */
+        .nh-modal-bg {
+            padding: 20px;
+        }
+
+        @@media (max-width: 640px) {
+            .nh-modal-bg {
+                padding: 10px;
+                align-items: flex-start;
+                padding-top: 20px;
             }
         }
     </style>
@@ -1340,7 +1662,9 @@
             </div>
             <div class="q-scroll">
                 <table class="qtbl">
-                    <thead><tr><th>#</th><th>Customer</th><th>Wait Time</th><th>SLA</th><th>Category</th><th>Status</th></tr></thead>
+                    <thead>
+                        <tr><th>#</th><th>Customer</th><th>Wait Time</th><th>SLA</th><th>Category</th><th>Status</th></tr>
+                    </thead>
                     <tbody id="qBody"></tbody>
                 </table>
             </div>
@@ -1459,7 +1783,6 @@
         /* ── Helpers ── */
         function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 
-        /* FIX 1: titleCase — capitalize first letter of every word */
         function titleCase(str) {
             if (!str) return str;
             return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
@@ -1484,7 +1807,6 @@
                 var d = document.createElement('div');
                 d.className = 'cat-chip' + (c === selCat ? ' on' : '');
                 d.onclick = function() { selCat = c; renderCatChips(); };
-                /* FIX 1: titleCase chip label */
                 d.innerHTML = escH(titleCase(c))
                     + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\'' + escH(c) + '\')">'
                     + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
@@ -1497,7 +1819,6 @@
             var inp = document.getElementById('newCatInp');
             var v = inp.value.trim();
             if (!v) { showToast('Enter a category name.'); return; }
-            /* FIX 1: store as titleCase */
             var vTitle = titleCase(v);
             if (CATEGORIES.find(function(c){ return c.toLowerCase() === vTitle.toLowerCase(); })) {
                 showToast('Category already exists.'); return;
@@ -1548,7 +1869,6 @@
             CATEGORIES.forEach(function(c) {
                 var b = document.createElement('button');
                 b.className = 'ff' + (faqFilterActive === c ? ' on' : '');
-                /* FIX 1: titleCase filter label */
                 b.textContent = titleCase(c);
                 b.onclick = function() { faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
                 bar.appendChild(b);
@@ -1560,7 +1880,6 @@
             var qRaw = document.getElementById('faqQ').value.trim();
             var a    = document.getElementById('faqA').value.trim();
             var ut   = getUserType();
-            /* FIX 1: titleCase question before saving */
             var q = titleCase(qRaw);
             if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
             if (!selCat)  { showToast('Please select a category.'); return; }
@@ -1580,7 +1899,6 @@
             });
         }
 
-        /* FIX 2: deleteFaq — POST to server, then remove from array & re-render */
         function deleteFaq(id) {
             var f = FAQS.find(function(x){ return x.id === id; });
             if (!f) return;
@@ -1604,7 +1922,6 @@
                         }
                     })
                     .catch(function() {
-                        /* Offline fallback: still remove from local array */
                         FAQS = FAQS.filter(function(x){ return x.id !== id; });
                         updateFaqCounts(); renderFaqs();
                         showToast('FAQ deleted (offline mode).');
@@ -1648,7 +1965,6 @@
             var a    = document.getElementById('ea-' + id).value.trim();
             var c    = document.getElementById('ec-' + id).value;
             var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
-            /* FIX 1: titleCase on save */
             var q = titleCase(qRaw);
             if (!q || !a) { showToast('Both fields are required.'); return; }
             var f = FAQS.find(function(x){ return x.id === id; });
@@ -1681,7 +1997,6 @@
                 d.className = 'faq-item'; d.id = 'faq-' + f.id;
                 d.innerHTML =
                     '<div class="faq-item-hd">'
-                        /* FIX 1: titleCase question in list */
                         + '<div class="faq-q">' + escH(titleCase(f.q)) + '</div>'
                         + '<div class="faq-actions">'
                             + '<button class="faq-act" onclick="editFaq(' + f.id + ')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
@@ -1690,7 +2005,6 @@
                     + '</div>'
                     + '<div class="faq-a">' + escH(f.a) + '</div>'
                     + '<div class="faq-meta">'
-                        /* FIX 1: titleCase category badge */
                         + '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">' + escH(titleCase(f.cat)) + '</span>'
                         + '<span class="faq-cat-badge ' + (f.userType === 'Seller' ? 'ut-seller' : 'ut-consumer') + '">' + escH(f.userType || 'Consumer') + '</span>'
                     + '</div>';
@@ -1713,7 +2027,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('nhModalConfirm').onclick = function() {
                 var cb = _modalCallback;
-                closeModal();           /* close first, then run callback */
+                closeModal();
                 if (cb) cb();
             };
             document.getElementById('nhModalBg').addEventListener('click', function(e) {
@@ -1748,13 +2062,11 @@
                 tr.innerHTML =
                     '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
                     + '<td><div class="q-cust"><div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
-                    /* FIX 1: titleCase name & role */
                     + '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
                     + '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div></div></td>'
                     + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
                     + '<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill ' + sc + '" style="width:' + pct + '%"></div></div>'
                     + '<span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">' + fmt(s.waitSec) + '</span></div></td>'
-                    /* FIX 1: titleCase category */
                     + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
                     + '<td><span class="badge ' + sb + '">' + sl + '</span></td>';
                 body.appendChild(tr);
@@ -1787,7 +2099,6 @@
                         d.className = 'agent-slot';
                         d.innerHTML =
                             '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
-                            /* FIX 1: titleCase agent name */
                             + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
                             + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
                             + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
