@@ -1,4 +1,5 @@
 using NextHorizon.Services;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,7 @@ builder.Services.AddControllersWithViews();
 // Register your custom services
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordHasher<object>, PasswordHasher<object>>();
 
 // Add session services
 builder.Services.AddDistributedMemoryCache();

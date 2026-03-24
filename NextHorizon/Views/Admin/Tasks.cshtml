@@ -1,5 +1,4 @@
-﻿@* --- Community Challenges --- *@
-@{
+﻿@{
     ViewData["Title"] = "Admin Portal - Task and Challenges";
     Layout = "_AdminLayout";
 }
@@ -29,37 +28,35 @@
         </button>
     </div>
 
-    @* --- Stats Cards --- *@
-    <div class="row g-3 mb-4">
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4" id="statsCards">
         <div class="col-md-3">
-            <div class="p-3 bg-white rounded-4 shadow-sm border-start border-primary border-4 stat-card"
-                 onclick="window.location.href='/Admin/Consumers'" style="cursor: pointer;">
+            <div class="p-3 bg-white rounded-4 shadow-sm border-start border-primary border-4 stat-card">
                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Total Athletes</small>
-                <h4 class="fw-bold mb-0">12,402 <i class="bi bi-chevron-right fs-6 text-muted float-end"></i></h4>
+                <h4 class="fw-bold mb-0" id="totalAthletes">--</h4>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="p-3 bg-white rounded-4 shadow-sm border-start border-success border-4 stat-card"
-                 onclick="switchChallengeTab('active-tasks')" style="cursor: pointer;">
+            <div class="p-3 bg-white rounded-4 shadow-sm border-start border-success border-4 stat-card">
                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Active Challenges</small>
-                <h4 class="fw-bold mb-0">8 <i class="bi bi-chevron-right fs-6 text-muted float-end"></i></h4>
+                <h4 class="fw-bold mb-0" id="activeChallenges">--</h4>
             </div>
         </div>
         <div class="col-md-3">
             <div class="p-3 bg-white rounded-4 shadow-sm border-start border-warning border-4 stat-card">
-                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Avg. Pace</small>
-                <h4 class="fw-bold mb-0">5'42"/km <i class="bi bi-speedometer2 fs-6 text-muted float-end"></i></h4>
+                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Avg. Distance</small>
+                <h4 class="fw-bold mb-0" id="avgDistance">-- km</h4>
             </div>
         </div>
         <div class="col-md-3">
             <div class="p-3 bg-white rounded-4 shadow-sm border-start border-info border-4 stat-card">
                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem;">Total Time Logged</small>
-                <h4 class="fw-bold mb-0 text-info">4,120h <i class="bi bi-clock-history fs-6 text-muted float-end"></i></h4>
+                <h4 class="fw-bold mb-0 text-info" id="totalTime">-- h</h4>
             </div>
         </div>
     </div>
 
-    @* --- Filters --- *@
+    <!-- Filters -->
     <div class="row g-2 mb-4 align-items-center">
         <div class="col-md-4">
             <div class="input-group bg-white rounded-pill shadow-sm px-3 py-1 border">
@@ -72,62 +69,13 @@
                 <option value="All">All Categories</option>
                 <option value="Running">🏃 Running</option>
                 <option value="Cycling">🚴 Cycling</option>
-                <option value="Swimming">🏊 Swimming</option>
+                <option value="Walking">🚶 Walking</option>
             </select>
         </div>
     </div>
 
-    @* --- Leaderboard View --- *@
+    <!-- Leaderboard View -->
     <div id="view-leaderboard" class="row g-4">
-        <div class="col-12 mb-2">
-            <div class="row justify-content-center align-items-end text-center g-0">
-                @* 2nd Place *@
-                <div class="col-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-2" style="cursor:pointer" onclick="openUserView('Run_Master', '#2', '42.5 km', '12', '08:45:00', '/images/avatars/user2.jpg')">
-                        <div class="mx-auto mb-2 rounded-circle shadow-sm overflow-hidden" style="width:50px; height:50px;">
-                            <img src="/images/avatars/user2.jpg" class="w-100 h-100 object-fit-cover" onerror="this.src='https://ui-avatars.com/api/?name=Run+Master&background=random'">
-                        </div>
-                        <h6 class="fw-bold mb-0 small">Run_Master</h6>
-                        <div class="mt-1">
-                            <small class="text-muted d-block" style="font-size: 0.65rem;">Avg. KM: 8.5km</small>
-                            <small class="text-muted d-block" style="font-size: 0.65rem;">Avg. Time: 00:45:10</small>
-                        </div>
-                    </div>
-                    <div class="bg-secondary opacity-25 rounded-top" style="height: 60px;"></div>
-                </div>
-
-                @* 1st Place *@
-                <div class="col-4">
-                    <div class="card border-0 shadow-lg rounded-4 p-4 bg-white mb-2 border-top border-warning border-5" style="cursor:pointer" onclick="openUserView('Speedy_Gonzalez', '#1', '58.2 km', '18', '11:20:00', '/images/avatars/user1.jpg')">
-                        <div class="mx-auto mb-2 rounded-circle shadow border border-warning border-3 overflow-hidden" style="width:70px; height:70px;">
-                            <img src="/images/avatars/user1.jpg" class="w-100 h-100 object-fit-cover" onerror="this.src='https://ui-avatars.com/api/?name=Speedy+Gonzalez&background=fadb14'">
-                        </div>
-                        <h5 class="fw-bold mb-0">Speedy_Gonzalez</h5>
-                        <div class="mt-1">
-                            <small class="text-muted d-block" style="font-size: 0.75rem;">Avg. KM: 12.2km</small>
-                            <small class="text-muted d-block" style="font-size: 0.75rem;">Avg. Time: 01:10:00</small>
-                        </div>
-                    </div>
-                    <div class="bg-warning opacity-50 rounded-top" style="height: 100px;"></div>
-                </div>
-
-                @* 3rd Place *@
-                <div class="col-3">
-                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-2" style="cursor:pointer" onclick="openUserView('Cyclist_99', '#3', '39.1 km', '9', '07:15:00', '')">
-                        <div class="mx-auto mb-2 rounded-circle shadow-sm overflow-hidden" style="width:50px; height:50px;">
-                            <img src="" class="w-100 h-100 object-fit-cover" onerror="this.src='https://ui-avatars.com/api/?name=Cyclist+99&background=random'">
-                        </div>
-                        <h6 class="fw-bold mb-0 small">Cyclist_99</h6>
-                        <div class="mt-1">
-                            <small class="text-muted d-block" style="font-size: 0.65rem;">Avg. KM: 6.4km</small>
-                            <small class="text-muted d-block" style="font-size: 0.65rem;">Avg. Time: 00:38:20</small>
-                        </div>
-                    </div>
-                    <div class="bg-danger opacity-25 rounded-top" style="height: 40px;"></div>
-                </div>
-            </div>
-        </div>
-
         <div class="col-12">
             <div class="consumer-grid-wrapper bg-white shadow-sm rounded-4 overflow-hidden">
                 <div class="table-responsive">
@@ -140,26 +88,11 @@
                                 <th>Total Distance</th>
                                 <th>Activities</th>
                                 <th>Total Time</th>
-                            </tr>
+                                <th>Progress</th>
+                             </tr>
                         </thead>
-                        <tbody>
-                            @for (int i = 4; i <= 8; i++)
-                            {
-                                string cat = (i % 2 == 0) ? "Running" : "Cycling";
-                                <tr>
-                                    <td>#@i</td>
-                                    <td class="text-start ps-4">
-                                        <div class="d-flex align-items-center gap-2" style="cursor:pointer" onclick="openUserView('consumer_user_@i', '#@i', '@(35 - i).4 km', '@(10 - i)', '0@(10 - i):20:00', '')">
-                                            <img src="" class="rounded-circle border" width="30" height="30" onerror="this.src='https://ui-avatars.com/api/?name=User+@i&background=random'">
-                                            <span class="fw-bold text-dark">@@consumer_user_@i</span>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge rounded-pill @(cat == "Running" ? "bg-light text-danger border border-danger" : "bg-light text-primary border border-primary")">@cat</span></td>
-                                    <td>@(35 - i).4 km</td>
-                                    <td>@(10 - i)</td>
-                                    <td class="fw-bold">0@(10 - i):20:00</td>
-                                </tr>
-                            }
+                        <tbody id="leaderboardBody">
+                            <tr><td colspan="7" class="text-center py-4">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -167,40 +100,25 @@
         </div>
     </div>
 
-    @* --- Active Challenges View --- *@
+    <!-- Active Challenges View -->
     <div id="view-active-tasks" class="d-none">
-        <div class="row g-3">
-            <div class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100 challenge-card-hover"
-                     onclick="window.location.href='/Admin/ChallengeDetails/101'" style="cursor:pointer;">
-                    <div class="position-relative">
-                        <img src="/images/challenges/morning-run.jpg" class="card-img-top" style="height: 150px; object-fit: cover;" onerror="this.src='/images/placeholder.png'">
-                        <span class="position-absolute top-0 end-0 m-2 badge bg-success shadow-sm">Live</span>
-                    </div>
-                    <div class="p-3">
-                        <h6 class="fw-bold mb-0 text-dark">Morning 5K Streak</h6>
-                        <p class="text-muted mb-2" style="font-size: 0.75rem;">March 01 - March 31</p>
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <span class="small text-primary fw-bold">View Participants <i class="bi bi-arrow-right"></i></span>
-                            <span class="text-muted small"><i class="bi bi-people"></i> 1,420</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="row g-3" id="challengesList">
+            <div class="col-12 text-center py-5">Loading challenges...</div>
         </div>
     </div>
 </div>
 
-@* --- Launch Challenge Modal --- *@
+<!-- Launch/Edit Challenge Modal -->
 <div class="modal fade" id="launchChallengeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow rounded-4">
             <form id="launchForm" onsubmit="handleChallengeSubmit(event)">
                 <div class="modal-header border-0 pt-4 px-4">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-rocket-takeoff me-2 text-primary"></i>Launch Challenge</h5>
+                    <h5 class="fw-bold mb-0" id="modalTitle"><i class="bi bi-rocket-takeoff me-2 text-primary"></i>Launch Challenge</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body px-4">
+                    <input type="hidden" id="editChallengeId" value="">
                     <div class="row">
                         <div class="col-md-5 mb-3 border-end">
                             <label class="small fw-bold text-secondary mb-2 d-block text-center">Challenge Cover Image</label>
@@ -210,13 +128,13 @@
                                     <i class="bi bi-image text-muted fs-1"></i>
                                     <p class="small text-muted mb-0">Click to upload banner</p>
                                 </div>
-                                <input type="file" id="challengeImgInput" class="position-absolute opacity-0 w-100 h-100" style="cursor: pointer;" accept="image/*" onchange="previewChallengeImage(this)">
+                               <input type="file" id="challengeImgInput" class="position-absolute opacity-0 w-100 h-100" style="cursor: pointer;" accept="image/*" onchange="previewChallengeImage(this)">
                             </div>
                         </div>
                         <div class="col-md-7">
                             <div class="mb-3">
                                 <label class="small fw-bold text-secondary mb-1">Challenge Name</label>
-                                <input type="text" class="form-control rounded-3" placeholder="e.g., Tour de Cebu 100K" required>
+                                <input type="text" id="challengeTitle" class="form-control rounded-3" placeholder="e.g., Morning 5K Streak" required>
                             </div>
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
@@ -231,17 +149,26 @@
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="small fw-bold text-secondary mb-1">Activity Type</label>
-                                    <select class="form-select rounded-3" required>
+                                    <select id="activityType" class="form-select rounded-3" required>
                                         <option value="">Select Type</option>
-                                        <option>🏃 Running</option>
-                                        <option>🚴 Cycling</option>
-                                        <option>🚶 Walking</option>
+                                        <option value="Running">🏃 Running</option>
+                                        <option value="Cycling">🚴 Cycling</option>
+                                        <option value="Walking">🚶 Walking</option>
                                     </select>
                                 </div>
                                 <div class="col-6">
                                     <label class="small fw-bold text-secondary mb-1">Goal (KM)</label>
-                                    <input type="number" class="form-control rounded-3" placeholder="50" min="1" required>
+                                    <input type="number" id="goalKm" class="form-control rounded-3" placeholder="50" min="1" required>
                                 </div>
+                            </div>
+                            <div class="mb-3" id="statusField" style="display:none;">
+                                <label class="small fw-bold text-secondary mb-1">Status</label>
+                                <select id="challengeStatus" class="form-select rounded-3">
+                                    <option value="Upcoming">Upcoming</option>
+                                    <option value="Live">Live</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -250,39 +177,56 @@
 
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary mb-1">Description</label>
-                        <textarea class="form-control rounded-3" rows="2" placeholder="Tell athletes what this challenge is about..." required></textarea>
+                        <textarea id="challengeDesc" class="form-control rounded-3" rows="2" placeholder="Tell athletes what this challenge is about..." required></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary mb-1">Rules & Regulations</label>
-                        <textarea class="form-control rounded-3" rows="3" placeholder="List the rules here..." required></textarea>
+                        <textarea id="challengeRules" class="form-control rounded-3" rows="3" placeholder="List the rules here..." required></textarea>
                     </div>
 
                     <div class="mb-2">
                         <label class="small fw-bold text-secondary mb-1">Prizes & Rewards</label>
-                        <textarea class="form-control rounded-3" rows="2" placeholder="What do they win?" required></textarea>
+                        <textarea id="challengePrizes" class="form-control rounded-3" rows="2" placeholder="What do they win?" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Discard</button>
-                    <button type="submit" class="btn btn-dark rounded-pill px-4">Launch Now</button>
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark rounded-pill px-4">Save Challenge</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-@* --- User Details Modal --- *@
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmLaunchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4 text-center">
+            <div class="modal-body p-4">
+                <div class="mb-3"><i class="bi bi-question-circle text-primary fs-1"></i></div>
+                <h5 class="fw-bold" id="confirmTitle">Save Changes?</h5>
+                <p class="small text-secondary" id="confirmMessage">Updates will be visible to all active participants immediately.</p>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark rounded-pill px-4" id="confirmExecuteBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User View Modal -->
 <div class="modal fade" id="userViewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
             <div class="p-4 bg-dark text-white text-center position-relative">
                 <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
                 <div class="avatar-wrapper mx-auto mb-2 shadow rounded-circle border border-3 border-warning overflow-hidden" style="width: 100px; height: 100px;">
-                    <img id="userModalPic" src="" class="w-100 h-100 object-fit-cover" onerror="this.src='https://ui-avatars.com/api/?background=random'">
+                    <img id="userModalPic" src="" class="w-100 h-100 object-fit-cover">
                 </div>
-                <h5 class="fw-bold mb-0" id="userNameView">@@username</h5>
-                <p class="small opacity-75 mb-0" id="userRankView">Ranked #1 Global</p>
+                <h5 class="fw-bold mb-0" id="userNameView"></h5>
+                <p class="small opacity-75 mb-0" id="userRankView"></p>
             </div>
             <div class="modal-body p-4">
                 <div class="row text-center g-3">
@@ -301,33 +245,25 @@
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0 px-4 pb-4">
-                <button class="btn btn-outline-dark w-100 rounded-pill" data-bs-dismiss="modal">
-                    Close Profile
-                </button>
+                <button class="btn btn-outline-dark w-100 rounded-pill" data-bs-dismiss="modal">Close Profile</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="confirmLaunchModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4 text-center">
-            <div class="modal-body p-4">
-                <div class="mb-3">
-                    <i class="bi bi-question-circle text-primary fs-1"></i>
-                </div>
-                <h5 class="fw-bold">Launch Challenge?</h5>
-                <p class="small text-secondary">This will notify all athletes and make the challenge live immediately.</p>
-                <div class="d-flex gap-2 justify-content-center mt-4">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-dark rounded-pill px-4" onclick="executeLaunch()">Confirm</button>
-                </div>
+<!-- Toast Notification -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="challengeToast" class="toast border-0 shadow rounded-4" role="alert">
+        <div class="d-flex align-items-center bg-dark text-white rounded-4 p-2">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i id="toastIcon" class="bi bi-check-circle-fill text-success fs-5"></i>
+                <span id="toastMsg">Action Successful!</span>
             </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="~/js/admin_js/tasks.js" asp-append-version="true"></script>
-   
 }

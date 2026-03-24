@@ -1,6 +1,158 @@
-﻿/**
- * Tab Switching Logic
- */
+﻿// Global variables
+let currentChallengeId = null;
+let isEditMode = false;
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadChallengeStatistics();
+    loadAllChallenges();
+    loadLeaderboard();
+
+    // Search functionality
+    document.getElementById('leaderboardSearch').addEventListener('keyup', filterLeaderboard);
+});
+
+// Load challenge statistics
+async function loadChallengeStatistics() {
+    try {
+        const response = await fetch('/Admin/GetChallengeStatistics');
+        const stats = await response.json();
+        
+        document.getElementById('totalAthletes').innerText = stats.totalAthletes?.toLocaleString() || '0';
+        document.getElementById('activeChallenges').innerText = stats.activeChallenges || '0';
+        document.getElementById('avgDistance').innerText = (stats.avgDistance?.toFixed(1) || '0') + ' km';
+        document.getElementById('totalTime').innerText = (stats.totalTimeHours?.toFixed(0) || '0') + ' h';
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+// Load all challenges
+async function loadAllChallenges() {
+    try {
+        const response = await fetch('/Admin/GetAllChallenges');
+        const challenges = await response.json();
+        
+        const container = document.getElementById('challengesList');
+        
+        if (challenges.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center py-5">No challenges found</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        challenges.forEach(challenge => {
+            const statusClass = challenge.status === 'Live' ? 'bg-success' : 
+                               (challenge.status === 'Upcoming' ? 'bg-warning' : 'bg-secondary');
+            
+            const card = document.createElement('div');
+            card.className = 'col-md-6 col-lg-4';
+            card.innerHTML = `
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100 challenge-card-hover"
+                     onclick="window.location.href='/Admin/ChallengeDetails/${challenge.challengeId}'" style="cursor:pointer;">
+                    <div class="position-relative">
+                        <img src="${challenge.bannerBase64 || '/images/challenge-placeholder.jpg'}" 
+                             class="card-img-top" style="height: 150px; object-fit: cover;" 
+                             onerror="this.src='/images/placeholder.png'">
+                        <span class="position-absolute top-0 end-0 m-2 badge ${statusClass} shadow-sm">${challenge.status}</span>
+                    </div>
+                    <div class="p-3">
+                        <h6 class="fw-bold mb-0 text-dark">${escapeHtml(challenge.title)}</h6>
+                        <p class="text-muted mb-2" style="font-size: 0.75rem;">${formatDate(challenge.startDate)} - ${formatDate(challenge.endDate)}</p>
+                        <div class="progress mb-2" style="height: 4px;">
+                            <div class="progress-bar bg-success" style="width: ${challenge.completionRate}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="small text-primary fw-bold">View Details <i class="bi bi-arrow-right"></i></span>
+                            <span class="text-muted small"><i class="bi bi-people"></i> ${challenge.totalParticipants}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Error loading challenges:', error);
+    }
+}
+
+// Load leaderboard
+async function loadLeaderboard() {
+    try {
+        const response = await fetch('/Admin/GetAllChallenges?status=Live');
+        const challenges = await response.json();
+        
+        if (challenges.length === 0) {
+            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
+            return;
+        }
+        
+        // Get the first live challenge for leaderboard
+        const liveChallenge = challenges.find(c => c.status === 'Live');
+        if (!liveChallenge) {
+            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
+            return;
+        }
+        
+        const detailsResponse = await fetch(`/Admin/GetChallengeDetails?id=${liveChallenge.challengeId}`);
+        const data = await detailsResponse.json();
+        
+        if (!data.success || !data.leaderboard || data.leaderboard.length === 0) {
+            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No participants yet</td></tr>';
+            return;
+        }
+        
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = '';
+        
+        data.leaderboard.forEach(participant => {
+            const progressPercent = participant.progressPercent || 0;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-bold">#${participant.rank}</td>
+                <td class="text-start ps-4">
+                    <div class="d-flex align-items-center gap-2" style="cursor:pointer" onclick="openUserView('${escapeHtml(participant.athleteName)}', ${participant.rank}, ${participant.totalDistanceKm}, ${participant.totalActivities}, '${participant.totalTimeFormatted}', '${participant.avatarUrl}')">
+                        <img src="${participant.avatarUrl}" class="rounded-circle border" width="30" height="30">
+                        <span class="fw-bold text-dark">${escapeHtml(participant.athleteName)}</span>
+                    </div>
+                </td>
+                <td><span class="badge rounded-pill bg-light text-dark border">${liveChallenge.activityType}</span></td>
+                <td>${participant.totalDistanceKm.toFixed(1)} km</td>
+                <td>${participant.totalActivities}</td>
+                <td class="fw-bold">${participant.totalTimeFormatted}</td>
+                <td style="width: 120px;">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <small class="text-muted">${progressPercent}%</small>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+    }
+}
+
+// Filter leaderboard
+function filterLeaderboard() {
+    const searchTerm = document.getElementById('leaderboardSearch').value.toLowerCase();
+    const category = document.getElementById('categoryFilter').value;
+    const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+    
+    rows.forEach(row => {
+        const name = row.querySelector('td:nth-child(2) .fw-bold')?.innerText.toLowerCase() || '';
+        const categoryText = row.querySelector('td:nth-child(3) .badge')?.innerText || '';
+        
+        let show = true;
+        if (searchTerm && !name.includes(searchTerm)) show = false;
+        if (category !== 'All' && categoryText !== category) show = false;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// Tab switching
 function switchChallengeTab(viewName) {
     const leaderboardView = document.getElementById('view-leaderboard');
     const tasksView = document.getElementById('view-active-tasks');
@@ -12,173 +164,301 @@ function switchChallengeTab(viewName) {
         tasksView.classList.add('d-none');
         btnLead.className = "btn btn-sm fw-bold bg-dark text-white rounded-0 px-3 py-2 active-tab me-1";
         btnTasks.className = "btn btn-sm text-muted rounded-0 px-3 py-2 me-1";
+        loadLeaderboard();
     } else {
         leaderboardView.classList.add('d-none');
         tasksView.classList.remove('d-none');
         btnTasks.className = "btn btn-sm fw-bold bg-dark text-white rounded-0 px-3 py-2 active-tab me-1";
         btnLead.className = "btn btn-sm text-muted rounded-0 px-3 py-2 me-1";
+        loadAllChallenges();
     }
 }
 
-/**
- * Filter and Search Logic
- */
-function filterLeaderboard() {
-    const selectedCategory = document.getElementById('categoryFilter').value;
-    const rows = document.querySelectorAll('#leaderboardTable tbody tr');
-
-    rows.forEach(row => {
-        const categoryBadge = row.querySelector('td:nth-child(3)').innerText.trim();
-        if (selectedCategory === "All" || categoryBadge.includes(selectedCategory)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-}
-
-document.getElementById('leaderboardSearch')?.addEventListener('keyup', function (e) {
-    const term = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('#leaderboardTable tbody tr');
-
-    rows.forEach(row => {
-        const username = row.querySelector('td:nth-child(2)').innerText.toLowerCase();
-        if (username.includes(term)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-});
-
-/**
- * Launch Challenge Handler
- */
-function handleChallengeSubmit(event) {
-    event.preventDefault(); // Stop refresh to allow validation and custom modal
-
-    const startDate = new Date(document.getElementById('startDate').value);
-    const endDate = new Date(document.getElementById('endDate').value);
-
-    if (endDate < startDate) {
-        alert("End date cannot be earlier than the start date.");
-        return;
-    }
-
-    // Instead of window.confirm (localhost), open our custom Bootstrap modal
-    const confirmModal = new bootstrap.Modal(document.getElementById('confirmLaunchModal'));
-    confirmModal.show();
-}
-
-/**
- * Final Execution (Called from the Confirm Modal)
- */
-function executeLaunch() {
-    // 1. Hide Confirmation Modal
-    const confirmModalEl = document.getElementById('confirmLaunchModal');
-    const confirmInstance = bootstrap.Modal.getInstance(confirmModalEl);
-    if (confirmInstance) confirmInstance.hide();
-
-    // 2. Hide Main Launch Modal
-    const launchModalEl = document.getElementById('launchChallengeModal');
-    const launchInstance = bootstrap.Modal.getInstance(launchModalEl);
-    if (launchInstance) launchInstance.hide();
-
-    // 3. Trigger Toast
-    saveChallengeAction();
-
-    // 4. Reset Form
+// Open create challenge modal
+function openCreateChallengeModal() {
+    isEditMode = false;
+    currentChallengeId = null;
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-rocket-takeoff me-2 text-primary"></i>Launch New Challenge';
+    document.getElementById('editChallengeId').value = '';
+    document.getElementById('statusField').style.display = 'none';
     document.getElementById('launchForm').reset();
+    
+    const preview = document.getElementById('imagePreview');
+    const placeholder = document.getElementById('uploadPlaceholder');
+    preview.classList.add('d-none');
+    preview.src = '#';
+    placeholder.classList.remove('d-none');
+    
+    // Clear file input
+    document.getElementById('challengeImgInput').value = '';
+    
+    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
 }
 
-/**
- * Image Preview Logic
- */
+// Open edit challenge modal
+function openEditChallengeModal(challengeId, title, description, rules, prizes, goalKm, activityType, startDate, endDate, status, bannerBase64, bannerImageNameVal, bannerImageContentTypeVal) {
+    isEditMode = true;
+    currentChallengeId = challengeId;
+    
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-primary"></i>Edit Challenge';
+    document.getElementById('editChallengeId').value = challengeId;
+    document.getElementById('statusField').style.display = 'block';
+    document.getElementById('challengeTitle').value = title;
+    document.getElementById('challengeDesc').value = description || '';
+    document.getElementById('challengeRules').value = rules || '';
+    document.getElementById('challengePrizes').value = prizes || '';
+    document.getElementById('goalKm').value = goalKm;
+    document.getElementById('activityType').value = activityType;
+    document.getElementById('startDate').value = startDate.split('T')[0];
+    document.getElementById('endDate').value = endDate.split('T')[0];
+    document.getElementById('challengeStatus').value = status;
+    
+    // Handle existing image
+    const preview = document.getElementById('imagePreview');
+    const placeholder = document.getElementById('uploadPlaceholder');
+    
+    // Remove existing hidden inputs
+    const existingNameInput = document.getElementById('existingImageName');
+    const existingTypeInput = document.getElementById('existingImageType');
+    if (existingNameInput) existingNameInput.remove();
+    if (existingTypeInput) existingTypeInput.remove();
+    
+    // Check if there's an existing banner image
+    if (bannerBase64 && bannerBase64 !== '#' && bannerBase64 !== null && bannerBase64 !== 'null') {
+        // Store the existing image info
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.id = 'existingImageName';
+        nameInput.value = bannerImageNameVal || '';
+        document.getElementById('launchForm').appendChild(nameInput);
+        
+        const typeInput = document.createElement('input');
+        typeInput.type = 'hidden';
+        typeInput.id = 'existingImageType';
+        typeInput.value = bannerImageContentTypeVal || '';
+        document.getElementById('launchForm').appendChild(typeInput);
+        
+        // Show the existing image
+        preview.src = bannerBase64;
+        preview.classList.remove('d-none');
+        placeholder.classList.add('d-none');
+    } else {
+        // No existing image
+        preview.classList.add('d-none');
+        preview.src = '#';
+        placeholder.classList.remove('d-none');
+    }
+    
+    // Reset file input
+    document.getElementById('challengeImgInput').value = '';
+    
+    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
+}
+
+// Preview challenge image
 function previewChallengeImage(input) {
     const preview = document.getElementById('imagePreview');
     const placeholder = document.getElementById('uploadPlaceholder');
-
+    
     if (input.files && input.files[0]) {
+        console.log('previewChallengeImage called with file:', input.files[0].name);
         const reader = new FileReader();
-        reader.onload = function (e) {
+        reader.onload = function(e) {
             preview.src = e.target.result;
             preview.classList.remove('d-none');
             placeholder.classList.add('d-none');
-        }
+            console.log('Image preview loaded successfully');
+        };
         reader.readAsDataURL(input.files[0]);
+    } else {
+        console.log('No file in previewChallengeImage');
     }
 }
 
-/**
- * Modal Openers
- */
-function openCreateChallengeModal() {
-    const form = document.getElementById('launchForm');
-    if (form) form.reset();
-
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    if (preview && placeholder) {
-        preview.src = "#";
-        preview.classList.add('d-none');
-        placeholder.classList.remove('d-none');
+// Handle challenge submit
+async function handleChallengeSubmit(event) {
+    event.preventDefault();
+    
+    const title = document.getElementById('challengeTitle').value;
+    const description = document.getElementById('challengeDesc').value;
+    const rules = document.getElementById('challengeRules').value;
+    const prizes = document.getElementById('challengePrizes').value;
+    const goalKm = parseFloat(document.getElementById('goalKm').value);
+    const activityType = document.getElementById('activityType').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const status = document.getElementById('challengeStatus')?.value;
+    
+    let bannerBase64 = null;
+    let bannerImageName = null;
+    let bannerImageContentType = null;
+    
+    const fileInput = document.getElementById('challengeImgInput');
+    
+    // ONLY process if a file was actually selected
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', true);
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image size must be less than 5MB', true);
+            return;
+        }
+        
+        try {
+            bannerImageName = file.name;
+            bannerImageContentType = file.type;
+            
+            // Convert to Base64
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            
+            bannerBase64 = base64;
+        } catch (error) {
+            console.error('Error reading file:', error);
+            showToast('Error reading image file', true);
+            return;
+        }
     }
-
-    const modalEl = document.getElementById('launchChallengeModal');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
-}
-
-/**
- * User Profile View Logic
- */
-function openUserView(username, rank, dist, act, time, picUrl) {
-    const nameEl = document.getElementById('userNameView');
-    const rankEl = document.getElementById('userRankView');
-    const distEl = document.getElementById('userDistView');
-    const actEl = document.getElementById('userActView');
-    const timeEl = document.getElementById('userTimeView');
-    const picEl = document.getElementById('userModalPic');
-
-    if (nameEl) nameEl.innerText = username;
-    if (rankEl) rankEl.innerText = rank.includes('#') ? "Ranked " + rank : "Ranked #" + rank;
-    if (distEl) distEl.innerText = dist;
-    if (actEl) actEl.innerText = act;
-    if (timeEl) timeEl.innerText = time;
-
-    if (picEl) {
-        const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&size=128`;
-        picEl.src = picUrl && picUrl.trim() !== "" ? picUrl : fallback;
+    // If no file selected, bannerBase64 stays NULL (this is correct)
+    
+    // Validate required fields
+    if (!title || !goalKm || !activityType || !startDate || !endDate) {
+        showToast('Please fill all required fields', true);
+        return;
     }
-
-    const modalEl = document.getElementById('userViewModal');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    
+    // Validate dates
+    if (new Date(startDate) > new Date(endDate)) {
+        showToast('End date cannot be before start date', true);
+        return;
+    }
+    
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmLaunchModal'));
+    document.getElementById('confirmTitle').innerText = isEditMode ? 'Save Changes?' : 'Launch Challenge?';
+    document.getElementById('confirmMessage').innerText = isEditMode ? 
+        'Updates will be visible to all participants immediately.' : 
+        'This will notify all athletes and make the challenge live.';
+    
+    document.getElementById('confirmExecuteBtn').onclick = async () => {
+        confirmModal.hide();
+        
+        const url = isEditMode ? '/Admin/UpdateChallenge' : '/Admin/CreateChallenge';
+        const body = isEditMode ? {
+            challengeId: currentChallengeId,
+            title: title,
+            description: description,
+            rules: rules,
+            prizes: prizes,
+            goalKm: goalKm,
+            activityType: activityType,
+            startDate: startDate,
+            endDate: endDate,
+            status: status,
+            bannerBase64: bannerBase64,  // This will be NULL if no image
+            bannerImageName: bannerImageName,
+            bannerImageContentType: bannerImageContentType
+        } : {
+            title: title,
+            description: description,
+            rules: rules,
+            prizes: prizes,
+            goalKm: goalKm,
+            activityType: activityType,
+            startDate: startDate,
+            endDate: endDate,
+            bannerBase64: bannerBase64,  // This will be NULL if no image
+            bannerImageName: bannerImageName,
+            bannerImageContentType: bannerImageContentType
+        };
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('launchChallengeModal')).hide();
+                
+                if (isEditMode && window.location.pathname.includes('ChallengeDetails')) {
+                    window.location.reload();
+                } else {
+                    loadAllChallenges();
+                    loadLeaderboard();
+                    loadChallengeStatistics();
+                }
+                
+                // Reset form
+                document.getElementById('launchForm').reset();
+                const preview = document.getElementById('imagePreview');
+                const placeholder = document.getElementById('uploadPlaceholder');
+                preview.classList.add('d-none');
+                preview.src = '#';
+                placeholder.classList.remove('d-none');
+                document.getElementById('challengeImgInput').value = '';
+            } else {
+                showToast(data.message, true);
+            }
+        } catch (error) {
+            console.error('Error saving challenge:', error);
+            showToast('Error saving challenge', true);
+        }
+    };
+    
+    confirmModal.show();
 }
 
-/**
- * Toast Notifications
- */
-function saveChallengeAction() {
-    triggerToast("Challenge live! Users will receive a notification.", "text-success", "bi-lightning-fill");
+
+// Open user view modal
+function openUserView(name, rank, distance, activities, time, avatarUrl) {
+    document.getElementById('userNameView').innerText = '@' + name;
+    document.getElementById('userRankView').innerText = 'Ranked #' + rank + ' Global';
+    document.getElementById('userDistView').innerText = distance.toFixed(1) + ' km';
+    document.getElementById('userActView').innerText = activities;
+    document.getElementById('userTimeView').innerText = time;
+    document.getElementById('userModalPic').src = avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+    
+    new bootstrap.Modal(document.getElementById('userViewModal')).show();
 }
 
-function confirmOverride() {
-    const modalEl = document.getElementById('overrideModal');
-    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-    if (modalInstance) modalInstance.hide();
-
-    triggerToast("Challenge archived. Final results calculated.", "text-warning", "bi-shield-fill-check");
+// Helper functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function triggerToast(msg, colorClass = "text-success", icon = "bi-check-circle-fill") {
-    const toastMsgEl = document.getElementById('toastMsg');
-    const toastIconEl = document.getElementById('toastIcon');
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(message, isError = false) {
+    const toastMsg = document.getElementById('toastMsg');
+    const toastIcon = document.getElementById('toastIcon');
     const toastEl = document.getElementById('challengeToast');
-
-    if (toastMsgEl && toastIconEl && toastEl) {
-        toastMsgEl.innerText = msg;
-        toastIconEl.className = `bi ${icon} ${colorClass} fs-5`;
-
-        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-        toast.show();
-    }
+    
+    if (!toastMsg) return;
+    
+    toastMsg.innerText = message;
+    toastIcon.className = isError ? 'bi bi-exclamation-triangle-fill text-danger fs-5' : 'bi bi-check-circle-fill text-success fs-5';
+    
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
 }
