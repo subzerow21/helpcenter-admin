@@ -21,9 +21,9 @@
         </div>
     </div>
 
-    <button class="btn btn-dark btn-sm px-4 fw-bold">
-        <i class="bi bi-download me-2"></i>Export Report
-    </button>
+<button class="btn btn-dark btn-sm px-4 fw-bold" onclick="exportAnalyticsToExcel()">
+    <i class="bi bi-file-earmark-excel me-2"></i>Export Report
+</button>
 </div>
 
 <div class="row g-3 mb-5">
@@ -44,7 +44,7 @@
     <div class="col-md-3">
         <div class="analytics-card bg-white border shadow-sm h-100 p-4 rounded-4">
             <p class="text-muted small fw-bold mb-1">AVG. ORDER VALUE</p>
-            <h2 class="fw-800 text-dark">₱@Model.AverageOrderValue.ToString("N2")</h2>
+            <h2 class="fw-800 text-dark" id="avgOrderValue">₱@Model.AverageOrderValue.ToString("N2")</h2>
             <p class="text-muted tiny mb-0">Per Transaction</p>
         </div>
     </div>

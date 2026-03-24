@@ -99,118 +99,403 @@ namespace NextHorizon.Controllers
         }
 
         // URL: /Admin/Analytics - Accessible by SuperAdmin, Admin, and Finance Officer
-        public IActionResult Analytics()
+        public async Task<IActionResult> Analytics()
         {
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
-
             var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
             if (unauthorized != null) return unauthorized;
 
-            // Define raw product data for the "Most Purchased" section
-            var productData = new List<ProductMetric>
+            var topSellers       = new List<SellerMetric>();
+            var topProducts      = new List<ProductMetric>();
+            var performanceTrends = new List<AnalyticsChartData>();
+            var peakEngagement   = new List<HourlyEngagementMetric>();
+
+            int totalConsumers = 0, totalSellers = 0, totalOrders = 0;
+            decimal totalRevenue = 0, avgOrderValue = 0;
+
+            using (var connection = new SqlConnection(_connectionString))
             {
-                new ProductMetric { ProductName = "UltraBoost v2", UnitsSold = 142, Revenue = 852000m, Category = "Footwear", Stock = 25 },
-                new ProductMetric { ProductName = "Hydration Pack", UnitsSold = 98, Revenue = 147000m, Category = "Accessories", Stock = 5 },
-                new ProductMetric { ProductName = "Swift Shorts", UnitsSold = 76, Revenue = 38000m, Category = "Apparel", Stock = 40 },
-                new ProductMetric { ProductName = "Pro GPS Watch", UnitsSold = 185, Revenue = 675000m, Category = "Electronics", Stock = 12 },
-                new ProductMetric { ProductName = "Compression Socks", UnitsSold = 210, Revenue = 42000m, Category = "Apparel", Stock = 150 }
-            };
+                await connection.OpenAsync();
+
+                // Total Consumers
+                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Consumers", connection))
+                    totalConsumers = (int)await cmd.ExecuteScalarAsync();
+
+                // Total Active Sellers
+                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Sellers WHERE seller_status = 'Active'", connection))
+                    totalSellers = (int)await cmd.ExecuteScalarAsync();
+
+                // Total Orders & Revenue & Avg Order Value
+                var orderStatsSql = @"
+                    SELECT 
+                        COUNT(*) AS TotalOrders,
+                        ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
+                        ISNULL(AVG(TotalAmount), 0) AS AvgOrderValue
+                    FROM Orders";
+                using (var cmd = new SqlCommand(orderStatsSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    if (await reader.ReadAsync())
+                    {
+                        totalOrders   = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                        totalRevenue  = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
+                        avgOrderValue = reader.GetDecimal(reader.GetOrdinal("AvgOrderValue"));
+                    }
+
+                // Performance Trends - Revenue per day (last 7 days)
+                var trendSql = @"
+                    SELECT 
+                        CONVERT(VARCHAR, OrderDate, 107) AS DateLabel,
+                        ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
+                        COUNT(DISTINCT UserID) AS ChallengeParticipants
+                    FROM Orders
+                    WHERE OrderDate >= DATEADD(DAY, -7, GETDATE())
+                    GROUP BY CAST(OrderDate AS DATE), CONVERT(VARCHAR, OrderDate, 107)
+                    ORDER BY CAST(OrderDate AS DATE)";
+                using (var cmd = new SqlCommand(trendSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        performanceTrends.Add(new AnalyticsChartData
+                        {
+                            DateLabel           = reader["DateLabel"]?.ToString() ?? "",
+                            TotalRevenue        = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
+                            ChallengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
+                        });
+
+                // Top Sellers
+                var sellerSql = @"
+                    SELECT TOP 5
+                        ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
+                        s.business_name AS ShopName,
+                        COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
+                        SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
+                    FROM OrderItems oi
+                    INNER JOIN Sellers s ON oi.SellerId = s.seller_id
+                    WHERE oi.SellerId IS NOT NULL
+                    GROUP BY oi.SellerId, s.business_name
+                    ORDER BY RevenueGenerated DESC";
+                using (var cmd = new SqlCommand(sellerSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        topSellers.Add(new SellerMetric
+                        {
+                            Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                            SellerName       = reader["ShopName"]?.ToString() ?? "",
+                            ShopName         = reader["ShopName"]?.ToString() ?? "",
+                            OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                            RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                        });
+
+                // Top Products
+                var productSql = @"
+                    SELECT TOP 5
+                        p.ProductName,
+                        p.Category,
+                        SUM(oi.Quantity) AS UnitsSold,
+                        SUM(oi.Quantity * oi.UnitPrice) AS Revenue
+                    FROM OrderItems oi
+                    INNER JOIN Products p ON oi.ProductID = p.ProductId
+                    GROUP BY p.ProductId, p.ProductName, p.Category
+                    ORDER BY UnitsSold DESC";
+                using (var cmd = new SqlCommand(productSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        topProducts.Add(new ProductMetric
+                        {
+                            ProductName = reader["ProductName"]?.ToString() ?? "",
+                            Category    = reader["Category"]?.ToString()    ?? "",
+                            UnitsSold   = reader.GetInt32(reader.GetOrdinal("UnitsSold")),
+                            Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
+                        });
+
+                // Peak Engagement - purchases per hour
+                var peakSql = @"
+                    SELECT 
+                        DATEPART(HOUR, OrderDate) AS Hour,
+                        COUNT(*) AS PurchaseCount,
+                        COUNT(*) * 10 AS ActivitySyncCount
+                    FROM Orders
+                    GROUP BY DATEPART(HOUR, OrderDate)
+                    ORDER BY Hour";
+                using (var cmd = new SqlCommand(peakSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        peakEngagement.Add(new HourlyEngagementMetric
+                        {
+                            Hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
+                            PurchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
+                            ActivitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
+                        });
+            }
+
+            // Fallback if no trend data
+            if (!performanceTrends.Any())
+                performanceTrends.Add(new AnalyticsChartData { DateLabel = "No Data", TotalRevenue = 0, ChallengeParticipants = 0 });
 
             var viewModel = new AnalyticsViewModel
             {
-                // Top Header Cards
-                TotalConsumers = 12450,
-                TotalSellers = 84,
-                TotalRevenue = 7954000m,
-                AverageOrderValue = 4850.00,
-                ChallengeToSaleConversionRate = 32.8,
-                UsersPurchased = 1640,
-                TotalOrders = 1240,
-
-                // Main Area Chart Data
-                PerformanceTrends = new List<AnalyticsChartData>
+                TotalConsumers               = totalConsumers,
+                TotalSellers                 = totalSellers,
+                TotalRevenue                 = totalRevenue,
+                TotalOrders                  = totalOrders,
+                AverageOrderValue            = (double)avgOrderValue,
+                ChallengeToSaleConversionRate = totalOrders > 0 && totalConsumers > 0
+                    ? Math.Round((double)totalOrders / totalConsumers * 100, 1) : 0,
+                PerformanceTrends    = performanceTrends,
+                TopSellers           = topSellers,
+                TopMovingProducts    = topProducts,
+                PeakEngagementData   = peakEngagement.Any() ? peakEngagement : new List<HourlyEngagementMetric>
                 {
-                    new AnalyticsChartData { DateLabel = "Mar 01", ChallengeParticipants = 120, TotalRevenue = 110000m },
-                    new AnalyticsChartData { DateLabel = "Mar 02", ChallengeParticipants = 150, TotalRevenue = 135000m },
-                    new AnalyticsChartData { DateLabel = "Mar 03", ChallengeParticipants = 95,  TotalRevenue = 95000m },
-                    new AnalyticsChartData { DateLabel = "Mar 04", ChallengeParticipants = 210, TotalRevenue = 160000m },
-                    new AnalyticsChartData { DateLabel = "Mar 05", ChallengeParticipants = 300, TotalRevenue = 210000m },
-                    new AnalyticsChartData { DateLabel = "Mar 06", ChallengeParticipants = 280, TotalRevenue = 195000m },
-                    new AnalyticsChartData { DateLabel = "Mar 07", ChallengeParticipants = 350, TotalRevenue = 240000m }
-                },
-
-                // Sidebar: Top Sellers (Take 5 for the small list)
-                TopSellers = new List<SellerMetric>
-                {
-                    new SellerMetric { Rank = 1, SellerName = "Elite Strides Ph", ShopName = "Elite Sports Store", OrdersFulfilled = 452, RevenueGenerated = 1254000.50m },
-                    new SellerMetric { Rank = 2, SellerName = "Mountain Peak Gear", ShopName = "Peak Adventure Shop", OrdersFulfilled = 310, RevenueGenerated = 890600.00m },
-                    new SellerMetric { Rank = 3, SellerName = "Urban Runner Co.", ShopName = "Urban Runner Flagship", OrdersFulfilled = 285, RevenueGenerated = 412000.75m },
-                    new SellerMetric { Rank = 4, SellerName = "Velocity Sports", ShopName = "Velocity Metro", OrdersFulfilled = 198, RevenueGenerated = 356000.00m },
-                    new SellerMetric { Rank = 5, SellerName = "HydroFlow Official", ShopName = "HydroFlow PH", OrdersFulfilled = 156, RevenueGenerated = 98000.25m }
-                }.OrderByDescending(s => s.RevenueGenerated).ToList(),
-
-                // Bottom: Most Purchased Products
-                TopMovingProducts = productData.OrderByDescending(p => p.UnitsSold).Take(5).ToList(),
-
-                // Peak Activity Chart Data
-                PeakEngagementData = new List<HourlyEngagementMetric>
-                {
-                    new HourlyEngagementMetric { Hour = 0, ActivitySyncCount = 20, PurchaseCount = 5 },
-                    new HourlyEngagementMetric { Hour = 6, ActivitySyncCount = 420, PurchaseCount = 15 },
-                    new HourlyEngagementMetric { Hour = 9, ActivitySyncCount = 150, PurchaseCount = 40 },
-                    new HourlyEngagementMetric { Hour = 12, ActivitySyncCount = 110, PurchaseCount = 85 },
-                    new HourlyEngagementMetric { Hour = 17, ActivitySyncCount = 580, PurchaseCount = 60 },
-                    new HourlyEngagementMetric { Hour = 21, ActivitySyncCount = 310, PurchaseCount = 190 }
-                }.OrderBy(h => h.Hour).ToList()
+                    new HourlyEngagementMetric { Hour = 0, ActivitySyncCount = 0, PurchaseCount = 0 }
+                }
             };
 
             ViewBag.UserRole = GetCurrentUserRole();
             return View(viewModel);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDate = null, string? endDate = null)
+        {
+            try
+            {
+                DateTime start, end;
+                end = DateTime.Now;
+
+                if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                {
+                    start = DateTime.Parse(startDate);
+                    end   = DateTime.Parse(endDate).AddDays(1);
+                }
+                else
+                {
+                    start = days switch
+                    {
+                        7  => DateTime.Now.AddDays(-7),
+                        90 => DateTime.Now.AddDays(-90),
+                        _  => DateTime.Now.AddDays(-30)
+                    };
+                }
+
+                var trends     = new List<object>();
+                var peakData   = new List<object>();
+                int totalOrders = 0;
+                decimal totalRevenue = 0, avgOrder = 0;
+
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // Trends
+                    var trendSql = @"
+                        SELECT 
+                            CONVERT(VARCHAR, OrderDate, 107) AS DateLabel,
+                            ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
+                            COUNT(DISTINCT UserID) AS ChallengeParticipants
+                        FROM Orders
+                        WHERE OrderDate >= @Start AND OrderDate < @End
+                        GROUP BY CAST(OrderDate AS DATE), CONVERT(VARCHAR, OrderDate, 107)
+                        ORDER BY CAST(OrderDate AS DATE)";
+                    using (var cmd = new SqlCommand(trendSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Start", start);
+                        cmd.Parameters.AddWithValue("@End",   end);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                            while (await reader.ReadAsync())
+                                trends.Add(new
+                                {
+                                    dateLabel             = reader["DateLabel"]?.ToString() ?? "",
+                                    totalRevenue          = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
+                                    challengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
+                                });
+                    }
+
+                    // Stats
+                    var statsSql = @"
+                        SELECT COUNT(*) AS TotalOrders,
+                            ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
+                            ISNULL(AVG(TotalAmount), 0) AS AvgOrder
+                        FROM Orders
+                        WHERE OrderDate >= @Start AND OrderDate < @End";
+                    using (var cmd = new SqlCommand(statsSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Start", start);
+                        cmd.Parameters.AddWithValue("@End",   end);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                            if (await reader.ReadAsync())
+                            {
+                                totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                                totalRevenue = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
+                                avgOrder     = reader.GetDecimal(reader.GetOrdinal("AvgOrder"));
+                            }
+                    }
+
+                    // Peak hours
+                    var peakSql = @"
+                        SELECT DATEPART(HOUR, OrderDate) AS Hour,
+                            COUNT(*) AS PurchaseCount,
+                            COUNT(*) * 10 AS ActivitySyncCount
+                        FROM Orders
+                        WHERE OrderDate >= @Start AND OrderDate < @End
+                        GROUP BY DATEPART(HOUR, OrderDate)
+                        ORDER BY Hour";
+                    using (var cmd = new SqlCommand(peakSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Start", start);
+                        cmd.Parameters.AddWithValue("@End",   end);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                            while (await reader.ReadAsync())
+                                peakData.Add(new
+                                {
+                                    hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
+                                    purchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
+                                    activitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
+                                });
+                    }
+                }
+
+                return Json(new
+                {
+                    trends,
+                    peakData,
+                    totalOrders,
+                    totalRevenue,
+                    avgOrderValue = avgOrder
+                });
+            }
+            catch (Exception ex) { return Json(new { error = ex.Message }); }
+        }
+
 
         // URL: /Admin/SellerPerformance - Accessible by SuperAdmin, Admin, and Finance Officer
-        public IActionResult SellerPerformance()
+        public async Task<IActionResult> SellerPerformance()
         {
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
-
             var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
             if (unauthorized != null) return unauthorized;
 
-            // Detailed Seller List for Table
-            var mockSellers = new List<SellerMetric>
-            {
-                new SellerMetric { Rank = 1, SellerName = "Nike Official", ShopName = "Nike PH Store", OrdersFulfilled = 1450, RevenueGenerated = 850400.00m, GrowthPercentage = 12.5 },
-                new SellerMetric { Rank = 2, SellerName = "Adidas Philippines", ShopName = "Adidas PH Store", OrdersFulfilled = 1200, RevenueGenerated = 720300.50m, GrowthPercentage = 8.2 },
-                new SellerMetric { Rank = 3, SellerName = "Under Armour", ShopName = "UA Performance Center", OrdersFulfilled = 890, RevenueGenerated = 450000.75m, GrowthPercentage = 15.0 },
-                new SellerMetric { Rank = 4, SellerName = "Titan 22", ShopName = "Titan Basketball", OrdersFulfilled = 760, RevenueGenerated = 310200.20m, GrowthPercentage = 5.4 },
-                new SellerMetric { Rank = 5, SellerName = "Puma Metro", ShopName = "Puma Metro Hub", OrdersFulfilled = 540, RevenueGenerated = 120500.00m, GrowthPercentage = -2.1 }
-            };
+            var topSellers  = new List<SellerMetric>();
+            var topProducts = new List<ProductMetric>();
+            decimal totalRevenue = 0;
+            int totalOrders = 0;
 
-            // Detailed Product List for Tab 2
-            var mockProducts = new List<ProductMetric>
+            using (var connection = new SqlConnection(_connectionString))
             {
-                new ProductMetric { ProductName = "Vaporfly Next%", Category = "Running", SalesCount = 320, Revenue = 1500000m },
-                new ProductMetric { ProductName = "Yoga Mat Pro", Category = "Fitness", SalesCount = 280, Revenue = 56000m },
-                new ProductMetric { ProductName = "Dumbbell Set 10kg", Category = "Fitness", SalesCount = 150, Revenue = 75000m },
-                new ProductMetric { ProductName = "Stainless Water Bottle", Category = "Accessories", SalesCount = 410, Revenue = 92000m },
-                new ProductMetric { ProductName = "Performance Socks", Category = "Apparel", SalesCount = 520, Revenue = 25000m }
-             }.OrderByDescending(p => p.Revenue).ToList();
+                await connection.OpenAsync();
+
+                // Top Sellers by Revenue
+                var sellerSql = @"
+                    SELECT 
+                        ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
+                        s.business_name AS ShopName,
+                        COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
+                        SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
+                    FROM OrderItems oi
+                    INNER JOIN Sellers s ON oi.SellerId = s.seller_id
+                    WHERE oi.SellerId IS NOT NULL
+                    GROUP BY oi.SellerId, s.business_name
+                    ORDER BY RevenueGenerated DESC";
+
+                using (var cmd = new SqlCommand(sellerSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        topSellers.Add(new SellerMetric
+                        {
+                            Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                            SellerName       = reader["ShopName"]?.ToString() ?? "",
+                            ShopName         = reader["ShopName"]?.ToString() ?? "",
+                            OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                            RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                        });
+
+                // Top Moving Products
+                var productSql = @"
+                    SELECT TOP 10
+                        p.ProductName,
+                        p.Category,
+                        SUM(oi.Quantity) AS SalesCount,
+                        SUM(oi.Quantity * oi.UnitPrice) AS Revenue
+                    FROM OrderItems oi
+                    INNER JOIN Products p ON oi.ProductID = p.ProductId
+                    GROUP BY p.ProductId, p.ProductName, p.Category
+                    ORDER BY SalesCount DESC";
+
+                using (var cmd = new SqlCommand(productSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        topProducts.Add(new ProductMetric
+                        {
+                            ProductName = reader["ProductName"]?.ToString() ?? "",
+                            Category    = reader["Category"]?.ToString()    ?? "",
+                            SalesCount  = reader.GetInt32(reader.GetOrdinal("SalesCount")),
+                            Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
+                        });
+
+                // Platform totals
+                var statsSql = "SELECT COUNT(*) AS TotalOrders, ISNULL(SUM(TotalAmount), 0) AS TotalRevenue FROM Orders";
+                using (var cmd = new SqlCommand(statsSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    if (await reader.ReadAsync())
+                    {
+                        totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                        totalRevenue = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
+                    }
+            }
 
             var viewModel = new AnalyticsViewModel
             {
-                TotalSellers = 124,
-                TotalConsumers = 1540,
-                TotalRevenue = 2451401.45m,
-                TotalOrders = 5840,
-                TopSellers = mockSellers,
-                TopProducts = mockProducts
+                TotalRevenue = totalRevenue,
+                TotalOrders  = totalOrders,
+                TotalSellers = topSellers.Count,
+                TopSellers   = topSellers,
+                TopProducts  = topProducts.OrderByDescending(p => p.Revenue).ToList()
             };
 
             ViewBag.UserRole = GetCurrentUserRole();
             return View(viewModel);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSellerPerformance()
+        {
+            try
+            {
+                var topSellers = new List<object>();
+
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    var sql = @"
+                        SELECT 
+                            ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
+                            s.business_name AS ShopName,
+                            COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
+                            SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
+                        FROM OrderItems oi
+                        INNER JOIN Sellers s ON oi.SellerId = s.seller_id
+                        WHERE oi.SellerId IS NOT NULL
+                        GROUP BY oi.SellerId, s.business_name
+                        ORDER BY RevenueGenerated DESC";
+
+                    using (var cmd = new SqlCommand(sql, connection))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                        while (await reader.ReadAsync())
+                            topSellers.Add(new
+                            {
+                                rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                                shopName         = reader["ShopName"]?.ToString() ?? "",
+                                ordersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                                revenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                            });
+                }
+
+                return Json(new { topSellers });
+            }
+            catch (Exception ex) { return Json(new { error = ex.Message }); }
+        }
+
 
         // Consumers - Accessible by SuperAdmin, Admin, and Support Agent
         public IActionResult Consumers()
@@ -366,13 +651,104 @@ namespace NextHorizon.Controllers
         {
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
-
             var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Support Agent" });
             if (unauthorized != null) return unauthorized;
-
             ViewBag.UserRole = GetCurrentUserRole();
             return View();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSellers(string status = "Pending")
+        {
+            try
+            {
+                var sellers = new List<SellerViewModel>();
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    var sql = @"
+                                SELECT s.seller_id, s.user_id, s.business_name, s.business_email,
+                                    s.business_phone, s.business_type, s.business_address,
+                                    s.logo_path, s.document_path, s.seller_status, s.created_at,
+                                    ISNULL(c.first_name + ' ' + c.last_name, u.email) AS owner_name,
+                                    (SELECT COUNT(*) FROM Products p WHERE p.seller_id = s.seller_id) AS total_products,
+                                    ISNULL((SELECT SUM(oi.Quantity * oi.UnitPrice) 
+                                            FROM OrderItems oi WHERE oi.SellerId = s.seller_id), 0) AS total_sales
+                                FROM Sellers s
+                                INNER JOIN Users u ON s.user_id = u.user_id
+                                LEFT JOIN Consumers c ON c.user_id = u.user_id
+                                WHERE s.seller_status = @Status";
+                    using (var cmd = new SqlCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Status", status);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                            while (await reader.ReadAsync())
+                                sellers.Add(new SellerViewModel
+                                {
+                                    SellerId        = reader.GetInt32(reader.GetOrdinal("seller_id")),
+                                    UserId          = reader.GetInt32(reader.GetOrdinal("user_id")),
+                                    BusinessName    = reader["business_name"]?.ToString()    ?? "",
+                                    BusinessEmail   = reader["business_email"]?.ToString()   ?? "",
+                                    BusinessPhone   = reader["business_phone"]?.ToString()   ?? "",
+                                    BusinessType    = reader["business_type"]?.ToString()    ?? "",
+                                    BusinessAddress = reader["business_address"]?.ToString() ?? "",
+                                    LogoPath        = reader["logo_path"]?.ToString(),
+                                    DocumentPath    = reader["document_path"]?.ToString(),
+                                    SellerStatus    = reader["seller_status"]?.ToString()    ?? "",
+                                    OwnerName       = reader["owner_name"]?.ToString()       ?? "",
+                                    CreatedAt       = reader["created_at"] as DateTime?,
+                                    TotalProducts   = reader.GetInt32(reader.GetOrdinal("total_products")),
+                                    TotalSales      = reader.GetDecimal(reader.GetOrdinal("total_sales"))  
+                                });
+                    }
+                }
+                return Json(sellers);
+            }
+            catch (Exception ex) { return Json(new { error = ex.Message }); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateSellerStatus([FromBody] UpdateSellerStatusRequest request)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var cmd = new SqlCommand("UPDATE Sellers SET seller_status = @Status WHERE seller_id = @SellerId", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Status", request.Status);
+                        cmd.Parameters.AddWithValue("@SellerId", request.SellerId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+                return Json(new { success = true, message = $"Seller {request.Status} successfully." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoRequest request)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    var sql = "UPDATE Sellers SET business_name = @BusinessName, business_email = @BusinessEmail WHERE seller_id = @SellerId";
+                    using (var cmd = new SqlCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@BusinessName",  request.BusinessName);
+                        cmd.Parameters.AddWithValue("@BusinessEmail", request.BusinessEmail);
+                        cmd.Parameters.AddWithValue("@SellerId",      request.SellerId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+                return Json(new { success = true, message = "Seller updated successfully." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
 
         // FinanceRequest - Accessible ONLY by SuperAdmin and Finance Officer
         public async Task<IActionResult> FinanceRequest()
@@ -1887,7 +2263,17 @@ namespace NextHorizon.Controllers
     {
         public int ConsumerId { get; set; }
     }
-
+    public class UpdateSellerStatusRequest   
+    { 
+        public int SellerId { get; set; }
+        public string Status { get; set; } = ""; 
+    }
+    public class UpdateSellerInfoRequest     
+    { 
+        public int SellerId { get; set; } 
+        public string BusinessName { get; set; } = ""; 
+        public string BusinessEmail { get; set; } = ""; 
+    }
     public class RestoreConsumerRequest
     {
         public int ConsumerId { get; set; }

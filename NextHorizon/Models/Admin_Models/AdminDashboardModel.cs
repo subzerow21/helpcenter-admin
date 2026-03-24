@@ -36,5 +36,23 @@ namespace NextHorizon.Models.Admin_Models
         public bool IsVerified { get; set; }
     }
 
+    public class SellerViewModel
+    {
+        public int SellerId { get; set; }
+        public int UserId { get; set; }
+        public string BusinessName { get; set; } = "";
+        public string BusinessEmail { get; set; } = "";
+        public string BusinessPhone { get; set; } = "";
+        public string BusinessType { get; set; } = "";
+        public string BusinessAddress { get; set; } = "";
+        public string? LogoPath { get; set; }
+        public string? DocumentPath { get; set; }
+        public string SellerStatus { get; set; } = "";
+        public string OwnerName { get; set; } = "";
+        public DateTime? CreatedAt { get; set; }
+        public int TotalProducts { get; set; }      // ← add
+        public decimal TotalSales { get; set; }     // ← add
+    }
+
   
 }

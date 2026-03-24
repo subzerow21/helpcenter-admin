@@ -421,8 +421,8 @@ namespace NextHorizon.Controllers
             {
                 "SuperAdmin" => "/Admin/Dashboard",
                 "Admin" => "/Admin/Dashboard",
-                "Finance Officer" => "/Finance/Dashboard",
-                "Support Agent" => "/Support/Dashboard",
+                "Finance Officer" => "/Admin/FinanceRequest",
+                "Support Agent" => "/Admin/HelpCenter",
                 _ => "/Admin/Dashboard"
             };
         }

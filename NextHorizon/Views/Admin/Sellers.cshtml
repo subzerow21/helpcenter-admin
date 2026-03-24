@@ -35,8 +35,8 @@
         <div>
             <div class="d-flex border-bottom overflow-auto text-nowrap custom-tabs">
                 <button id="tab-pending" onclick="switchSellerTab('pending')"
-                        class="btn btn-sm fw-bold bg-dark text-white rounded-0 px-3 py-2 active-tab me-1">
-                    Pending Approval <span class="badge bg-danger ms-1">3</span>
+                    class="btn btn-sm fw-bold bg-dark text-white rounded-0 px-3 py-2 active-tab me-1">
+                    Pending Approval <span class="badge bg-danger ms-1" id="pending-count">...</span>
                 </button>
 
                 <button id="tab-active" onclick="switchSellerTab('active')"
@@ -324,10 +324,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
-                <div id="docContainer" class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 500px;">
-                    <p id="docLoadingText">Loading document viewer...</p>
-                    @* If using real files, an <iframe id="docFrame" src="" style="width:100%; height:100%;"></iframe> would go here *@
-                </div>
+                    <div id="docContainer" style="height: 500px;">
+                         <iframe id="docFrame" src="" style="width:100%; height:100%; border:none;"></iframe>
+                    </div>
             </div>
             <div class="modal-footer border-0 p-3">
                 <button type="button" class="btn btn-dark rounded-pill px-4" data-bs-dismiss="modal">Close Preview</button>
