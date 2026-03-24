@@ -11,8 +11,8 @@
             <div>
                 <p class="stat-label mb-1">Platform Revenue (Net)</p>
                 <div class="d-flex align-items-center">
-                    <h2 class="stat-value mb-0">₱17.2K</h2>
-                    <span class="ms-2 tiny text-muted">5% Commission</span>
+                    <h2 class="stat-value mb-0">₱@((Model.PlatformRevenue * 0.05m).ToString("N0"))</h2>
+                        <span class="ms-2 tiny text-muted">5% Commission</span>
                 </div>
             </div>
             <div class="stat-icon-wrapper text-success">
@@ -26,7 +26,7 @@
             <div class="stat-card d-flex align-items-center justify-content-between p-3 border border-primary h-100 shadow-hover">
                 <div>
                     <p class="stat-label mb-1">Pending Payouts</p>
-                    <h2 class="stat-value mb-0">12</h2>
+                    <h2 class="stat-value mb-0">@Model.PendingPayouts.ToString("D2")</h2>
                     <span class="text-primary tiny fw-bold">Withdrawal Requests</span>
                 </div>
                 <div class="stat-icon-wrapper text-primary">
@@ -41,7 +41,7 @@
             <div class="stat-card d-flex align-items-center justify-content-between p-3 border-warning shadow-sm h-100 shadow-hover">
                 <div>
                     <p class="stat-label mb-1 text-warning">Unverified Sellers</p>
-                    <h2 class="stat-value mb-0 text-dark">05</h2>
+                    <h2 class="stat-value mb-0 text-dark">@Model.PendingSellers.ToString("D2")</h2>
                     <span class="tiny fw-bold text-muted">Awaiting Approval</span>
                 </div>
                 <div class="stat-icon-wrapper text-warning">
@@ -86,34 +86,44 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @if (Model.ApprovalHub.Any())
+                        {
+                            @foreach (var item in Model.ApprovalHub.Take(5))
+                            {
+                                string badgeClass = item.RequestType switch {
+                                    "New Seller" => "bg-soft-warning text-warning",
+                                    "Withdrawal" => "bg-soft-primary text-primary",
+                                    "Voucher App" => "bg-soft-success text-success",
+                                    _ => "bg-soft-secondary text-secondary"
+                                };
+                                string statusClass = item.Status switch {
+                                    "Pending"    => "bg-soft-secondary text-secondary",
+                                    "Processing" => "bg-soft-primary text-primary",
+                                    "Verification" => "bg-soft-success text-success",
+                                    _ => "bg-soft-secondary text-secondary"
+                                };
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="badge @badgeClass">@item.RequestType</span>
+                                    </td>
+                                    <td class="fw-bold">@item.EntityName</td>
+                                    <td>@item.Details</td>
+                                    <td><span class="badge @statusClass">@item.Status</span></td>
+                                    <td class="text-end pe-4">
+                                        <a href="@item.RedirectUrl" class="btn btn-sm btn-dark py-0" style="font-size: 10px;">
+                                            @item.ActionLabel
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    else
+                    {
                         <tr>
-                            <td class="ps-4"><span class="badge bg-soft-warning text-warning">New Seller</span></td>
-                            <td class="fw-bold">TrailMasters Store</td>
-                            <td>Business Permit Inc.</td>
-                            <td><span class="badge bg-soft-secondary text-secondary">Pending</span></td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-dark py-0" style="font-size: 10px;">Review App</button>
-                            </td>
+                            <td colspan="5" class="text-center text-muted py-3 small">No pending approvals.</td>
                         </tr>
-                        <tr>
-                            <td class="ps-4"><span class="badge bg-soft-primary text-primary">Withdrawal</span></td>
-                            <td class="fw-bold">Apex Athletics</td>
-                            <td>₱12,400.00</td>
-                            <td><span class="badge bg-soft-primary text-primary">Processing</span></td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-dark py-0" style="font-size: 10px;">Approve Payout</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="ps-4"><span class="badge bg-soft-success text-success">Voucher App</span></td>
-                            <td class="fw-bold">RunFree Promo</td>
-                            <td>15% Off (Platform Wide)</td>
-                            <td><span class="badge bg-soft-success text-success">Verification</span></td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-dark py-0" style="font-size: 10px;">Verify Voucher</button>
-                            </td>
-                        </tr>
-                    </tbody>
+                    }
+                </tbody>
                 </table>
             </div>
         </div>
@@ -174,17 +184,22 @@
                 <h6 class="fw-bold small text-uppercase m-0 text-muted">Platform Audit Log</h6>
                 <a href="@Url.Action("Settings", "Admin")#tab-audit" class="text-decoration-none tiny fw-bold text-dark">View All</a>
             </div>
-            <ul class="list-unstyled tiny">
-                <li class="mb-2 border-bottom pb-1">
-                    <i class="bi bi-check-circle-fill text-success me-1"></i> <strong>16:40</strong> - Approved Payout for 'Apex'.
-                </li>
-                <li class="mb-2 border-bottom pb-1">
-                    <i class="bi bi-clock me-1"></i> <strong>16:15</strong> - Admin 'Gemini' updated Payout Terms.
-                </li>
-                <li class="mb-2">
-                    <i class="bi bi-person-plus-fill text-primary me-1"></i> <strong>15:50</strong> - New Seller 'TrailMasters' Application.
-                </li>
-            </ul>
+                <ul class="list-unstyled tiny">
+                 @foreach (var log in Model.AuditLogs)
+                 {
+                     <li class="mb-2 border-bottom pb-1">
+                          @if (log.Status == "Success")
+                 {
+                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                 }
+                     else
+                {
+                      <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                }
+                     <strong>@log.Timestamp.ToString("HH:mm")</strong> - @log.AdminName @log.Action @log.Target
+                    </li>
+    }
+                 </ul>
         </div>
     </div>
 </div>
