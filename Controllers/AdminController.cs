@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using NextHorizon.Models;
 using NextHorizon.Models.Admin_Models;
 using NextHorizon.Services.AdminServices;
-using Microsoft.EntityFrameworkCore;
+using NextHorizon.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,11 +29,11 @@ namespace NextHorizon.Controllers
         {
             var productData = new List<ProductMetric>
             {
-                new ProductMetric { ProductName = "UltraBoost v2", UnitsSold = 142, Revenue = 852000m, Category = "Footwear", Stock = 25 },
-                new ProductMetric { ProductName = "Hydration Pack", UnitsSold = 98, Revenue = 147000m, Category = "Accessories", Stock = 5 },
-                new ProductMetric { ProductName = "Swift Shorts", UnitsSold = 76, Revenue = 38000m, Category = "Apparel", Stock = 40 },
-                new ProductMetric { ProductName = "Pro GPS Watch", UnitsSold = 185, Revenue = 675000m, Category = "Electronics", Stock = 12 },
-                new ProductMetric { ProductName = "Compression Socks", UnitsSold = 210, Revenue = 42000m, Category = "Apparel", Stock = 150 }
+                new ProductMetric { ProductName = "UltraBoost v2",     UnitsSold = 142, Revenue = 852000m,  Category = "Footwear",    Stock = 25  },
+                new ProductMetric { ProductName = "Hydration Pack",    UnitsSold = 98,  Revenue = 147000m,  Category = "Accessories", Stock = 5   },
+                new ProductMetric { ProductName = "Swift Shorts",      UnitsSold = 76,  Revenue = 38000m,   Category = "Apparel",     Stock = 40  },
+                new ProductMetric { ProductName = "Pro GPS Watch",     UnitsSold = 185, Revenue = 675000m,  Category = "Electronics", Stock = 12  },
+                new ProductMetric { ProductName = "Compression Socks", UnitsSold = 210, Revenue = 42000m,   Category = "Apparel",     Stock = 150 }
             };
 
             var viewModel = new AnalyticsViewModel
@@ -59,7 +60,6 @@ namespace NextHorizon.Controllers
                 TotalRevenue = 2451401.45m,
                 TotalOrders = 5840
             };
-
             return View(viewModel);
         }
 
@@ -78,21 +78,42 @@ namespace NextHorizon.Controllers
                 PendingPayouts = new List<PayoutRequest>
                 {
                     new PayoutRequest { Id="1001", ShopName="TechGear Hub", SellerEmail="owner@techgear.com", Amount=15500.50m, BankName="GCash", SellerNote="Funds Transfer", DateRequested=DateTime.Now.AddDays(-2) },
-                    new PayoutRequest { Id="1002", ShopName="Luxe Apparel", SellerEmail="sales@luxe.ph", Amount=42000.00m, BankName="BDO", SellerNote="Withdrawal", DateRequested=DateTime.Now.AddDays(-1) }
+                    new PayoutRequest { Id="1002", ShopName="Luxe Apparel", SellerEmail="sales@luxe.ph",     Amount=42000.00m, BankName="BDO",   SellerNote="Withdrawal",     DateRequested=DateTime.Now.AddDays(-1) }
                 },
                 PendingDiscounts = new List<DiscountRequest>
                 {
-                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub", ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now, EndDate=DateTime.Now.AddDays(7) },
-                    new DiscountRequest { Id="D-56", ShopName="Home Essentials", ProductName="Ergonomic Chair", OriginalPrice=8999, DiscountPercent=50, StartDate=DateTime.Now.AddDays(2), EndDate=DateTime.Now.AddDays(5) }
+                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub",    ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now,            EndDate=DateTime.Now.AddDays(7) },
+                    new DiscountRequest { Id="D-56", ShopName="Home Essentials", ProductName="Ergonomic Chair",      OriginalPrice=8999, DiscountPercent=50, StartDate=DateTime.Now.AddDays(2), EndDate=DateTime.Now.AddDays(5) }
                 }
             };
-
             return View("FinanceRequest", viewModel);
         }
 
+        // ── HELP CENTER ──────────────────────────────────────────────
+
         public IActionResult HelpCenter()
         {
-            var faqs = _context.FAQs.ToList();
+            // Fetch active FAQs from DB and map to view model
+            var faqs = _context.FAQs
+                .Where(f => f.Status == "active" || f.Status == "Active")
+                .OrderByDescending(f => f.DateAdded)
+                .Select(f => new FaqItem
+                {
+                    Id = f.FaqID,
+                    Question = f.Question,
+                    Answer = f.Answer,
+                    Category = f.Category,
+                    UserType = f.UserType
+                })
+                .ToList();
+
+            // Get distinct categories from DB
+            var categories = _context.FAQs
+                .Where(f => f.Status == "active" || f.Status == "Active")
+                .Select(f => f.Category)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
 
             var viewModel = new HelpCenterV2ViewModel
             {
@@ -107,55 +128,11 @@ namespace NextHorizon.Controllers
                 },
                 Sessions = new List<QueueSession>
                 {
-                    new QueueSession
-                    {
-                        Id=1, SessionNo="NH-00421", CustomerName="Maria Reyes",
-                        CustomerEmail="m.reyes@email.com", Role="Consumer",
-                        Initials="MR", AvatarColor="#1a1a1a",
-                        WaitSeconds=1275, QueuePosition=1, Status="active",
-                        Category="Orders", AssignedTo="J. Chen",
-                        Messages = new List<QueueMessage>
-                        {
-                            new QueueMessage { Sender="cust", Body="Hi, I placed an order 5 days ago and still haven't received it.", TimeLabel="9:42 AM" },
-                            new QueueMessage { Sender="agt",  Body="Hi Maria! Let me check with logistics now.",                      TimeLabel="9:44 AM" }
-                        }
-                    },
-                    new QueueSession
-                    {
-                        Id=2, SessionNo="NH-00418", CustomerName="Juan Dela Cruz",
-                        CustomerEmail="jdc@email.com", Role="Consumer",
-                        Initials="JD", AvatarColor="#777",
-                        WaitSeconds=1231, QueuePosition=2, Status="waiting",
-                        Category="Returns", AssignedTo=null,
-                        Messages = new List<QueueMessage>()
-                    },
-                    new QueueSession
-                    {
-                        Id=3, SessionNo="NH-00415", CustomerName="Ana Santos",
-                        CustomerEmail="ana.s@email.com", Role="Seller",
-                        Initials="AS", AvatarColor="#888",
-                        WaitSeconds=1040, QueuePosition=3, Status="waiting",
-                        Category="Payments", AssignedTo=null,
-                        Messages = new List<QueueMessage>()
-                    },
-                    new QueueSession
-                    {
-                        Id=4, SessionNo="NH-00410", CustomerName="Kevin Tan",
-                        CustomerEmail="k.tan@email.com", Role="Consumer",
-                        Initials="KT", AvatarColor="#999",
-                        WaitSeconds=998, QueuePosition=4, Status="waiting",
-                        Category="Returns", AssignedTo=null,
-                        Messages = new List<QueueMessage>()
-                    },
-                    new QueueSession
-                    {
-                        Id=5, SessionNo="NH-00405", CustomerName="Rodel Garcia",
-                        CustomerEmail="r.garcia@email.com", Role="Seller",
-                        Initials="RG", AvatarColor="#666",
-                        WaitSeconds=1123, QueuePosition=5, Status="waiting",
-                        Category="Returns", AssignedTo=null,
-                        Messages = new List<QueueMessage>()
-                    }
+                    new QueueSession { Id=1, SessionNo="NH-00421", CustomerName="Maria Reyes",    Role="Consumer", Initials="MR", AvatarColor="#1a1a1a", WaitSeconds=1275, QueuePosition=1, Status="active",  Category="Orders",   AssignedTo="J. Chen", Messages = new List<QueueMessage> { new QueueMessage { Sender="cust", Body="Hi, I placed an order 5 days ago and still haven't received it.", TimeLabel="9:42 AM" }, new QueueMessage { Sender="agt", Body="Hi Maria! Let me check with logistics now.", TimeLabel="9:44 AM" } } },
+                    new QueueSession { Id=2, SessionNo="NH-00418", CustomerName="Juan Dela Cruz", Role="Consumer", Initials="JD", AvatarColor="#777",    WaitSeconds=1231, QueuePosition=2, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() },
+                    new QueueSession { Id=3, SessionNo="NH-00415", CustomerName="Ana Santos",     Role="Seller",   Initials="AS", AvatarColor="#888",    WaitSeconds=1040, QueuePosition=3, Status="waiting", Category="Payments", AssignedTo=null,      Messages = new List<QueueMessage>() },
+                    new QueueSession { Id=4, SessionNo="NH-00410", CustomerName="Kevin Tan",      Role="Consumer", Initials="KT", AvatarColor="#999",    WaitSeconds=998,  QueuePosition=4, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() },
+                    new QueueSession { Id=5, SessionNo="NH-00405", CustomerName="Rodel Garcia",   Role="Seller",   Initials="RG", AvatarColor="#666",    WaitSeconds=1123, QueuePosition=5, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() }
                 },
                 Agents = new List<AgentStatusViewModel>
                 {
@@ -165,7 +142,8 @@ namespace NextHorizon.Controllers
                     new AgentStatusViewModel { Name="K. Bautista", Initials="KB", Status="away",    ActiveSessions=0, MaxSessions=3 },
                     new AgentStatusViewModel { Name="L. Torres",   Initials="LT", Status="offline", ActiveSessions=0, MaxSessions=3 }
                 },
-                Faqs = faqs
+                Faqs = faqs,
+                Categories = categories
             };
 
             return View(viewModel);
@@ -178,7 +156,6 @@ namespace NextHorizon.Controllers
         {
             if (model == null || model.SessionId <= 0)
                 return BadRequest(new { success = false });
-
             return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName });
         }
 
@@ -187,14 +164,7 @@ namespace NextHorizon.Controllers
         {
             if (model == null || string.IsNullOrWhiteSpace(model.Message))
                 return BadRequest(new { success = false });
-
-            return Json(new
-            {
-                success = true,
-                message = model.Message,
-                isNote = model.IsNote,
-                timestamp = DateTime.Now.ToString("h:mm tt")
-            });
+            return Json(new { success = true, message = model.Message, isNote = model.IsNote, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
         [HttpPost]
@@ -202,7 +172,6 @@ namespace NextHorizon.Controllers
         {
             if (model == null || model.SessionId <= 0)
                 return BadRequest(new { success = false });
-
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
@@ -211,7 +180,6 @@ namespace NextHorizon.Controllers
         {
             if (model == null || model.SessionId <= 0)
                 return BadRequest(new { success = false });
-
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
@@ -229,33 +197,22 @@ namespace NextHorizon.Controllers
             if (model == null || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Question and answer are required." });
 
-            if (model.Answer.Length > 500)
-                return BadRequest(new { success = false, message = "Answer exceeds 500 characters." });
-
-            var faq = new FaqItem
+            var faq = new Faq
             {
                 Question = model.Question,
                 Answer = model.Answer,
                 Category = model.Category,
-                Status = model.Status,
                 UserType = model.UserType,
+                Status = "Active",
                 user_id = 1,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                DateAdded = DateTime.Now,
+                LastUpdated = DateTime.Now
             };
 
             _context.FAQs.Add(faq);
             _context.SaveChanges();
 
-            return Json(new
-            {
-                success = true,
-                id = faq.Id,
-                question = faq.Question,
-                answer = faq.Answer,
-                category = faq.Category,
-                message = "FAQ added successfully."
-            });
+            return Json(new { success = true, id = faq.FaqID, question = faq.Question, answer = faq.Answer, category = faq.Category, message = "FAQ added successfully." });
         }
 
         [HttpPost]
@@ -271,12 +228,10 @@ namespace NextHorizon.Controllers
             faq.Question = model.Question;
             faq.Answer = model.Answer;
             faq.Category = model.Category;
-            faq.Status = model.Status;
             faq.UserType = model.UserType;
-            faq.UpdatedAt = DateTime.Now;
+            faq.LastUpdated = DateTime.Now;
 
             _context.SaveChanges();
-
             return Json(new { success = true, id = model.Id, message = "FAQ updated." });
         }
 
@@ -290,10 +245,28 @@ namespace NextHorizon.Controllers
             if (faq == null)
                 return NotFound(new { success = false, message = "FAQ not found." });
 
-            _context.FAQs.Remove(faq);
+            // Soft delete
+            faq.Status = "deleted";
+            faq.LastUpdated = DateTime.Now;
             _context.SaveChanges();
 
             return Json(new { success = true, id = model.Id, message = "FAQ deleted." });
+        }
+
+        [HttpPost]
+        public IActionResult FaqCategoryAdd([FromBody] AddCategoryRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { success = false });
+            return Json(new { success = true, name = model.Name });
+        }
+
+        [HttpPost]
+        public IActionResult FaqCategoryDelete([FromBody] DeleteCategoryRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { success = false });
+            return Json(new { success = true, name = model.Name });
         }
 
         public IActionResult Logout()

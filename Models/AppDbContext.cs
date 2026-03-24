@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using NextHorizon.Models.Admin_Models;
+using NextHorizon.Models;
 
-namespace NextHorizon.Models.Admin_Models
+namespace NextHorizon.Data
 {
     public class AppDbContext : DbContext
     {
@@ -9,20 +9,23 @@ namespace NextHorizon.Models.Admin_Models
         {
         }
 
-        public DbSet<FaqItem> FAQs { get; set; }
+        public DbSet<Faq> FAQs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<FaqItem>(entity =>
+            modelBuilder.Entity<Faq>(entity =>
             {
                 entity.ToTable("FAQs", "dbo");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasColumnName("FaqID");
+                entity.HasKey(e => e.FaqID);
+                entity.Property(e => e.FaqID).HasColumnName("FaqID");
                 entity.Property(e => e.Question).HasColumnName("Question");
                 entity.Property(e => e.Answer).HasColumnName("Answer");
                 entity.Property(e => e.Category).HasColumnName("Category");
-                entity.Property(e => e.CreatedAt).HasColumnName("DateAdded");
-                entity.Property(e => e.UpdatedAt).HasColumnName("LastUpdated");
+                entity.Property(e => e.Status).HasColumnName("Status");
+                entity.Property(e => e.UserType).HasColumnName("UserType");
+                entity.Property(e => e.user_id).HasColumnName("user_id");
+                entity.Property(e => e.DateAdded).HasColumnName("DateAdded");
+                entity.Property(e => e.LastUpdated).HasColumnName("LastUpdated");
             });
         }
     }

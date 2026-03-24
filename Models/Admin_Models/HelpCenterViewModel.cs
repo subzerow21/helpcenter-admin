@@ -1,7 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace NextHorizon.Models.Admin_Models
 {
+    // ════════════════════════════════════════════════
+    //  OLD TICKET MODELS (kept for backward compat)
+    // ════════════════════════════════════════════════
     public class HelpCenterStatsViewModel
     {
         public int TotalTickets { get; set; }
@@ -53,5 +57,49 @@ namespace NextHorizon.Models.Admin_Models
     public class TicketActionRequest
     {
         public int TicketId { get; set; }
+    }
+
+    // ════════════════════════════════════════════════
+    //  FAQ VIEW MODELS (not DB entities)
+    // ════════════════════════════════════════════════
+    public class FaqItem
+    {
+        public int Id { get; set; }
+        public string Question { get; set; } = string.Empty;
+        public string Answer { get; set; } = string.Empty;
+        public string Category { get; set; } = "General";
+        public string UserType { get; set; } = "Consumer";
+    }
+
+    public class AddFaqRequest
+    {
+        public string Question { get; set; } = string.Empty;
+        public string Answer { get; set; } = string.Empty;
+        public string Category { get; set; } = "General";
+        public string UserType { get; set; } = "Consumer";
+    }
+
+    public class UpdateFaqRequest
+    {
+        public int Id { get; set; }
+        public string Question { get; set; } = string.Empty;
+        public string Answer { get; set; } = string.Empty;
+        public string Category { get; set; } = "General";
+        public string UserType { get; set; } = "Consumer";
+    }
+
+    public class DeleteFaqRequest
+    {
+        public int Id { get; set; }
+    }
+
+    public class AddCategoryRequest
+    {
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class DeleteCategoryRequest
+    {
+        public string Name { get; set; } = string.Empty;
     }
 }
