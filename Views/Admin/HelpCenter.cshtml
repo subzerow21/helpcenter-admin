@@ -3,34 +3,37 @@
     ViewData["Title"] = "Help Center";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
-    var sessionsJson = System.Text.Json.JsonSerializer.Serialize(Model.Sessions.Select(s => new {
-        id      = s.Id,
-        no      = s.SessionNo,
-        name    = s.CustomerName,
-        email   = s.CustomerEmail,
-        role    = s.Role,
-        av      = s.Initials,
-        bg      = s.AvatarColor,
+    var sessionsJson = System.Text.Json.JsonSerializer.Serialize(Model.Sessions.Select(s => new
+    {
+        id = s.Id,
+        no = s.SessionNo,
+        name = s.CustomerName,
+        email = s.CustomerEmail,
+        role = s.Role,
+        av = s.Initials,
+        bg = s.AvatarColor,
         waitSec = s.WaitSeconds,
-        pos     = s.QueuePosition,
-        status  = s.Status,
-        cat     = s.Category,
-        agent   = s.AssignedTo ?? "Unassigned"
+        pos = s.QueuePosition,
+        status = s.Status,
+        cat = s.Category,
+        agent = s.AssignedTo ?? "Unassigned"
     }));
 
-    var agentsJson = System.Text.Json.JsonSerializer.Serialize(Model.Agents.Select(a => new {
-        name     = a.Name,
+    var agentsJson = System.Text.Json.JsonSerializer.Serialize(Model.Agents.Select(a => new
+    {
+        name = a.Name,
         initials = a.Initials,
-        status   = a.Status,
+        status = a.Status,
         sessions = a.ActiveSessions,
-        max      = a.MaxSessions
+        max = a.MaxSessions
     }));
 
-    var faqsJson = System.Text.Json.JsonSerializer.Serialize(Model.Faqs.Select(f => new {
-        id       = f.Id,
-        q        = f.Question,
-        a        = f.Answer,
-        cat      = f.Category,
+    var faqsJson = System.Text.Json.JsonSerializer.Serialize(Model.Faqs.Select(f => new
+    {
+        id = f.Id,
+        q = f.Question,
+        a = f.Answer,
+        cat = f.Category,
         userType = f.UserType
     }));
 
@@ -38,176 +41,1281 @@
 }
 
 @section Styles {
-<style>
-.admin-content { padding: 20px !important; }
+    <style>
+        .admin-content {
+            padding: 20px !important;
+        }
 
-.q-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 14px; }
-.qs { background: #fff; border: 1px solid #e8e8e8; padding: 12px 16px; }
-.qs-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #aaa; margin-bottom: 5px; }
-.qs-val { font-size: 20px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; line-height: 1; }
-.qs-sub { font-size: 10px; color: #aaa; margin-top: 4px; }
-.qs-sub.warn { color: #854F0B; display: flex; align-items: center; gap: 3px; }
-.up { color: #27500A; font-weight: 600; } .dn { color: #A32D2D; font-weight: 600; }
+        /* ── Stats ── */
+        .q-stats {
+            display: grid;
+            grid-template-columns: repeat(5,1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+        }
 
-.hc-shell { display: grid; grid-template-columns: 1fr 380px; gap: 14px; height: calc(100vh - 62px - 52px - 80px - 14px); min-height: 580px; }
-.hc-left  { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
-.hc-right { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+        .qs {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            padding: 12px 16px;
+        }
 
-.panel { background: #fff; border: 1px solid #e8e8e8; display: flex; flex-direction: column; overflow: hidden; }
-.ph { padding: 12px 18px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.ph-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #1a1a1a; }
-.ph-sub   { font-size: 11px; color: #aaa; font-weight: 400; margin-top: 1px; }
+        .qs-lbl {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
 
-.pbtn { background: #1a1a1a; color: #fff; border: none; padding: 6px 13px; font-size: 10.5px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; letter-spacing: 0.3px; transition: background .15s; display: inline-flex; align-items: center; gap: 5px; }
-.pbtn:hover { background: #333; }
-.pbtn.out { background: #fff; color: #1a1a1a; border: 1px solid #e0e0e0; }
-.pbtn.out:hover { background: #f5f5f5; }
-.pbtn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .qs-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
 
-/* QUEUE */
-.q-scroll { overflow-y: auto; flex: 1; }
-.q-scroll::-webkit-scrollbar { width: 3px; }
-.q-scroll::-webkit-scrollbar-thumb { background: #e8e8e8; }
-.qtbl { width: 100%; border-collapse: collapse; }
-.qtbl th { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #aaa; padding: 9px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; background: #fafafa; position: sticky; top: 0; z-index: 1; }
-.qtbl td { padding: 11px 16px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
-.qtbl tbody tr:last-child td { border-bottom: none; }
-.q-cust { display: flex; align-items: center; gap: 8px; }
-.q-av   { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.q-name { font-size: 12px; font-weight: 600; color: #1a1a1a; }
-.q-role { font-size: 10.5px; color: #aaa; font-weight: 300; }
-.q-wait { font-size: 12px; font-weight: 600; color: #1a1a1a; font-variant-numeric: tabular-nums; }
-.q-wait.over5 { color: #791F1F; }
-.sla-bar  { width: 44px; height: 5px; background: #f0f0f0; border-radius: 2px; overflow: hidden; display: inline-block; }
-.sla-fill { height: 5px; border-radius: 2px; }
-.sl-ok { background: #4ade80; } .sl-warn { background: #f59e0b; } .sl-red { background: #e24b4a; }
-.q-pos-badge { width: 22px; height: 22px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #888; }
-.q-pos-badge.p1 { background: #1a1a1a; color: #fff; } .q-pos-badge.p2 { background: #444; color: #fff; } .q-pos-badge.p3 { background: #888; color: #fff; }
+        .qs-sub {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+        }
 
-.badge { display: inline-flex; align-items: center; padding: 2px 8px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.b-waiting { background: #EAF3DE; color: #27500A; } .b-active { background: #e8f0fe; color: #0c447c; }
-.b-idle    { background: #FAEEDA; color: #633806; } .b-done   { background: #f0f0f0; color: #666; }
-.b-online  { background: #EAF3DE; color: #27500A; } .b-busy   { background: #e8f0fe; color: #0c447c; }
-.b-away    { background: #FAEEDA; color: #633806; } .b-offline{ background: #f0f0f0; color: #666; }
-.b-full    { background: #FCEBEB; color: #791F1F; }
+            .qs-sub.warn {
+                color: #854F0B;
+                display: flex;
+                align-items: center;
+                gap: 3px;
+            }
 
-.wait-warn { background: #FCEBEB; border-left: 3px solid #e24b4a; padding: 8px 14px; display: none; align-items: center; font-size: 11.5px; flex-shrink: 0; }
-.wait-warn.show { display: flex; }
-.ww-left { display: flex; align-items: center; gap: 6px; color: #791F1F; font-weight: 500; }
-.ww-left svg { width: 13px; height: 13px; stroke: #791F1F; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        .up {
+            color: #27500A;
+            font-weight: 600;
+        }
 
-/* AGENT 3-COL */
-.agent-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; flex: 1; overflow: hidden; }
-.agent-col  { border-right: 1px solid #f0f0f0; display: flex; flex-direction: column; overflow: hidden; }
-.agent-col:last-child { border-right: none; }
-.agent-col-hd { padding: 8px 12px; background: #fafafa; border-bottom: 1px solid #f0f0f0; font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #aaa; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
-.slot-dot { width: 7px; height: 7px; border-radius: 50%; background: #e8e8e8; }
-.slot-dot.filled { background: #1a1a1a; }
-.agent-col-body { flex: 1; overflow-y: auto; }
-.agent-slot { padding: 9px 12px; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; gap: 7px; }
-.agent-slot:last-child { border-bottom: none; }
-.ag-av { width: 28px; height: 28px; background: #1a1a1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #fff; flex-shrink: 0; position: relative; }
-.ag-dot { position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #fff; }
-.d-on { background: #4ade80; } .d-busy { background: #378ADD; } .d-away { background: #f59e0b; } .d-off { background: #ccc; }
-.ag-info { flex: 1; min-width: 0; }
-.ag-name { font-size: 11px; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ag-chat { font-size: 10px; color: #aaa; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.empty-slot { padding: 9px 12px; font-size: 11px; color: #ddd; font-style: italic; border-bottom: 1px solid #f5f5f5; }
-.empty-slot:last-child { border-bottom: none; }
+        .dn {
+            color: #A32D2D;
+            font-weight: 600;
+        }
 
-/* FAQ FORM */
-.faq-form { background: #fff; border: 1px solid #e8e8e8; flex-shrink: 0; }
-.form-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.field-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #aaa; margin-bottom: 4px; }
+        /* ── Shell ── */
+        .hc-shell {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 14px;
+            height: calc(100vh - 62px - 52px - 80px - 14px);
+            min-height: 580px;
+        }
 
-/* CATEGORY INPUT + CHIPS */
-.cat-add-row { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
-.cat-text-inp { flex: 1; background: #f8f8f8; border: 1.5px solid #e8e8e8; padding: 7px 11px; font-size: 12px; font-family: 'Poppins', sans-serif; color: #1a1a1a; outline: none; transition: border-color .2s; }
-.cat-text-inp:focus { border-color: #1a1a1a; }
-.cat-text-inp::placeholder { color: #ccc; }
-.cat-add-btn { background: #1a1a1a; color: #fff; border: none; padding: 7px 12px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; white-space: nowrap; transition: background .15s; }
-.cat-add-btn:hover { background: #333; }
-.cat-chips { display: flex; gap: 5px; flex-wrap: wrap; }
-.cat-chip { background: #f5f5f5; border: 1px solid #e8e8e8; color: #666; font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all .15s; display: inline-flex; align-items: center; gap: 5px; }
-.cat-chip.on { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-.cat-del { width: 11px; height: 11px; cursor: pointer; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; display: none; }
-.cat-chip:hover .cat-del { display: inline; }
-.cat-chip.on .cat-del { display: inline; }
+        .hc-left {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+        }
 
-.faq-inp { width: 100%; background: #f8f8f8; border: 1.5px solid #e8e8e8; padding: 8px 12px; font-size: 12.5px; font-family: 'Poppins', sans-serif; color: #1a1a1a; outline: none; transition: border-color .2s; }
-.faq-inp:focus { border-color: #1a1a1a; }
-.faq-inp::placeholder { color: #ccc; }
-textarea.faq-inp { resize: none; height: 70px; line-height: 1.5; }
+        .hc-right {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+        }
 
-/* RADIO */
-.radio-row { display: flex; align-items: center; gap: 18px; }
-.radio-opt { display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.radio-opt input[type=radio] { width: 14px; height: 14px; accent-color: #1a1a1a; cursor: pointer; }
-.radio-opt span { font-size: 12.5px; font-weight: 500; color: #1a1a1a; }
+        .panel {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-.form-foot { padding: 9px 16px; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; }
+        .ph {
+            padding: 12px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
 
-/* FAQ LIST */
-.faq-list-panel { background: #fff; border: 1px solid #e8e8e8; flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.faq-search { padding: 9px 16px; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; gap: 8px; background: #fafafa; flex-shrink: 0; }
-.faq-search svg { width: 12px; height: 12px; stroke: #bbb; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.faq-search input { background: none; border: none; outline: none; font-size: 12px; font-family: 'Poppins', sans-serif; color: #1a1a1a; flex: 1; }
-.faq-search input::placeholder { color: #ccc; }
-.faq-filter { display: flex; gap: 5px; padding: 8px 16px; border-bottom: 1px solid #f5f5f5; flex-shrink: 0; flex-wrap: wrap; }
-.ff { background: #f5f5f5; border: 1px solid #e8e8e8; color: #666; font-size: 10.5px; font-weight: 600; padding: 4px 10px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all .15s; }
-.ff.on { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-.faq-scroll { overflow-y: auto; flex: 1; }
-.faq-scroll::-webkit-scrollbar { width: 3px; }
-.faq-scroll::-webkit-scrollbar-thumb { background: #e8e8e8; }
-.faq-item { border-bottom: 1px solid #f5f5f5; padding: 12px 16px; }
-.faq-item:last-child { border-bottom: none; }
-.faq-item.editing { background: #fafffe; border-left: 2px solid #1a1a1a; }
-.faq-item-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-.faq-q { font-size: 12.5px; font-weight: 600; color: #1a1a1a; flex: 1; line-height: 1.4; }
-.faq-actions { display: flex; gap: 3px; flex-shrink: 0; }
-.faq-act { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; border-radius: 3px; transition: background .15s; }
-.faq-act:hover { background: #f5f5f5; }
-.faq-act svg { width: 13px; height: 13px; fill: none; stroke: #888; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.faq-act.del svg { stroke: #e24b4a; }
-.faq-a { font-size: 12px; color: #555; line-height: 1.5; font-weight: 300; margin-bottom: 6px; }
-.faq-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.faq-cat-badge { display: inline-flex; align-items: center; padding: 2px 7px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.ut-consumer { background: #e8f0fe; color: #0c447c; }
-.ut-seller   { background: #EAF3DE; color: #27500A; }
-.edit-inp { width: 100%; background: #f8f8f8; border: 1px solid #e8e8e8; padding: 6px 10px; font-size: 12px; font-family: 'Poppins', sans-serif; color: #1a1a1a; outline: none; margin-bottom: 6px; }
-.edit-inp:focus { border-color: #1a1a1a; }
-textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
-.edit-foot { display: flex; gap: 6px; margin-top: 6px; }
-.faq-empty { padding: 24px; text-align: center; color: #ccc; font-size: 12px; }
+        .ph-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #1a1a1a;
+        }
 
-/* CONFIRM MODAL */
-.nh-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
-.nh-modal-bg.show { display: flex; }
-.nh-modal { background: #fff; border: 1px solid #e0e0e0; padding: 0; width: 380px; max-width: 95vw; }
-.nh-modal-hd { padding: 16px 20px 0; display: flex; align-items: flex-start; gap: 12px; }
-.nh-modal-icon { width: 36px; height: 36px; background: #FCEBEB; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.nh-modal-icon svg { width: 16px; height: 16px; fill: none; stroke: #791F1F; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.nh-modal-title { font-size: 13.5px; font-weight: 700; color: #1a1a1a; margin-bottom: 5px; }
-.nh-modal-msg { font-size: 12px; color: #666; line-height: 1.55; font-weight: 400; }
-.nh-modal-body { padding: 12px 20px 16px 20px; }
-.nh-modal-warn { background: #FAEEDA; border: 1px solid #f5d08a; padding: 8px 12px; font-size: 11.5px; color: #633806; font-weight: 500; margin-top: 10px; display: flex; align-items: center; gap: 7px; }
-.nh-modal-warn svg { width: 13px; height: 13px; fill: none; stroke: #854F0B; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.nh-modal-foot { padding: 12px 20px; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.nh-modal-cancel { background: #fff; color: #1a1a1a; border: 1px solid #e0e0e0; padding: 7px 16px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background .15s; }
-.nh-modal-cancel:hover { background: #f5f5f5; }
-.nh-modal-confirm { background: #e24b4a; color: #fff; border: none; padding: 7px 16px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background .15s; }
-.nh-modal-confirm:hover { background: #c73938; }
+        .ph-sub {
+            font-size: 11px;
+            color: #aaa;
+            font-weight: 400;
+            margin-top: 1px;
+        }
 
-.nh-toast { position: fixed; bottom: 20px; right: 20px; background: #1a1a1a; color: #fff; padding: 10px 18px; font-size: 12px; font-weight: 500; font-family: 'Poppins', sans-serif; z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; }
-.nh-toast.show { opacity: 1; }
-</style>
+        .pbtn {
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            padding: 6px 13px;
+            font-size: 10.5px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.3px;
+            transition: background .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+            .pbtn:hover {
+                background: #333;
+            }
+
+            .pbtn.out {
+                background: #fff;
+                color: #1a1a1a;
+                border: 1px solid #e0e0e0;
+            }
+
+                .pbtn.out:hover {
+                    background: #f5f5f5;
+                }
+
+            .pbtn svg {
+                width: 12px;
+                height: 12px;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+        /* ── Queue ── */
+        .q-scroll {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+            .q-scroll::-webkit-scrollbar {
+                width: 3px;
+            }
+
+            .q-scroll::-webkit-scrollbar-thumb {
+                background: #e8e8e8;
+            }
+
+        .qtbl {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .qtbl th {
+                font-size: 9.5px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                color: #aaa;
+                padding: 9px 16px;
+                text-align: left;
+                border-bottom: 1px solid #f0f0f0;
+                background: #fafafa;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+
+            .qtbl td {
+                padding: 11px 16px;
+                border-bottom: 1px solid #f5f5f5;
+                vertical-align: middle;
+            }
+
+            .qtbl tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+        .q-cust {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .q-av {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        /* FIX 1: capitalize */
+        .q-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            text-transform: capitalize;
+        }
+
+        .q-role {
+            font-size: 10.5px;
+            color: #aaa;
+            font-weight: 300;
+            text-transform: capitalize;
+        }
+
+        .q-wait {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-variant-numeric: tabular-nums;
+        }
+
+            .q-wait.over5 {
+                color: #791F1F;
+            }
+
+        .sla-bar {
+            width: 44px;
+            height: 5px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .sla-fill {
+            height: 5px;
+            border-radius: 2px;
+        }
+
+        .sl-ok {
+            background: #4ade80;
+        }
+
+        .sl-warn {
+            background: #f59e0b;
+        }
+
+        .sl-red {
+            background: #e24b4a;
+        }
+
+        .q-pos-badge {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #888;
+        }
+
+            .q-pos-badge.p1 {
+                background: #1a1a1a;
+                color: #fff;
+            }
+
+            .q-pos-badge.p2 {
+                background: #444;
+                color: #fff;
+            }
+
+            .q-pos-badge.p3 {
+                background: #888;
+                color: #fff;
+            }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .b-waiting {
+            background: #EAF3DE;
+            color: #27500A;
+        }
+
+        .b-active {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .b-idle {
+            background: #FAEEDA;
+            color: #633806;
+        }
+
+        .b-done {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .b-online {
+            background: #EAF3DE;
+            color: #27500A;
+        }
+
+        .b-busy {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .b-away {
+            background: #FAEEDA;
+            color: #633806;
+        }
+
+        .b-offline {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .b-full {
+            background: #FCEBEB;
+            color: #791F1F;
+        }
+
+        .wait-warn {
+            background: #FCEBEB;
+            border-left: 3px solid #e24b4a;
+            padding: 8px 14px;
+            display: none;
+            align-items: center;
+            font-size: 11.5px;
+            flex-shrink: 0;
+        }
+
+            .wait-warn.show {
+                display: flex;
+            }
+
+        .ww-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #791F1F;
+            font-weight: 500;
+        }
+
+            .ww-left svg {
+                width: 13px;
+                height: 13px;
+                stroke: #791F1F;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                flex-shrink: 0;
+            }
+
+        /* ── Agent 3-col ── */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .agent-col {
+            border-right: 1px solid #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+            .agent-col:last-child {
+                border-right: none;
+            }
+
+        .agent-col-hd {
+            padding: 8px 12px;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #aaa;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slot-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #e8e8e8;
+        }
+
+            .slot-dot.filled {
+                background: #1a1a1a;
+            }
+
+        .agent-col-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .agent-slot {
+            padding: 9px 12px;
+            border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+            .agent-slot:last-child {
+                border-bottom: none;
+            }
+
+        .ag-av {
+            width: 28px;
+            height: 28px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .ag-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .d-on {
+            background: #4ade80;
+        }
+
+        .d-busy {
+            background: #378ADD;
+        }
+
+        .d-away {
+            background: #f59e0b;
+        }
+
+        .d-off {
+            background: #ccc;
+        }
+
+        .ag-info {
+            flex: 1;
+            min-width: 0;
+        }
+        /* FIX 1: capitalize */
+        .ag-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1a1a1a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-transform: capitalize;
+        }
+
+        .ag-chat {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .empty-slot {
+            padding: 9px 12px;
+            font-size: 11px;
+            color: #ddd;
+            font-style: italic;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+            .empty-slot:last-child {
+                border-bottom: none;
+            }
+
+        /* ── FAQ Form ── */
+        .faq-form {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            flex-shrink: 0;
+        }
+
+        .form-body {
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .field-lbl {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .cat-add-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 8px;
+        }
+        /* FIX 1: capitalize category input */
+        .cat-text-inp {
+            flex: 1;
+            background: #f8f8f8;
+            border: 1.5px solid #e8e8e8;
+            padding: 7px 11px;
+            font-size: 12px;
+            font-family: 'Poppins', sans-serif;
+            color: #1a1a1a;
+            outline: none;
+            transition: border-color .2s;
+            text-transform: capitalize;
+        }
+
+            .cat-text-inp:focus {
+                border-color: #1a1a1a;
+            }
+
+            .cat-text-inp::placeholder {
+                color: #ccc;
+                text-transform: none;
+            }
+
+        .cat-add-btn {
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            padding: 7px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            white-space: nowrap;
+            transition: background .15s;
+        }
+
+            .cat-add-btn:hover {
+                background: #333;
+            }
+
+        .cat-chips {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        /* FIX 1: capitalize chips */
+        .cat-chip {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-transform: capitalize;
+        }
+
+            .cat-chip.on {
+                background: #1a1a1a;
+                color: #fff;
+                border-color: #1a1a1a;
+            }
+
+        .cat-del {
+            width: 11px;
+            height: 11px;
+            cursor: pointer;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            display: none;
+        }
+
+        .cat-chip:hover .cat-del {
+            display: inline;
+        }
+
+        .cat-chip.on .cat-del {
+            display: inline;
+        }
+
+        .faq-inp {
+            width: 100%;
+            background: #f8f8f8;
+            border: 1.5px solid #e8e8e8;
+            padding: 8px 12px;
+            font-size: 12.5px;
+            font-family: 'Poppins', sans-serif;
+            color: #1a1a1a;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+            .faq-inp:focus {
+                border-color: #1a1a1a;
+            }
+
+            .faq-inp::placeholder {
+                color: #ccc;
+            }
+        /* FIX 1: capitalize question input */
+        #faqQ {
+            text-transform: capitalize;
+        }
+
+        textarea.faq-inp {
+            resize: none;
+            height: 70px;
+            line-height: 1.5;
+        }
+
+        .radio-row {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .radio-opt {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+        }
+
+            .radio-opt input[type=radio] {
+                width: 14px;
+                height: 14px;
+                accent-color: #1a1a1a;
+                cursor: pointer;
+            }
+
+            .radio-opt span {
+                font-size: 12.5px;
+                font-weight: 500;
+                color: #1a1a1a;
+            }
+
+        .form-foot {
+            padding: 9px 16px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        /* ── FAQ List ── */
+        .faq-list-panel {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .faq-search {
+            padding: 9px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+
+            .faq-search svg {
+                width: 12px;
+                height: 12px;
+                stroke: #bbb;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                flex-shrink: 0;
+            }
+
+            .faq-search input {
+                background: none;
+                border: none;
+                outline: none;
+                font-size: 12px;
+                font-family: 'Poppins', sans-serif;
+                color: #1a1a1a;
+                flex: 1;
+            }
+
+                .faq-search input::placeholder {
+                    color: #ccc;
+                }
+
+        .faq-filter {
+            display: flex;
+            gap: 5px;
+            padding: 8px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        /* FIX 1: capitalize filter buttons */
+        .ff {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #666;
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: all .15s;
+            text-transform: capitalize;
+        }
+
+            .ff.on {
+                background: #1a1a1a;
+                color: #fff;
+                border-color: #1a1a1a;
+            }
+
+        .faq-scroll {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+            .faq-scroll::-webkit-scrollbar {
+                width: 3px;
+            }
+
+            .faq-scroll::-webkit-scrollbar-thumb {
+                background: #e8e8e8;
+            }
+
+        .faq-item {
+            border-bottom: 1px solid #f5f5f5;
+            padding: 12px 16px;
+        }
+
+            .faq-item:last-child {
+                border-bottom: none;
+            }
+
+            .faq-item.editing {
+                background: #fafffe;
+                border-left: 2px solid #1a1a1a;
+            }
+
+        .faq-item-hd {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        /* FIX 1: capitalize FAQ question */
+        .faq-q {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1a1a1a;
+            flex: 1;
+            line-height: 1.4;
+            text-transform: capitalize;
+        }
+
+        .faq-actions {
+            display: flex;
+            gap: 3px;
+            flex-shrink: 0;
+        }
+
+        .faq-act {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            border-radius: 3px;
+            transition: background .15s;
+        }
+
+            .faq-act:hover {
+                background: #f5f5f5;
+            }
+
+            .faq-act svg {
+                width: 13px;
+                height: 13px;
+                fill: none;
+                stroke: #888;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .faq-act.del svg {
+                stroke: #e24b4a;
+            }
+
+        .faq-a {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.5;
+            font-weight: 300;
+            margin-bottom: 6px;
+        }
+
+        .faq-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        /* FIX 1: capitalize badges */
+        .faq-cat-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: capitalize;
+        }
+
+        .ut-consumer {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
+        .ut-seller {
+            background: #EAF3DE;
+            color: #27500A;
+        }
+
+        .edit-inp {
+            width: 100%;
+            background: #f8f8f8;
+            border: 1px solid #e8e8e8;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: 'Poppins', sans-serif;
+            color: #1a1a1a;
+            outline: none;
+            margin-bottom: 6px;
+        }
+
+            .edit-inp:focus {
+                border-color: #1a1a1a;
+            }
+
+        textarea.edit-inp {
+            resize: none;
+            height: 52px;
+            line-height: 1.5;
+        }
+
+        .edit-foot {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .faq-empty {
+            padding: 24px;
+            text-align: center;
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        /* ── Modal ── */
+        .nh-modal-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .nh-modal-bg.show {
+                display: flex;
+            }
+
+        .nh-modal {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 0;
+            width: 380px;
+            max-width: 95vw;
+        }
+
+        .nh-modal-hd {
+            padding: 16px 20px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .nh-modal-icon {
+            width: 36px;
+            height: 36px;
+            background: #FCEBEB;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+            .nh-modal-icon svg {
+                width: 16px;
+                height: 16px;
+                fill: none;
+                stroke: #791F1F;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+        .nh-modal-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+
+        .nh-modal-msg {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.55;
+            font-weight: 400;
+        }
+
+        .nh-modal-body {
+            padding: 12px 20px 16px 20px;
+        }
+
+        .nh-modal-warn {
+            background: #FAEEDA;
+            border: 1px solid #f5d08a;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            color: #633806;
+            font-weight: 500;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+            .nh-modal-warn svg {
+                width: 13px;
+                height: 13px;
+                fill: none;
+                stroke: #854F0B;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                flex-shrink: 0;
+            }
+
+        .nh-modal-foot {
+            padding: 12px 20px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .nh-modal-cancel {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
+            padding: 7px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: background .15s;
+        }
+
+            .nh-modal-cancel:hover {
+                background: #f5f5f5;
+            }
+
+        .nh-modal-confirm {
+            background: #e24b4a;
+            color: #fff;
+            border: none;
+            padding: 7px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: background .15s;
+        }
+
+            .nh-modal-confirm:hover {
+                background: #c73938;
+            }
+
+        .nh-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 10px 18px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity .3s;
+            pointer-events: none;
+        }
+
+            .nh-toast.show {
+                opacity: 1;
+            }
+
+        /* ══════════════════════════════════════
+           FIX 3: RESPONSIVE BREAKPOINTS
+        ══════════════════════════════════════ */
+
+        /* Tablet landscape: 2-col → 1-col */
+        @@media (max-width: 1100px) {
+            .hc-shell {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: unset;
+            }
+
+            .hc-left, .hc-right {
+                overflow: visible;
+            }
+
+                .hc-left .panel:first-child {
+                    min-height: 320px;
+                }
+
+            .hc-right {
+                overflow: visible;
+            }
+        }
+
+        /* Tablet portrait: 5-col stats → 3 */
+        @@media (max-width: 900px) {
+            .q-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            /* Agent panel: stack columns */
+            .agent-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .agent-col {
+                border-right: none;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+                .agent-col:last-child {
+                    border-bottom: none;
+                }
+
+            .panel[style*="height:240px"] {
+                height: auto !important;
+            }
+
+            .agent-col-body {
+                max-height: 100px;
+            }
+        }
+
+        /* Mobile: full single column */
+        @@media (max-width: 640px) {
+            .admin-content {
+                padding: 10px !important;
+            }
+
+            .q-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+
+            .qs {
+                padding: 10px 12px;
+            }
+
+            .qs-val {
+                font-size: 17px;
+            }
+
+            .hc-shell {
+                gap: 10px;
+            }
+
+            .hc-left, .hc-right {
+                gap: 10px;
+            }
+
+            .ph {
+                padding: 10px 12px;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .ph-title {
+                font-size: 10px;
+            }
+            /* Tighten queue table */
+            .qtbl th, .qtbl td {
+                padding: 8px 8px;
+                font-size: 10px;
+            }
+                /* Hide SLA col on mobile to save space */
+                .qtbl th:nth-child(4), .qtbl td:nth-child(4) {
+                    display: none;
+                }
+            /* Agent: 2-col grid */
+            .agent-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .agent-col {
+                border-right: 1px solid #f0f0f0;
+                border-bottom: none;
+            }
+
+                .agent-col:nth-child(2) {
+                    border-right: none;
+                }
+
+                .agent-col:last-child {
+                    grid-column: 1 / -1;
+                    border-top: 1px solid #f0f0f0;
+                    border-right: none;
+                }
+            /* FAQ form */
+            .form-body {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+
+            .cat-add-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .cat-text-inp, .cat-add-btn {
+                width: 100%;
+            }
+
+            .faq-filter {
+                padding: 6px 10px;
+                gap: 4px;
+            }
+
+            .ff {
+                font-size: 9.5px;
+                padding: 3px 8px;
+            }
+            /* Modal stacked buttons */
+            .nh-modal-foot {
+                flex-direction: column-reverse;
+                gap: 6px;
+            }
+
+            .nh-modal-cancel, .nh-modal-confirm {
+                width: 100%;
+                justify-content: center;
+            }
+            /* Toast full-width */
+            .nh-toast {
+                right: 10px;
+                left: 10px;
+                bottom: 10px;
+                text-align: center;
+            }
+        }
+
+        /* Very small phones */
+        @@media (max-width: 400px) {
+            .q-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .agent-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .agent-col {
+                border-right: none;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+                .agent-col:last-child {
+                    grid-column: auto;
+                    border-top: none;
+                }
+            /* Hide category col on tiny screens too */
+            .qtbl th:nth-child(5), .qtbl td:nth-child(5) {
+                display: none;
+            }
+        }
+    </style>
 }
 
 <!-- STATS -->
 <div class="q-stats">
     <div class="qs"><div class="qs-lbl">In Queue</div><div class="qs-val" id="qsInQueue">@Model.Stats.InQueue</div><div class="qs-sub"><span class="dn">+2</span> vs 30min ago</div></div>
     <div class="qs"><div class="qs-lbl">Active Sessions</div><div class="qs-val">@Model.Stats.ActiveSessions</div><div class="qs-sub"><span class="up">@Model.Stats.AgentsOnline agents</span> online</div></div>
-    <div class="qs"><div class="qs-lbl">Avg. Wait Time</div><div class="qs-val">@Model.Stats.AvgWaitTime</div><div class="qs-sub warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Target: 2:00</div></div>
+    <div class="qs"><div class="qs-lbl">Avg. Wait Time</div><div class="qs-val">@Model.Stats.AvgWaitTime</div><div class="qs-sub warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>Target: 2:00</div></div>
     <div class="qs"><div class="qs-lbl">Resolved Today</div><div class="qs-val">@Model.Stats.ResolvedToday</div><div class="qs-sub"><span class="up">+5</span> vs yesterday</div></div>
     <div class="qs"><div class="qs-lbl">Total FAQs</div><div class="qs-val" id="statFaqCount">@Model.Faqs.Count</div><div class="qs-sub">across @Model.Categories.Count categories</div></div>
 </div>
@@ -220,13 +1328,13 @@ textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
             <div class="ph">
                 <div><div class="ph-title">Live Queue</div><div class="ph-sub" id="qMeta">@Model.Stats.InQueue in queue</div></div>
                 <span style="font-size:10.5px;color:#4ade80;font-weight:600;display:flex;align-items:center;gap:5px;">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     Auto-queue active
                 </span>
             </div>
             <div class="wait-warn" id="waitWarn">
                 <div class="ww-left">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     <span id="warnTxt">Customers waiting over 5 minutes</span>
                 </div>
             </div>
@@ -250,56 +1358,44 @@ textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
 
     <!-- RIGHT: FAQ MANAGER -->
     <div class="hc-right">
-
         <!-- ADD FORM -->
         <div class="faq-form">
             <div class="ph">
                 <div><div class="ph-title">FAQ Manager</div><div class="ph-sub">Add, edit, or delete FAQs in real time</div></div>
             </div>
             <div class="form-body">
-
                 <!-- CATEGORY -->
                 <div>
                     <div class="field-lbl">Category</div>
                     <div class="cat-add-row">
                         <input class="cat-text-inp" id="newCatInp" type="text" placeholder="Add new category..." maxlength="50"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();addCategory();}" />
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();addCategory();}" />
                         <button class="cat-add-btn" onclick="addCategory()">+ Add</button>
                     </div>
                     <div class="cat-chips" id="catChips"></div>
                 </div>
-
                 <!-- QUESTION -->
                 <div>
                     <div class="field-lbl">Question</div>
                     <input class="faq-inp" id="faqQ" type="text" placeholder="e.g. How do I track my order?" maxlength="500" />
                 </div>
-
-                <!-- ANSWER — no maxlength matches nvarchar(max) -->
+                <!-- ANSWER -->
                 <div>
                     <div class="field-lbl">Answer</div>
                     <textarea class="faq-inp" id="faqA" placeholder="Type the full response here..."></textarea>
                 </div>
-
                 <!-- VISIBLE TO -->
                 <div>
                     <div class="field-lbl">Visible to</div>
                     <div class="radio-row">
-                        <label class="radio-opt">
-                            <input type="radio" name="userType" value="Consumer" checked />
-                            <span>Consumer</span>
-                        </label>
-                        <label class="radio-opt">
-                            <input type="radio" name="userType" value="Seller" />
-                            <span>Seller</span>
-                        </label>
+                        <label class="radio-opt"><input type="radio" name="userType" value="Consumer" checked /><span>Consumer</span></label>
+                        <label class="radio-opt"><input type="radio" name="userType" value="Seller" /><span>Seller</span></label>
                     </div>
                 </div>
-
             </div>
             <div class="form-foot">
                 <button class="pbtn" onclick="addFaq()">
-                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                     Add FAQ
                 </button>
             </div>
@@ -312,21 +1408,21 @@ textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
                 <span id="faqListCount" style="font-size:11px;color:#aaa;font-weight:500;">@Model.Faqs.Count FAQs</span>
             </div>
             <div class="faq-search">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                 <input type="text" placeholder="Search FAQs..." oninput="filterFaqs(this.value)" />
             </div>
             <div class="faq-filter" id="faqFilterBar"></div>
             <div class="faq-scroll" id="faqList"></div>
         </div>
-
     </div>
 </div>
 
+<!-- CONFIRM MODAL -->
 <div class="nh-modal-bg" id="nhModalBg">
     <div class="nh-modal">
         <div class="nh-modal-hd">
             <div class="nh-modal-icon">
-                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
             </div>
             <div>
                 <div class="nh-modal-title" id="nhModalTitle">Delete FAQ?</div>
@@ -335,7 +1431,7 @@ textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
         <div class="nh-modal-body">
             <div class="nh-modal-msg" id="nhModalMsg">This action cannot be undone.</div>
             <div class="nh-modal-warn">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 This will be permanently deleted from the system and cannot be recovered.
             </div>
         </div>
@@ -349,334 +1445,379 @@ textarea.edit-inp { resize: none; height: 52px; line-height: 1.5; }
 <div class="nh-toast" id="nhToast"></div>
 
 @section Scripts {
-<script>
-var SESSIONS   = @Html.Raw(sessionsJson);
-var AGENTS     = @Html.Raw(agentsJson);
-var FAQS       = @Html.Raw(faqsJson);
-var CATEGORIES = @Html.Raw(categoriesJson);
+    <script>
+        var SESSIONS   = @Html.Raw(sessionsJson);
+        var AGENTS     = @Html.Raw(agentsJson);
+        var FAQS       = @Html.Raw(faqsJson);
+        var CATEGORIES = @Html.Raw(categoriesJson);
 
-var selCat   = CATEGORIES.length ? CATEGORIES[0] : 'General';
-var faqFilterActive = 'all';
-var faqSearch = '';
-var nextId    = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
+        var selCat          = CATEGORIES.length ? CATEGORIES[0] : 'General';
+        var faqFilterActive = 'all';
+        var faqSearch       = '';
+        var nextId          = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
 
-function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function slaClass(s){ return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
-function slaPct(s)  { return Math.min(100,Math.round(s/360*100)); }
-function getUserType(){ return document.querySelector('input[name="userType"]:checked').value; }
+        /* ── Helpers ── */
+        function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 
-function showToast(msg){
-    var t=document.getElementById('nhToast');
-    t.textContent=msg; t.classList.add('show');
-    setTimeout(function(){ t.classList.remove('show'); }, 2400);
-}
-
-/* ── CATEGORY CHIPS ── */
-function renderCatChips(){
-    var wrap=document.getElementById('catChips');
-    wrap.innerHTML='';
-    CATEGORIES.forEach(function(c){
-        var d=document.createElement('div');
-        d.className='cat-chip'+(c===selCat?' on':'');
-        d.onclick=function(){ selCat=c; renderCatChips(); };
-        d.innerHTML=escH(c)
-            +'<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\''+escH(c)+'\')">'
-            +'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-        wrap.appendChild(d);
-    });
-    renderFaqFilterBar();
-}
-
-function addCategory(){
-    var inp=document.getElementById('newCatInp');
-    var v=inp.value.trim();
-    if(!v){ showToast('Enter a category name.'); return; }
-    if(CATEGORIES.find(function(c){ return c.toLowerCase()===v.toLowerCase(); })){
-        showToast('Category already exists.'); return;
-    }
-    fetch('/Admin/FaqCategoryAdd',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ name: v })
-    })
-    .catch(function(){ return { success: true }; })
-    .then(function(){
-        CATEGORIES.push(v);
-        selCat = v;
-        inp.value = '';
-        renderCatChips();
-        showToast('"'+v+'" category added!');
-    });
-}
-
-function deleteCategory(cat){
-    if(FAQS.find(function(f){ return f.cat===cat; })){
-        showToast('Cannot delete "'+cat+'" — remove its FAQs first.'); return;
-    }
-    showModal(
-        'Delete Category "'+cat+'"?',
-        'All FAQs currently using this category will lose their category assignment.',
-        function(){
-            fetch('/Admin/FaqCategoryDelete',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ name: cat })
-            }).catch(function(){ return { success: true }; });
-            CATEGORIES = CATEGORIES.filter(function(c){ return c!==cat; });
-            if(selCat===cat) selCat = CATEGORIES[0]||'';
-            renderCatChips();
-            showToast('"'+cat+'" category deleted permanently.');
+        /* FIX 1: titleCase — capitalize first letter of every word */
+        function titleCase(str) {
+            if (!str) return str;
+            return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
         }
-    );
-}
 
-/* ── FAQ FILTER BAR ── */
-function renderFaqFilterBar(){
-    var bar=document.getElementById('faqFilterBar');
-    bar.innerHTML='';
-    var allBtn=document.createElement('button');
-    allBtn.className='ff'+(faqFilterActive==='all'?' on':'');
-    allBtn.textContent='All';
-    allBtn.onclick=function(){ faqFilterActive='all'; renderFaqFilterBar(); renderFaqs(); };
-    bar.appendChild(allBtn);
-    CATEGORIES.forEach(function(c){
-        var b=document.createElement('button');
-        b.className='ff'+(faqFilterActive===c?' on':'');
-        b.textContent=c;
-        b.onclick=function(){ faqFilterActive=c; renderFaqFilterBar(); renderFaqs(); };
-        bar.appendChild(b);
-    });
-}
+        function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function slaClass(s) { return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
+        function slaPct(s)   { return Math.min(100,Math.round(s/360*100)); }
+        function getUserType() { return document.querySelector('input[name="userType"]:checked').value; }
 
-/* ── ADD FAQ ── */
-function addFaq(){
-    var q  = document.getElementById('faqQ').value.trim();
-    var a  = document.getElementById('faqA').value.trim();
-    var ut = getUserType();
-    if(!q||!a){ showToast('Please fill in both question and answer.'); return; }
-    if(!selCat){ showToast('Please select a category.'); return; }
-
-    fetch('/Admin/FaqAdd',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ question:q, answer:a, category:selCat, userType:ut })
-    })
-    .then(function(r){ return r.json(); })
-    .catch(function(){ return { success:true, id:nextId }; })
-    .then(function(data){
-        FAQS.push({ id:data.id||nextId++, q:q, a:a, cat:selCat, userType:ut });
-        document.getElementById('faqQ').value='';
-        document.getElementById('faqA').value='';
-        updateFaqCounts(); renderFaqs();
-        showToast('FAQ added successfully!');
-    });
-}
-
-function deleteFaq(id){
-    var f = FAQS.find(function(x){ return x.id===id; });
-    if(!f) return;
-    showModal(
-        'Delete FAQ?',
-        'You are about to permanently delete: "'+f.q+'"',
-        function(){
-            fetch('/Admin/FaqDelete',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ id:id })
-            }).catch(function(){});
-            FAQS = FAQS.filter(function(x){ return x.id!==id; });
-            updateFaqCounts(); renderFaqs();
-            showToast('FAQ deleted permanently.');
+        function showToast(msg) {
+            var t = document.getElementById('nhToast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(function(){ t.classList.remove('show'); }, 2400);
         }
-    );
-}
 
-function editFaq(id){
-    var f=FAQS.find(function(x){ return x.id===id; });
-    if(!f) return;
-    var item=document.getElementById('faq-'+id);
-    item.classList.add('editing');
-    var catOpts=CATEGORIES.map(function(c){
-        return '<option value="'+escH(c)+'"'+(c===f.cat?' selected':'')+'>'+escH(c)+'</option>';
-    }).join('');
-    item.innerHTML=
-        '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
-        +'<select class="edit-inp" id="ec-'+id+'">'+catOpts+'</select></div>'
-        +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
-        +'<input class="edit-inp" id="eq-'+id+'" type="text" value="'+escH(f.q)+'"/></div>'
-        +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
-        +'<textarea class="edit-inp" id="ea-'+id+'">'+escH(f.a)+'</textarea></div>'
-        +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
-        +'<div style="display:flex;gap:16px;">'
-            +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                +'<input type="radio" name="eut-'+id+'" value="Consumer"'+(f.userType==='Consumer'?' checked':'')+' style="accent-color:#1a1a1a;"/> Consumer'
-            +'</label>'
-            +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                +'<input type="radio" name="eut-'+id+'" value="Seller"'+(f.userType==='Seller'?' checked':'')+' style="accent-color:#1a1a1a;"/> Seller'
-            +'</label>'
-        +'</div></div>'
-        +'<div class="edit-foot">'
-            +'<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit('+id+')">Save</button>'
-            +'<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
-        +'</div>';
-}
-
-function saveEdit(id){
-    var q  = document.getElementById('eq-'+id).value.trim();
-    var a  = document.getElementById('ea-'+id).value.trim();
-    var c  = document.getElementById('ec-'+id).value;
-    var ut = document.querySelector('input[name="eut-'+id+'"]:checked').value;
-    if(!q||!a){ showToast('Both fields are required.'); return; }
-    var f=FAQS.find(function(x){ return x.id===id; });
-    f.q=q; f.a=a; f.cat=c; f.userType=ut;
-    fetch('/Admin/FaqUpdate',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ id:id, question:q, answer:a, category:c, userType:ut })
-    }).catch(function(){});
-    renderFaqs();
-    showToast('FAQ updated!');
-}
-
-function filterFaqs(v){ faqSearch=v.toLowerCase(); renderFaqs(); }
-
-function updateFaqCounts(){
-    document.getElementById('statFaqCount').textContent=FAQS.length;
-    document.getElementById('faqListCount').textContent=FAQS.length+' FAQs';
-}
-
-function renderFaqs(){
-    var list=document.getElementById('faqList');
-    list.innerHTML='';
-    var filtered=FAQS.filter(function(f){
-        return (faqFilterActive==='all'||f.cat===faqFilterActive)
-            && (!faqSearch||f.q.toLowerCase().includes(faqSearch)||f.a.toLowerCase().includes(faqSearch));
-    });
-    if(!filtered.length){ list.innerHTML='<div class="faq-empty">No FAQs found.</div>'; return; }
-    filtered.forEach(function(f){
-        var d=document.createElement('div');
-        d.className='faq-item'; d.id='faq-'+f.id;
-        d.innerHTML=
-            '<div class="faq-item-hd">'
-                +'<div class="faq-q">'+escH(f.q)+'</div>'
-                +'<div class="faq-actions">'
-                    +'<button class="faq-act" onclick="editFaq('+f.id+')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                    +'<button class="faq-act del" onclick="deleteFaq('+f.id+')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
-                +'</div>'
-            +'</div>'
-            +'<div class="faq-a">'+escH(f.a)+'</div>'
-            +'<div class="faq-meta">'
-                +'<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">'+escH(f.cat)+'</span>'
-                +'<span class="faq-cat-badge '+(f.userType==='Seller'?'ut-seller':'ut-consumer')+'">'+escH(f.userType||'Consumer')+'</span>'
-            +'</div>';
-        list.appendChild(d);
-    });
-}
-
-/* ── CONFIRM MODAL ── */
-var _modalCallback = null;
-function showModal(title, msg, onConfirm){
-    document.getElementById('nhModalTitle').textContent = title;
-    document.getElementById('nhModalMsg').textContent   = msg;
-    _modalCallback = onConfirm;
-    document.getElementById('nhModalBg').classList.add('show');
-}
-function closeModal(){
-    document.getElementById('nhModalBg').classList.remove('show');
-    _modalCallback = null;
-}
-document.addEventListener('DOMContentLoaded', function(){
-    document.getElementById('nhModalConfirm').onclick = function(){
-        closeModal();
-        if(_modalCallback) _modalCallback();
-    };
-    document.getElementById('nhModalBg').addEventListener('click', function(e){
-        if(e.target === this) closeModal();
-    });
-});
-
-/* ── QUEUE ── */
-function autoAssignAll(){
-    SESSIONS.forEach(function(s){
-        if(s.agent==='Unassigned'||!s.agent){
-            var avail=AGENTS.find(function(a){ return (a.status==='online'||a.status==='busy')&&a.sessions<a.max; });
-            if(avail){ s.agent=avail.name; s.status='active'; avail.sessions++; }
+        /* ── CATEGORY CHIPS ── */
+        function renderCatChips() {
+            var wrap = document.getElementById('catChips');
+            wrap.innerHTML = '';
+            CATEGORIES.forEach(function(c) {
+                var d = document.createElement('div');
+                d.className = 'cat-chip' + (c === selCat ? ' on' : '');
+                d.onclick = function() { selCat = c; renderCatChips(); };
+                /* FIX 1: titleCase chip label */
+                d.innerHTML = escH(titleCase(c))
+                    + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\'' + escH(c) + '\')">'
+                    + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+                wrap.appendChild(d);
+            });
+            renderFaqFilterBar();
         }
-    });
-}
 
-function renderQueue(){
-    var body=document.getElementById('qBody');
-    body.innerHTML='';
-    var over5=0;
-    SESSIONS.forEach(function(s,i){
-        if(s.waitSec>=300) over5++;
-        var tr=document.createElement('tr');
-        var wc=s.waitSec>=300?'q-wait over5':'q-wait';
-        var sb=s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
-        var sl=s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
-        var pct=slaPct(s.waitSec); var sc=slaClass(s.waitSec);
-        var pc=i===0?'p1':i===1?'p2':i===2?'p3':'';
-        tr.innerHTML=
-            '<td><div class="q-pos-badge '+pc+'">'+(i+1)+'</div></td>'
-            +'<td><div class="q-cust"><div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
-            +'<div><div class="q-name">'+s.name+'</div><div class="q-role">'+s.role+'</div></div></div></td>'
-            +'<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
-            +'<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div><span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">'+fmt(s.waitSec)+'</span></div></td>'
-            +'<td><span style="font-size:11px;color:#666;font-weight:500;">'+cap(s.cat)+'</span></td>'
-            +'<td><span class="badge '+sb+'">'+sl+'</span></td>';
-        body.appendChild(tr);
-    });
-    var w=document.getElementById('waitWarn');
-    w.classList.toggle('show',over5>0);
-    if(over5>0) document.getElementById('warnTxt').textContent=over5+' customer(s) waiting over 5 minutes';
-    var longest=SESSIONS.length?Math.max.apply(null,SESSIONS.map(function(s){return s.waitSec;})):0;
-    document.getElementById('qMeta').textContent=SESSIONS.length+' in queue · longest: '+fmt(longest);
-    document.getElementById('qsInQueue').textContent=SESSIONS.length;
-}
-
-/* ── AGENTS ── */
-function renderAgents(){
-    var grid=document.getElementById('agentGrid');
-    grid.innerHTML='';
-    for(var slot=0;slot<3;slot++){
-        var col=document.createElement('div'); col.className='agent-col';
-        var hd=document.createElement('div'); hd.className='agent-col-hd';
-        hd.innerHTML='<div class="slot-dot filled"></div>Chat Slot '+(slot+1);
-        col.appendChild(hd);
-        var body=document.createElement('div'); body.className='agent-col-body';
-        AGENTS.forEach(function(a){
-            var hasChat=slot<a.sessions;
-            var dotCls=a.status==='online'?'d-on':a.status==='busy'?'d-busy':a.status==='away'?'d-away':'d-off';
-            var statusCls='b-'+a.status;
-            var avBg=(a.status==='offline'||a.status==='away')?'#ccc':'#1a1a1a';
-            if(a.status==='offline'||a.status==='away'){
-                var d=document.createElement('div'); d.className='agent-slot';
-                d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
-                    +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+cap(a.status)+'</div></div>'
-                    +'<span class="badge '+statusCls+'" style="font-size:9px;padding:1px 6px;">'+a.status+'</span>';
-                body.appendChild(d);
-            } else if(hasChat){
-                var isFull=a.sessions>=a.max&&slot===a.max-1;
-                var chatSess=SESSIONS.filter(function(s){return s.agent===a.name&&s.status==='active';})[slot]||null;
-                var chatTxt=chatSess?chatSess.name+' · '+fmt(chatSess.waitSec):'Slot '+(slot+1)+' occupied';
-                var d=document.createElement('div'); d.className='agent-slot';
-                d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
-                    +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+chatTxt+'</div></div>'
-                    +'<span class="badge '+(isFull?'b-full':statusCls)+'" style="font-size:9px;padding:1px 6px;">'+(isFull?'Full':a.status)+'</span>';
-                body.appendChild(d);
-            } else {
-                var d=document.createElement('div'); d.className='empty-slot'; d.textContent='Available slot';
-                body.appendChild(d);
+        function addCategory() {
+            var inp = document.getElementById('newCatInp');
+            var v = inp.value.trim();
+            if (!v) { showToast('Enter a category name.'); return; }
+            /* FIX 1: store as titleCase */
+            var vTitle = titleCase(v);
+            if (CATEGORIES.find(function(c){ return c.toLowerCase() === vTitle.toLowerCase(); })) {
+                showToast('Category already exists.'); return;
             }
+            fetch('/Admin/FaqCategoryAdd', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: vTitle })
+            })
+            .catch(function(){ return { success: true }; })
+            .then(function() {
+                CATEGORIES.push(vTitle);
+                selCat = vTitle;
+                inp.value = '';
+                renderCatChips();
+                showToast('"' + vTitle + '" category added!');
+            });
+        }
+
+        function deleteCategory(cat) {
+            if (FAQS.find(function(f){ return f.cat === cat; })) {
+                showToast('Cannot delete "' + cat + '" — remove its FAQs first.'); return;
+            }
+            showModal(
+                'Delete Category "' + titleCase(cat) + '"?',
+                'This category will be permanently removed from the system.',
+                function() {
+                    fetch('/Admin/FaqCategoryDelete', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: cat })
+                    }).catch(function(){});
+                    CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
+                    if (selCat === cat) selCat = CATEGORIES[0] || '';
+                    renderCatChips();
+                    showToast('"' + titleCase(cat) + '" deleted.');
+                }
+            );
+        }
+
+        /* ── FAQ FILTER BAR ── */
+        function renderFaqFilterBar() {
+            var bar = document.getElementById('faqFilterBar');
+            bar.innerHTML = '';
+            var allBtn = document.createElement('button');
+            allBtn.className = 'ff' + (faqFilterActive === 'all' ? ' on' : '');
+            allBtn.textContent = 'All';
+            allBtn.onclick = function() { faqFilterActive = 'all'; renderFaqFilterBar(); renderFaqs(); };
+            bar.appendChild(allBtn);
+            CATEGORIES.forEach(function(c) {
+                var b = document.createElement('button');
+                b.className = 'ff' + (faqFilterActive === c ? ' on' : '');
+                /* FIX 1: titleCase filter label */
+                b.textContent = titleCase(c);
+                b.onclick = function() { faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
+                bar.appendChild(b);
+            });
+        }
+
+        /* ── ADD FAQ ── */
+        function addFaq() {
+            var qRaw = document.getElementById('faqQ').value.trim();
+            var a    = document.getElementById('faqA').value.trim();
+            var ut   = getUserType();
+            /* FIX 1: titleCase question before saving */
+            var q = titleCase(qRaw);
+            if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
+            if (!selCat)  { showToast('Please select a category.'); return; }
+
+            fetch('/Admin/FaqAdd', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: q, answer: a, category: selCat, userType: ut })
+            })
+            .then(function(r){ return r.json(); })
+            .catch(function(){ return { success: true, id: nextId }; })
+            .then(function(data) {
+                FAQS.push({ id: data.id || nextId++, q: q, a: a, cat: selCat, userType: ut });
+                document.getElementById('faqQ').value = '';
+                document.getElementById('faqA').value = '';
+                updateFaqCounts(); renderFaqs();
+                showToast('FAQ added successfully!');
+            });
+        }
+
+        /* FIX 2: deleteFaq — POST to server, then remove from array & re-render */
+        function deleteFaq(id) {
+            var f = FAQS.find(function(x){ return x.id === id; });
+            if (!f) return;
+            showModal(
+                'Delete FAQ?',
+                'You are about to permanently delete: "' + escH(f.q) + '"',
+                function() {
+                    fetch('/Admin/FaqDelete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id })
+                    })
+                    .then(function(r){ return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            FAQS = FAQS.filter(function(x){ return x.id !== id; });
+                            updateFaqCounts(); renderFaqs();
+                            showToast('FAQ deleted permanently.');
+                        } else {
+                            showToast('Delete failed — please try again.');
+                        }
+                    })
+                    .catch(function() {
+                        /* Offline fallback: still remove from local array */
+                        FAQS = FAQS.filter(function(x){ return x.id !== id; });
+                        updateFaqCounts(); renderFaqs();
+                        showToast('FAQ deleted (offline mode).');
+                    });
+                }
+            );
+        }
+
+        function editFaq(id) {
+            var f = FAQS.find(function(x){ return x.id === id; });
+            if (!f) return;
+            var item = document.getElementById('faq-' + id);
+            item.classList.add('editing');
+            var catOpts = CATEGORIES.map(function(c) {
+                return '<option value="' + escH(c) + '"' + (c === f.cat ? ' selected' : '') + '>' + escH(titleCase(c)) + '</option>';
+            }).join('');
+            item.innerHTML =
+                '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
+                + '<select class="edit-inp" id="ec-' + id + '">' + catOpts + '</select></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
+                + '<input class="edit-inp" id="eq-' + id + '" type="text" value="' + escH(f.q) + '" style="text-transform:capitalize;"/></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
+                + '<textarea class="edit-inp" id="ea-' + id + '">' + escH(f.a) + '</textarea></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
+                + '<div style="display:flex;gap:16px;">'
+                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType === 'Consumer' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Consumer'
+                    + '</label>'
+                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType === 'Seller' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Seller'
+                    + '</label>'
+                + '</div></div>'
+                + '<div class="edit-foot">'
+                    + '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit(' + id + ')">Save</button>'
+                    + '<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
+                + '</div>';
+        }
+
+        function saveEdit(id) {
+            var qRaw = document.getElementById('eq-' + id).value.trim();
+            var a    = document.getElementById('ea-' + id).value.trim();
+            var c    = document.getElementById('ec-' + id).value;
+            var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
+            /* FIX 1: titleCase on save */
+            var q = titleCase(qRaw);
+            if (!q || !a) { showToast('Both fields are required.'); return; }
+            var f = FAQS.find(function(x){ return x.id === id; });
+            f.q = q; f.a = a; f.cat = c; f.userType = ut;
+            fetch('/Admin/FaqUpdate', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, question: q, answer: a, category: c, userType: ut })
+            }).catch(function(){});
+            renderFaqs();
+            showToast('FAQ updated!');
+        }
+
+        function filterFaqs(v) { faqSearch = v.toLowerCase(); renderFaqs(); }
+
+        function updateFaqCounts() {
+            document.getElementById('statFaqCount').textContent = FAQS.length;
+            document.getElementById('faqListCount').textContent = FAQS.length + ' FAQs';
+        }
+
+        function renderFaqs() {
+            var list = document.getElementById('faqList');
+            list.innerHTML = '';
+            var filtered = FAQS.filter(function(f) {
+                return (faqFilterActive === 'all' || f.cat === faqFilterActive)
+                    && (!faqSearch || f.q.toLowerCase().includes(faqSearch) || f.a.toLowerCase().includes(faqSearch));
+            });
+            if (!filtered.length) { list.innerHTML = '<div class="faq-empty">No FAQs found.</div>'; return; }
+            filtered.forEach(function(f) {
+                var d = document.createElement('div');
+                d.className = 'faq-item'; d.id = 'faq-' + f.id;
+                d.innerHTML =
+                    '<div class="faq-item-hd">'
+                        /* FIX 1: titleCase question in list */
+                        + '<div class="faq-q">' + escH(titleCase(f.q)) + '</div>'
+                        + '<div class="faq-actions">'
+                            + '<button class="faq-act" onclick="editFaq(' + f.id + ')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                            + '<button class="faq-act del" onclick="deleteFaq(' + f.id + ')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="faq-a">' + escH(f.a) + '</div>'
+                    + '<div class="faq-meta">'
+                        /* FIX 1: titleCase category badge */
+                        + '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">' + escH(titleCase(f.cat)) + '</span>'
+                        + '<span class="faq-cat-badge ' + (f.userType === 'Seller' ? 'ut-seller' : 'ut-consumer') + '">' + escH(f.userType || 'Consumer') + '</span>'
+                    + '</div>';
+                list.appendChild(d);
+            });
+        }
+
+        /* ── CONFIRM MODAL ── */
+        var _modalCallback = null;
+        function showModal(title, msg, onConfirm) {
+            document.getElementById('nhModalTitle').textContent = title;
+            document.getElementById('nhModalMsg').textContent   = msg;
+            _modalCallback = onConfirm;
+            document.getElementById('nhModalBg').classList.add('show');
+        }
+        function closeModal() {
+            document.getElementById('nhModalBg').classList.remove('show');
+            _modalCallback = null;
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('nhModalConfirm').onclick = function() {
+                var cb = _modalCallback;
+                closeModal();           /* close first, then run callback */
+                if (cb) cb();
+            };
+            document.getElementById('nhModalBg').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
         });
-        col.appendChild(body); grid.appendChild(col);
-    }
-}
 
-setInterval(function(){ SESSIONS.forEach(function(s){ s.waitSec++; }); renderQueue(); }, 1000);
+        /* ── QUEUE ── */
+        function autoAssignAll() {
+            SESSIONS.forEach(function(s) {
+                if (s.agent === 'Unassigned' || !s.agent) {
+                    var avail = AGENTS.find(function(a){
+                        return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
+                    });
+                    if (avail) { s.agent = avail.name; s.status = 'active'; avail.sessions++; }
+                }
+            });
+        }
 
-autoAssignAll();
-renderQueue();
-renderAgents();
-renderCatChips();
-renderFaqs();
-</script>
+        function renderQueue() {
+            var body = document.getElementById('qBody');
+            body.innerHTML = '';
+            var over5 = 0;
+            SESSIONS.forEach(function(s, i) {
+                if (s.waitSec >= 300) over5++;
+                var tr  = document.createElement('tr');
+                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
+                var sb  = s.status === 'active' ? 'b-active' : s.status === 'idle' ? 'b-idle' : 'b-waiting';
+                var sl  = s.status === 'active' ? 'Active' : s.status === 'idle' ? 'Idle' : 'Waiting';
+                var pct = slaPct(s.waitSec); var sc = slaClass(s.waitSec);
+                var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+                tr.innerHTML =
+                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
+                    + '<td><div class="q-cust"><div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
+                    /* FIX 1: titleCase name & role */
+                    + '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
+                    + '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div></div></td>'
+                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
+                    + '<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill ' + sc + '" style="width:' + pct + '%"></div></div>'
+                    + '<span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">' + fmt(s.waitSec) + '</span></div></td>'
+                    /* FIX 1: titleCase category */
+                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
+                    + '<td><span class="badge ' + sb + '">' + sl + '</span></td>';
+                body.appendChild(tr);
+            });
+            var w = document.getElementById('waitWarn');
+            w.classList.toggle('show', over5 > 0);
+            if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
+            var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
+            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
+            document.getElementById('qsInQueue').textContent = SESSIONS.length;
+        }
+
+        /* ── AGENTS ── */
+        function renderAgents() {
+            var grid = document.getElementById('agentGrid');
+            grid.innerHTML = '';
+            for (var slot = 0; slot < 3; slot++) {
+                var col  = document.createElement('div'); col.className = 'agent-col';
+                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
+                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot+1);
+                col.appendChild(hd);
+                var body = document.createElement('div'); body.className = 'agent-col-body';
+                AGENTS.forEach(function(a) {
+                    var hasChat   = slot < a.sessions;
+                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
+                    var statusCls = 'b-' + a.status;
+                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
+                    var d = document.createElement('div');
+                    if (a.status === 'offline' || a.status === 'away') {
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
+                            /* FIX 1: titleCase agent name */
+                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
+                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
+                    } else if (hasChat) {
+                        var isFull   = a.sessions >= a.max && slot === a.max - 1;
+                        var chatSess = SESSIONS.filter(function(s){ return s.agent === a.name && s.status === 'active'; })[slot] || null;
+                        var chatTxt  = chatSess ? titleCase(chatSess.name) + ' · ' + fmt(chatSess.waitSec) : 'Slot ' + (slot+1) + ' occupied';
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
+                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">' + escH(chatTxt) + '</div></div>'
+                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">' + (isFull ? 'Full' : a.status) + '</span>';
+                    } else {
+                        d.className   = 'empty-slot';
+                        d.textContent = 'Available slot';
+                    }
+                    body.appendChild(d);
+                });
+                col.appendChild(body);
+                grid.appendChild(col);
+            }
+        }
+
+        setInterval(function(){ SESSIONS.forEach(function(s){ s.waitSec++; }); renderQueue(); }, 1000);
+
+        autoAssignAll();
+        renderQueue();
+        renderAgents();
+        renderCatChips();
+        renderFaqs();
+    </script>
 }
