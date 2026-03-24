@@ -18,6 +18,7 @@ namespace NextHorizon.Controllers
         private readonly IConfiguration _configuration;
         private readonly string _connectionString;
 
+        //tanginamo
         // Constructor to inject configuration
         public AdminController(IConfiguration configuration)
         {
