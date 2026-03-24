@@ -97,13 +97,80 @@
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
 
-            var model = _dashboardService.GetHeroStats();
-            
-            // Pass user role to view for UI customization
+            var leaderboard  = new List<ConsumerLeaderboardViewModel>();
+            var auditLogs    = new List<DashboardAuditLog>();
+            decimal revenue  = 0;
+            int pendingPayouts = 0, pendingSellers = 0, pendingTickets = 0;
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                // Platform Revenue (5% commission)
+                using (var cmd = new SqlCommand("SELECT ISNULL(SUM(TotalAmount), 0) FROM Orders", connection))
+                    revenue = (decimal)await cmd.ExecuteScalarAsync();
+
+                // Pending Payouts
+                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Withdrawal_Requests WHERE status = 'Pending'", connection))
+                    pendingPayouts = (int)await cmd.ExecuteScalarAsync();
+
+                // Pending Sellers
+                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Sellers WHERE seller_status = 'Pending'", connection))
+                    pendingSellers = (int)await cmd.ExecuteScalarAsync();
+
+                // Leaderboard
+                var leaderSql = @"
+                    SELECT TOP 5
+                        ROW_NUMBER() OVER (ORDER BY DistanceKm DESC) AS Rank,
+                        AthleteName, DistanceKm, IsVerified
+                    FROM leaderboard_records
+                    WHERE IsActive = 1
+                    ORDER BY DistanceKm DESC";
+                using (var cmd = new SqlCommand(leaderSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        leaderboard.Add(new ConsumerLeaderboardViewModel
+                        {
+                            Rank       = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                            UserName   = reader["AthleteName"]?.ToString() ?? "",
+                            StravaKM   = reader.GetDecimal(reader.GetOrdinal("DistanceKm")),
+                            IsVerified = reader.GetBoolean(reader.GetOrdinal("IsVerified"))
+                        });
+
+                // Recent Audit Logs
+                var auditSql = @"
+                    SELECT TOP 3 timestamp, admin_name, action, target, status
+                    FROM audit_logs
+                    ORDER BY timestamp DESC";
+                using (var cmd = new SqlCommand(auditSql, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        auditLogs.Add(new DashboardAuditLog
+                        {
+                            Timestamp = reader.GetDateTime(reader.GetOrdinal("timestamp")),
+                            AdminName = reader["admin_name"]?.ToString() ?? "",
+                            Action    = reader["action"]?.ToString()     ?? "",
+                            Target    = reader["target"]?.ToString()     ?? "",
+                            Status    = reader["status"]?.ToString()     ?? ""
+                        });
+            }
+
+            var model = new SuperAdminDashboardViewModel
+            {
+                PlatformRevenue  = revenue,
+                PendingPayouts   = pendingPayouts,
+                PendingSellers   = pendingSellers,
+                PendingTickets   = pendingTickets,
+                ConsumerLeaderboard = leaderboard,
+                AuditLogs        = auditLogs,
+                Stats            = new PlatformStats(),
+                TopSellers       = new List<TopSellerViewModel>()
+            };
+
             ViewBag.UserRole = GetCurrentUserRole();
-            
             return View(model);
         }
+
 
             // URL: /Admin/Analytics - Accessible by SuperAdmin, Admin, and Finance Officer
             public async Task<IActionResult> Analytics()
