@@ -92,7 +92,7 @@
             }
 
         // URL: /Admin/Dashboard - Accessible by all admin roles
-        public IActionResult Dashboard()
+        public async Task<IActionResult> Dashboard()
         {
             var redirect = RedirectToLoginIfNotAuthenticated();
             if (redirect != null) return redirect;
@@ -1851,7 +1851,7 @@
                                     avgTimeMinutes = reader.GetDecimal(reader.GetOrdinal("avg_time_minutes"));
                                     challenge.BannerBase64 = null;
                                     // Convert binary image to Base64
-                                    /* if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
+                                     if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
                                     {
                                         try
                                         {
@@ -1868,7 +1868,7 @@
                                             Console.WriteLine($"Error converting image: {ex.Message}");
                                             challenge.BannerBase64 = null;
                                         }
-                                    } */
+                                    } 
                                 }
                                 
                                 // Second result set - Leaderboard
@@ -1974,53 +1974,60 @@
                     if (!string.IsNullOrEmpty(request.BannerBase64) && 
                         request.BannerBase64 != "#" && 
                         request.BannerBase64 != "null" &&
-                        request.BannerBase64.Length > 100)  // Real images are longer than 100 chars
+                        request.BannerBase64.Length > 100)
                     {
                         try
                         {
                             string base64Data = request.BannerBase64;
                             
-                            // Remove data URL prefix if present
                             if (base64Data.Contains(","))
                             {
                                 base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
                             }
                             
-                            // Clean up
                             base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
                             
-                            // Convert to byte array
                             bannerImageBytes = Convert.FromBase64String(base64Data);
                             Console.WriteLine($"Image converted: {bannerImageBytes.Length} bytes");
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Image conversion error: {ex.Message}");
-                            bannerImageBytes = null;  // Don't fail, just create without image
+                            bannerImageBytes = null;
                         }
                     }
-                    
-                    Console.WriteLine($"Creating challenge with image: {(bannerImageBytes != null ? "Yes" : "No")}");
                     
                     using (var connection = new SqlConnection(_connectionString))
                     {
                         using (var command = new SqlCommand("sp_CreateChallenge", connection))
                         {
                             command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@Title", request.Title);
-                            command.Parameters.AddWithValue("@Description", request.Description ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@Rules", request.Rules ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@Prizes", request.Prizes ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@GoalKm", request.GoalKm);
-                            command.Parameters.AddWithValue("@ActivityType", request.ActivityType);
-                            command.Parameters.AddWithValue("@StartDate", request.StartDate);
-                            command.Parameters.AddWithValue("@EndDate", request.EndDate);
                             
-                            // Pass DBNull.Value when no image
-                            command.Parameters.AddWithValue("@BannerImage", bannerImageBytes ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@BannerImageName", request.BannerImageName ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@BannerImageContentType", request.BannerImageContentType ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@CreatedBy", staffId);
+                            // Add parameters with explicit types
+                            command.Parameters.Add("@Title", SqlDbType.NVarChar, 255).Value = request.Title;
+                            command.Parameters.Add("@Description", SqlDbType.NVarChar).Value = request.Description ?? (object)DBNull.Value;
+                            command.Parameters.Add("@Rules", SqlDbType.NVarChar).Value = request.Rules ?? (object)DBNull.Value;
+                            command.Parameters.Add("@Prizes", SqlDbType.NVarChar).Value = request.Prizes ?? (object)DBNull.Value;
+                            command.Parameters.Add("@GoalKm", SqlDbType.Decimal).Value = request.GoalKm;
+                            command.Parameters.Add("@ActivityType", SqlDbType.NVarChar, 50).Value = request.ActivityType;
+                            command.Parameters.Add("@StartDate", SqlDbType.DateTime).Value = request.StartDate;
+                            command.Parameters.Add("@EndDate", SqlDbType.DateTime).Value = request.EndDate;
+                            
+                            // CRITICAL FIX: Explicitly set the parameter type and handle NULL properly
+                            var bannerImageParam = new SqlParameter("@BannerImage", SqlDbType.VarBinary, -1);
+                            if (bannerImageBytes != null && bannerImageBytes.Length > 0)
+                            {
+                                bannerImageParam.Value = bannerImageBytes;
+                            }
+                            else
+                            {
+                                bannerImageParam.Value = DBNull.Value;
+                            }
+                            command.Parameters.Add(bannerImageParam);
+                            
+                            command.Parameters.Add("@BannerImageName", SqlDbType.NVarChar, 255).Value = request.BannerImageName ?? (object)DBNull.Value;
+                            command.Parameters.Add("@BannerImageContentType", SqlDbType.NVarChar, 100).Value = request.BannerImageContentType ?? (object)DBNull.Value;
+                            command.Parameters.Add("@CreatedBy", SqlDbType.Int).Value = staffId;
                             
                             await connection.OpenAsync();
                             
@@ -2066,42 +2073,50 @@
                     var adminName = HttpContext.Session.GetString("Username") ?? "System";
                     
                     byte[] bannerImageBytes = null;
+                    bool hasNewImage = false;
                     
                     // Only process if there's a NEW image (not the existing one)
                     if (!string.IsNullOrEmpty(request.BannerBase64) && 
                         request.BannerBase64 != "#" && 
                         request.BannerBase64 != "null" &&
-                        !request.BannerBase64.StartsWith("data:") == false) // Check if it's a new image
+                        !request.BannerBase64.StartsWith("http")) // If it's a URL, it's existing
                     {
-                        try
+                        // Check if it's a data URL (new image) vs an existing one
+                        if (request.BannerBase64.StartsWith("data:"))
                         {
-                            string base64Data = request.BannerBase64;
-                            
-                            // Remove data URL prefix if present
-                            if (base64Data.Contains(","))
+                            try
                             {
-                                base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
+                                string base64Data = request.BannerBase64;
+                                
+                                // Remove data URL prefix if present
+                                if (base64Data.Contains(","))
+                                {
+                                    base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
+                                }
+                                
+                                // Remove whitespace and newlines
+                                base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
+                                
+                                // Convert to byte array
+                                if (!string.IsNullOrEmpty(base64Data))
+                                {
+                                    bannerImageBytes = Convert.FromBase64String(base64Data);
+                                    hasNewImage = true;
+                                    Console.WriteLine($"New image converted: {bannerImageBytes.Length} bytes");
+                                }
                             }
-                            
-                            // Remove whitespace and newlines
-                            base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
-                            
-                            // Convert to byte array
-                            if (!string.IsNullOrEmpty(base64Data))
+                            catch (FormatException fe)
                             {
-                                bannerImageBytes = Convert.FromBase64String(base64Data);
-                                Console.WriteLine($"Image converted: {bannerImageBytes.Length} bytes");
+                                Console.WriteLine($"Base64 format error: {fe.Message}");
+                                bannerImageBytes = null;
+                                hasNewImage = false;
                             }
-                        }
-                        catch (FormatException fe)
-                        {
-                            Console.WriteLine($"Base64 format error: {fe.Message}");
-                            bannerImageBytes = null;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Image conversion error: {ex.Message}");
-                            bannerImageBytes = null;
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Image conversion error: {ex.Message}");
+                                bannerImageBytes = null;
+                                hasNewImage = false;
+                            }
                         }
                     }
                     
@@ -2120,9 +2135,22 @@
                             command.Parameters.AddWithValue("@StartDate", request.StartDate);
                             command.Parameters.AddWithValue("@EndDate", request.EndDate);
                             command.Parameters.AddWithValue("@Status", request.Status ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@BannerImage", bannerImageBytes ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@BannerImageName", request.BannerImageName ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@BannerImageContentType", request.BannerImageContentType ?? (object)DBNull.Value);
+                            
+                            // FIX: Only pass new image if there is one, otherwise pass NULL to keep existing
+                            if (hasNewImage && bannerImageBytes != null)
+                            {
+                                command.Parameters.AddWithValue("@BannerImage", bannerImageBytes);
+                                command.Parameters.AddWithValue("@BannerImageName", request.BannerImageName ?? (object)DBNull.Value);
+                                command.Parameters.AddWithValue("@BannerImageContentType", request.BannerImageContentType ?? (object)DBNull.Value);
+                            }
+                            else
+                            {
+                                // Don't update the image - keep existing
+                                command.Parameters.AddWithValue("@BannerImage", DBNull.Value);
+                                command.Parameters.AddWithValue("@BannerImageName", DBNull.Value);
+                                command.Parameters.AddWithValue("@BannerImageContentType", DBNull.Value);
+                            }
+                            
                             command.Parameters.AddWithValue("@UpdatedBy", staffId);
                             
                             await connection.OpenAsync();
@@ -2157,6 +2185,7 @@
                     return Json(new { success = false, message = ex.Message });
                 }
             }
+
             // POST: Join challenge
             [HttpPost]
             public async Task<IActionResult> JoinChallenge([FromBody] JoinChallengeRequest request)

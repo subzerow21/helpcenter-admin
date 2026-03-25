@@ -13,39 +13,109 @@ async function loadChallengeDetails() {
         const response = await fetch(`/Admin/GetChallengeDetails?id=${challengeId}`);
         const data = await response.json();
         
+        console.log('Full API response:', data);
+        
         if (!data.success) {
             showToast('Error loading challenge details', true);
             return;
         }
         
         const challenge = data.challenge;
+        console.log('Challenge object:', challenge);
+        console.log('Challenge title:', challenge?.title);
+        
+        if (!challenge) {
+            showToast('Challenge data not found', true);
+            return;
+        }
+        
         const leaderboard = data.leaderboard;
         
-        // Update header
-        document.getElementById('challengeTitleBreadcrumb').innerText = challenge.title;
-        document.getElementById('challengeTitle').innerText = challenge.title;
-        document.getElementById('challengeBanner').src = challenge.bannerBase64 || '/images/challenge-placeholder.jpg';
+        // Debug: Check if elements exist
+        console.log('Checking elements:');
+        console.log('challengeTitleBreadcrumb:', document.getElementById('challengeTitleBreadcrumb'));
+        console.log('challengeTitle:', document.getElementById('challengeTitle'));
+        console.log('challengeBanner:', document.getElementById('challengeBanner'));
+        
+        // Update header - with null checks and console logs
+        const titleBreadcrumb = document.getElementById('challengeTitleBreadcrumb');
+        const challengeTitle = document.getElementById('challengeTitle2');
+        const challengeBanner = document.getElementById('challengeBanner');
+        
+        if (titleBreadcrumb) {
+            titleBreadcrumb.innerText = challenge.title || 'Challenge';
+            console.log('Set breadcrumb to:', titleBreadcrumb.innerText);
+        } else {
+            console.error('challengeTitleBreadcrumb element not found!');
+        }
+        
+        if (challengeTitle) {
+            challengeTitle.innerText = challenge.title || 'Untitled Challenge';
+            console.log('Set title to:', challengeTitle.innerText);
+        } else {
+            console.error('challengeTitle element not found!');
+        }
+        
+        // Handle banner image
+        if (challengeBanner) {
+            challengeBanner.src = challenge.bannerBase64 || '/images/challenge-placeholder.jpg';
+            console.log('Set banner src to:', challengeBanner.src);
+            challengeBanner.onerror = function() {
+                console.log('Banner image failed to load, using placeholder');
+                this.src = '/images/challenge-placeholder.jpg';
+            };
+        } else {
+            console.error('challengeBanner element not found!');
+        }
         
         // Status badge
         const statusBadge = document.getElementById('challengeStatusBadge');
-        statusBadge.innerText = challenge.status;
-        if (challenge.status === 'Live') statusBadge.className = 'badge bg-success rounded-pill';
-        else if (challenge.status === 'Upcoming') statusBadge.className = 'badge bg-warning rounded-pill';
-        else if (challenge.status === 'Completed') statusBadge.className = 'badge bg-secondary rounded-pill';
-        else statusBadge.className = 'badge bg-danger rounded-pill';
+        if (statusBadge) {
+            statusBadge.innerText = challenge.status || 'Unknown';
+            if (challenge.status === 'Live') statusBadge.className = 'badge bg-success rounded-pill';
+            else if (challenge.status === 'Upcoming') statusBadge.className = 'badge bg-warning rounded-pill';
+            else if (challenge.status === 'Completed') statusBadge.className = 'badge bg-secondary rounded-pill';
+            else statusBadge.className = 'badge bg-danger rounded-pill';
+            console.log('Set status to:', challenge.status);
+        } else {
+            console.error('challengeStatusBadge element not found!');
+        }
         
-        document.getElementById('challengeDates').innerText = `${formatDate(challenge.startDate)} - ${formatDate(challenge.endDate)}`;
+        // Challenge dates
+        const challengeDates = document.getElementById('challengeDates');
+        if (challengeDates) {
+            challengeDates.innerText = challenge.startDate && challenge.endDate ? 
+                `${formatDate(challenge.startDate)} - ${formatDate(challenge.endDate)}` : 
+                'Date range not set';
+            console.log('Set dates to:', challengeDates.innerText);
+        } else {
+            console.error('challengeDates element not found!');
+        }
         
-        // Stats
-        document.getElementById('totalParticipants').innerText = challenge.totalParticipants || 0;
-        document.getElementById('totalCompleted').innerText = challenge.totalCompleted || 0;
-        document.getElementById('avgDistance').innerText = (data.avgDistanceKm || 0).toFixed(1) + ' km';
-        document.getElementById('avgTime').innerText = (data.avgTimeMinutes || 0).toFixed(0) + ' min';
+        // Stats - with null checks
+        const totalParticipants = document.getElementById('totalParticipants');
+        const totalCompleted = document.getElementById('totalCompleted');
+        const avgDistance = document.getElementById('avgDistance');
+        const avgTime = document.getElementById('avgTime');
+        
+        if (totalParticipants) {
+            totalParticipants.innerText = challenge.totalParticipants || 0;
+            console.log('Set participants to:', totalParticipants.innerText);
+        }
+        if (totalCompleted) totalCompleted.innerText = challenge.totalCompleted || 0;
+        if (avgDistance) avgDistance.innerText = (data.avgDistanceKm || 0).toFixed(1) + ' km';
+        if (avgTime) avgTime.innerText = (data.avgTimeMinutes || 0).toFixed(0) + ' min';
         
         // Leaderboard
         const tbody = document.getElementById('leaderboardBody');
+        if (!tbody) {
+            console.error('leaderboardBody element not found!');
+            return;
+        }
+        
         if (!leaderboard || leaderboard.length === 0) {
-            tbody.innerHTML = '}<td colspan="7" class="text-center py-4">No participants yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No participants yet</td></tr>';
+            console.log('No participants');
             return;
         }
         
@@ -57,10 +127,10 @@ async function loadChallengeDetails() {
                 <td class="fw-bold">#${participant.rank}</td>
                 <td class="text-start">
                     <div class="d-flex align-items-center gap-2">
-                        <img src="${participant.avatarUrl}" class="rounded-circle" width="32" height="32">
+                        <img src="${participant.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(participant.athleteName)}" class="rounded-circle" width="32" height="32" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(participant.athleteName)}'">
                         <div>
                             <div class="fw-bold mb-0">${escapeHtml(participant.athleteName)}</div>
-                            <small class="text-muted">${escapeHtml(participant.email)}</small>
+                            <small class="text-muted">${escapeHtml(participant.email || participant.username || '')}</small>
                         </div>
                     </div>
                 </td>
@@ -87,7 +157,7 @@ async function loadChallengeDetails() {
         
     } catch (error) {
         console.error('Error loading challenge details:', error);
-        showToast('Error loading challenge details', true);
+        showToast('Error loading challenge details: ' + error.message, true);
     }
 }
 
@@ -171,6 +241,8 @@ function openEditChallengeModalFromDetails() {
         .then(data => {
             if (data.success) {
                 const challenge = data.challenge;
+                console.log('Opening edit modal for challenge:', challenge); // Debug
+                
                 openEditChallengeModal(
                     challenge.challengeId,
                     challenge.title,
@@ -182,9 +254,17 @@ function openEditChallengeModalFromDetails() {
                     challenge.startDate,
                     challenge.endDate,
                     challenge.status,
-                    challenge.bannerBase64
+                    challenge.bannerBase64,
+                    challenge.bannerImageName,
+                    challenge.bannerImageContentType
                 );
+            } else {
+                showToast('Failed to load challenge details', true);
             }
+        })
+        .catch(error => {
+            console.error('Error fetching challenge details:', error);
+            showToast('Error loading challenge details', true);
         });
 }
 
@@ -212,7 +292,7 @@ function exportParticipants() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     
-    const challengeTitle = document.getElementById('challengeTitle').innerText.replace(/\s+/g, '_');
+    const challengeTitle = document.getElementById('challengeTitle2').innerText.replace(/\s+/g, '_');
     const date = new Date().toISOString().split('T')[0];
     
     link.setAttribute("href", url);

@@ -83,14 +83,14 @@ async function loadLeaderboard() {
         const challenges = await response.json();
         
         if (challenges.length === 0) {
-            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
+            document.getElementById('leaderboardBody').innerHTML = '<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
             return;
         }
         
         // Get the first live challenge for leaderboard
         const liveChallenge = challenges.find(c => c.status === 'Live');
         if (!liveChallenge) {
-            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
+            document.getElementById('leaderboardBody').innerHTML = '<td colspan="7" class="text-center py-4">No active challenges</td></tr>';
             return;
         }
         
@@ -98,7 +98,7 @@ async function loadLeaderboard() {
         const data = await detailsResponse.json();
         
         if (!data.success || !data.leaderboard || data.leaderboard.length === 0) {
-            document.getElementById('leaderboardBody').innerHTML = '}<td colspan="7" class="text-center py-4">No participants yet</td></tr>';
+            document.getElementById('leaderboardBody').innerHTML = '<td colspan="7" class="text-center py-4">No participants yet</td></tr>';
             return;
         }
         
@@ -174,106 +174,9 @@ function switchChallengeTab(viewName) {
     }
 }
 
-// Open create challenge modal
-function openCreateChallengeModal() {
-    isEditMode = false;
-    currentChallengeId = null;
-    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-rocket-takeoff me-2 text-primary"></i>Launch New Challenge';
-    document.getElementById('editChallengeId').value = '';
-    document.getElementById('statusField').style.display = 'none';
-    document.getElementById('launchForm').reset();
-    
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    preview.classList.add('d-none');
-    preview.src = '#';
-    placeholder.classList.remove('d-none');
-    
-    // Clear file input
-    document.getElementById('challengeImgInput').value = '';
-    
-    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
-}
-
-// Open edit challenge modal
-function openEditChallengeModal(challengeId, title, description, rules, prizes, goalKm, activityType, startDate, endDate, status, bannerBase64, bannerImageNameVal, bannerImageContentTypeVal) {
-    isEditMode = true;
-    currentChallengeId = challengeId;
-    
-    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-primary"></i>Edit Challenge';
-    document.getElementById('editChallengeId').value = challengeId;
-    document.getElementById('statusField').style.display = 'block';
-    document.getElementById('challengeTitle').value = title;
-    document.getElementById('challengeDesc').value = description || '';
-    document.getElementById('challengeRules').value = rules || '';
-    document.getElementById('challengePrizes').value = prizes || '';
-    document.getElementById('goalKm').value = goalKm;
-    document.getElementById('activityType').value = activityType;
-    document.getElementById('startDate').value = startDate.split('T')[0];
-    document.getElementById('endDate').value = endDate.split('T')[0];
-    document.getElementById('challengeStatus').value = status;
-    
-    // Handle existing image
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    
-    // Remove existing hidden inputs
-    const existingNameInput = document.getElementById('existingImageName');
-    const existingTypeInput = document.getElementById('existingImageType');
-    if (existingNameInput) existingNameInput.remove();
-    if (existingTypeInput) existingTypeInput.remove();
-    
-    // Check if there's an existing banner image
-    if (bannerBase64 && bannerBase64 !== '#' && bannerBase64 !== null && bannerBase64 !== 'null') {
-        // Store the existing image info
-        const nameInput = document.createElement('input');
-        nameInput.type = 'hidden';
-        nameInput.id = 'existingImageName';
-        nameInput.value = bannerImageNameVal || '';
-        document.getElementById('launchForm').appendChild(nameInput);
-        
-        const typeInput = document.createElement('input');
-        typeInput.type = 'hidden';
-        typeInput.id = 'existingImageType';
-        typeInput.value = bannerImageContentTypeVal || '';
-        document.getElementById('launchForm').appendChild(typeInput);
-        
-        // Show the existing image
-        preview.src = bannerBase64;
-        preview.classList.remove('d-none');
-        placeholder.classList.add('d-none');
-    } else {
-        // No existing image
-        preview.classList.add('d-none');
-        preview.src = '#';
-        placeholder.classList.remove('d-none');
-    }
-    
-    // Reset file input
-    document.getElementById('challengeImgInput').value = '';
-    
-    new bootstrap.Modal(document.getElementById('launchChallengeModal')).show();
-}
 
 // Preview challenge image
-function previewChallengeImage(input) {
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    
-    if (input.files && input.files[0]) {
-        console.log('previewChallengeImage called with file:', input.files[0].name);
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.classList.remove('d-none');
-            placeholder.classList.add('d-none');
-            console.log('Image preview loaded successfully');
-        };
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        console.log('No file in previewChallengeImage');
-    }
-}
+
 
 // Handle challenge submit
 async function handleChallengeSubmit(event) {
@@ -288,14 +191,52 @@ async function handleChallengeSubmit(event) {
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
     const status = document.getElementById('challengeStatus')?.value;
-    
     let bannerBase64 = null;
     let bannerImageName = null;
     let bannerImageContentType = null;
     
     const fileInput = document.getElementById('challengeImgInput');
     
-    // ONLY process if a file was actually selected
+    // Validate required fields FIRST
+    if (!title || !goalKm || !activityType || !startDate || !endDate) {
+        showToast('Please fill all required fields', true);
+        return;
+    }
+    
+    // Validate goalKm is a valid number
+    if (isNaN(goalKm) || goalKm <= 0) {
+        showToast('Please enter a valid goal distance (greater than 0)', true);
+        return;
+    }
+    
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); 
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+    
+    // Check if start date is before current date
+    if (start < currentDate) {
+        showToast('Start date cannot be before current date', true);
+        return;
+    }
+    
+    // Check if end date is before start date
+    if (end < start) {
+        showToast('End date cannot be before start date', true);
+        return;
+    }
+    
+    // Check if end date is before current date (optional but recommended)
+    if (end < currentDate) {
+        showToast('End date cannot be before current date', true);
+        return;
+    }
+    
+    // ONLY process image if a file was actually selected
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
         const file = fileInput.files[0];
         
@@ -330,19 +271,6 @@ async function handleChallengeSubmit(event) {
             return;
         }
     }
-    // If no file selected, bannerBase64 stays NULL (this is correct)
-    
-    // Validate required fields
-    if (!title || !goalKm || !activityType || !startDate || !endDate) {
-        showToast('Please fill all required fields', true);
-        return;
-    }
-    
-    // Validate dates
-    if (new Date(startDate) > new Date(endDate)) {
-        showToast('End date cannot be before start date', true);
-        return;
-    }
     
     const confirmModal = new bootstrap.Modal(document.getElementById('confirmLaunchModal'));
     document.getElementById('confirmTitle').innerText = isEditMode ? 'Save Changes?' : 'Launch Challenge?';
@@ -365,7 +293,7 @@ async function handleChallengeSubmit(event) {
             startDate: startDate,
             endDate: endDate,
             status: status,
-            bannerBase64: bannerBase64,  // This will be NULL if no image
+            bannerBase64: bannerBase64,  
             bannerImageName: bannerImageName,
             bannerImageContentType: bannerImageContentType
         } : {
@@ -377,7 +305,7 @@ async function handleChallengeSubmit(event) {
             activityType: activityType,
             startDate: startDate,
             endDate: endDate,
-            bannerBase64: bannerBase64,  // This will be NULL if no image
+            bannerBase64: bannerBase64,
             bannerImageName: bannerImageName,
             bannerImageContentType: bannerImageContentType
         };
@@ -449,16 +377,3 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(message, isError = false) {
-    const toastMsg = document.getElementById('toastMsg');
-    const toastIcon = document.getElementById('toastIcon');
-    const toastEl = document.getElementById('challengeToast');
-    
-    if (!toastMsg) return;
-    
-    toastMsg.innerText = message;
-    toastIcon.className = isError ? 'bi bi-exclamation-triangle-fill text-danger fs-5' : 'bi bi-check-circle-fill text-success fs-5';
-    
-    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-    toast.show();
-}
