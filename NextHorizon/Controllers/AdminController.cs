@@ -1701,741 +1701,1150 @@
 
 
 
-            #region Challenges
+           
+        #region Challenges
 
-            // GET: Tasks page (list all challenges)
-            public IActionResult Tasks()
+        // GET: Tasks page (list all challenges)
+        public IActionResult Tasks()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View();
+        }
+
+        // GET: Challenge details page
+        public async Task<IActionResult> ChallengeDetails(int id)
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin" });
+            if (unauthorized != null) return unauthorized;
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            ViewBag.ChallengeId = id;
+            return View();
+        }
+
+        // GET: Get all challenges
+        [HttpGet]
+        public async Task<IActionResult> GetAllChallenges(string status = null)
+        {
+            try
             {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
-
-                ViewBag.UserRole = GetCurrentUserRole();
-                return View();
-            }
-
-            // GET: Challenge details page
-            public async Task<IActionResult> ChallengeDetails(int id)
-            {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
-
-                var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin" });
-                if (unauthorized != null) return unauthorized;
-
-                ViewBag.UserRole = GetCurrentUserRole();
-                ViewBag.ChallengeId = id;
-                return View();
-            }
-
-            // GET: Get all challenges
-            [HttpGet]
-            public async Task<IActionResult> GetAllChallenges(string status = null)
-            {
-                try
+                var challenges = new List<ChallengeViewModel>();
+                
+                using (var connection = new SqlConnection(_connectionString))
                 {
-                    var challenges = new List<ChallengeViewModel>();
-                    
-                    using (var connection = new SqlConnection(_connectionString))
+                    using (var command = new SqlCommand("sp_GetAllChallenges", connection))
                     {
-                        using (var command = new SqlCommand("sp_GetAllChallenges", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@Status", status ?? (object)DBNull.Value);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                while (await reader.ReadAsync())
-                                {
-                                    var challenge = new ChallengeViewModel
-                                    {
-                                        ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
-                                        Title = reader.GetString(reader.GetOrdinal("title")),
-                                        Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
-                                        Rules = reader.IsDBNull(reader.GetOrdinal("rules")) ? null : reader.GetString(reader.GetOrdinal("rules")),
-                                        Prizes = reader.IsDBNull(reader.GetOrdinal("prizes")) ? null : reader.GetString(reader.GetOrdinal("prizes")),
-                                        GoalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
-                                        ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
-                                        StartDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
-                                        EndDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
-                                        Status = reader.GetString(reader.GetOrdinal("status")),
-                                        BannerImageName = reader.IsDBNull(reader.GetOrdinal("banner_image_name")) ? null : reader.GetString(reader.GetOrdinal("banner_image_name")),
-                                        BannerImageContentType = reader.IsDBNull(reader.GetOrdinal("banner_image_content_type")) ? null : reader.GetString(reader.GetOrdinal("banner_image_content_type")),
-                                        TotalParticipants = reader.GetInt32(reader.GetOrdinal("total_participants")),
-                                        TotalCompleted = reader.GetInt32(reader.GetOrdinal("total_completed")),
-                                        CompletionRate = reader.GetDecimal(reader.GetOrdinal("completion_rate")),
-                                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
-                                        UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
-                                    };
-                                    
-                                    // Convert binary image to Base64 in C# (with error handling)
-                                    if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
-                                    {
-                                        try
-                                        {
-                                            byte[] imageData = (byte[])reader["banner_image"];
-                                            if (imageData != null && imageData.Length > 0)
-                                            {
-                                                string contentType = challenge.BannerImageContentType ?? "image/jpeg";
-                                                string base64String = Convert.ToBase64String(imageData);
-                                                challenge.BannerBase64 = $"data:{contentType};base64,{base64String}";
-                                            }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Console.WriteLine($"Error converting image for challenge {challenge.ChallengeId}: {ex.Message}");
-                                            challenge.BannerBase64 = null;
-                                        }
-                                    }
-                                    
-                                    challenges.Add(challenge);
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(challenges);
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { error = ex.Message });
-                }
-            }
-
-            // GET: Get challenge details
-            [HttpGet]
-            public async Task<IActionResult> GetChallengeDetails(int id)
-            {
-                try
-                {
-                    ChallengeViewModel challenge = null;
-                    var leaderboard = new List<ParticipantLeaderboard>();
-                    decimal avgDistanceKm = 0;
-                    decimal avgTimeMinutes = 0;
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_GetChallengeDetails", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ChallengeId", id);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                // First result set - Challenge details
-                                if (await reader.ReadAsync())
-                                {
-                                    challenge = new ChallengeViewModel
-                                    {
-                                        ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
-                                        Title = reader.GetString(reader.GetOrdinal("title")),
-                                        Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
-                                        Rules = reader.IsDBNull(reader.GetOrdinal("rules")) ? null : reader.GetString(reader.GetOrdinal("rules")),
-                                        Prizes = reader.IsDBNull(reader.GetOrdinal("prizes")) ? null : reader.GetString(reader.GetOrdinal("prizes")),
-                                        GoalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
-                                        ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
-                                        StartDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
-                                        EndDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
-                                        Status = reader.GetString(reader.GetOrdinal("status")),
-                                        BannerImageName = reader.IsDBNull(reader.GetOrdinal("banner_image_name")) ? null : reader.GetString(reader.GetOrdinal("banner_image_name")),
-                                        BannerImageContentType = reader.IsDBNull(reader.GetOrdinal("banner_image_content_type")) ? null : reader.GetString(reader.GetOrdinal("banner_image_content_type")),
-                                        TotalParticipants = reader.GetInt32(reader.GetOrdinal("total_participants")),
-                                        TotalCompleted = reader.GetInt32(reader.GetOrdinal("total_completed")),
-                                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
-                                    };
-                                    
-                                    avgDistanceKm = reader.GetDecimal(reader.GetOrdinal("avg_distance_km"));
-                                    avgTimeMinutes = reader.GetDecimal(reader.GetOrdinal("avg_time_minutes"));
-                                    challenge.BannerBase64 = null;
-                                    // Convert binary image to Base64
-                                     if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
-                                    {
-                                        try
-                                        {
-                                            byte[] imageData = (byte[])reader["banner_image"];
-                                            if (imageData != null && imageData.Length > 0)
-                                            {
-                                                string contentType = challenge.BannerImageContentType ?? "image/jpeg";
-                                                string base64String = Convert.ToBase64String(imageData);
-                                                challenge.BannerBase64 = $"data:{contentType};base64,{base64String}";
-                                            }
-                                        }       
-                                        catch (Exception ex)
-                                        {
-                                            Console.WriteLine($"Error converting image: {ex.Message}");
-                                            challenge.BannerBase64 = null;
-                                        }
-                                    } 
-                                }
-                                
-                                // Second result set - Leaderboard
-                                await reader.NextResultAsync();
-                                while (await reader.ReadAsync())
-                                {
-                                    leaderboard.Add(new ParticipantLeaderboard
-                                    {
-                                        Rank = reader.GetInt32(reader.GetOrdinal("rank")),
-                                        ParticipantId = reader.GetInt32(reader.GetOrdinal("participant_id")),
-                                        UserId = reader.GetInt32(reader.GetOrdinal("user_id")),
-                                        AthleteName = reader.GetString(reader.GetOrdinal("athlete_name")),
-                                        Username = reader.GetString(reader.GetOrdinal("username")),
-                                        PhoneNumber = reader.IsDBNull(reader.GetOrdinal("phone_number")) ? null : reader.GetString(reader.GetOrdinal("phone_number")),
-                                        TotalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
-                                        TotalActivities = reader.GetInt32(reader.GetOrdinal("total_activities")),
-                                        TotalTimeSeconds = reader.GetInt32(reader.GetOrdinal("total_time_seconds")),
-                                        AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
-                                        IsCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
-                                        LastActivityDate = reader.IsDBNull(reader.GetOrdinal("last_activity_date")) ? null : reader.GetDateTime(reader.GetOrdinal("last_activity_date")),
-                                        AvatarUrl = reader.GetString(reader.GetOrdinal("avatar_url")),
-                                        ChallengeGoalKm = challenge?.GoalKm ?? 0
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { 
-                        success = true, 
-                        challenge = challenge, 
-                        leaderboard = leaderboard,
-                        avgDistanceKm = avgDistanceKm,
-                        avgTimeMinutes = avgTimeMinutes
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, error = ex.Message });
-                }
-            }
-
-            // GET: Get participant activities
-            [HttpGet]
-            public async Task<IActionResult> GetParticipantActivities(int participantId)
-            {
-                try
-                {
-                    var activities = new List<ActivityLogViewModel>();
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_GetParticipantActivities", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ParticipantId", participantId);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                while (await reader.ReadAsync())
-                                {
-                                    activities.Add(new ActivityLogViewModel
-                                    {
-                                        ActivityId = reader.GetInt32(reader.GetOrdinal("activity_id")),
-                                        ActivityDate = reader.GetDateTime(reader.GetOrdinal("activity_date")),
-                                        DistanceKm = reader.GetDecimal(reader.GetOrdinal("distance_km")),
-                                        DurationSeconds = reader.GetInt32(reader.GetOrdinal("duration_seconds")),
-                                        AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
-                                        ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
-                                        IsVerified = reader.GetBoolean(reader.GetOrdinal("is_verified")),
-                                        VerifiedByName = reader.IsDBNull(reader.GetOrdinal("verified_by_name")) ? null : reader.GetString(reader.GetOrdinal("verified_by_name")),
-                                        VerifiedAt = reader.IsDBNull(reader.GetOrdinal("verified_at")) ? null : reader.GetDateTime(reader.GetOrdinal("verified_at")),
-                                        Notes = reader.IsDBNull(reader.GetOrdinal("notes")) ? null : reader.GetString(reader.GetOrdinal("notes")),
-                                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { success = true, activities = activities });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, error = ex.Message });
-                }
-            }
-
-            // POST: Create new challenge
-            [HttpPost]
-            public async Task<IActionResult> CreateChallenge([FromBody] CreateChallengeRequest request)
-            {
-                try
-                {
-                    var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
-                    var adminName = HttpContext.Session.GetString("Username") ?? "System";
-                    
-                    byte[] bannerImageBytes = null;
-                    
-                    // ONLY process if there's actual image data
-                    if (!string.IsNullOrEmpty(request.BannerBase64) && 
-                        request.BannerBase64 != "#" && 
-                        request.BannerBase64 != "null" &&
-                        request.BannerBase64.Length > 100)
-                    {
-                        try
-                        {
-                            string base64Data = request.BannerBase64;
-                            
-                            if (base64Data.Contains(","))
-                            {
-                                base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
-                            }
-                            
-                            base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
-                            
-                            bannerImageBytes = Convert.FromBase64String(base64Data);
-                            Console.WriteLine($"Image converted: {bannerImageBytes.Length} bytes");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Image conversion error: {ex.Message}");
-                            bannerImageBytes = null;
-                        }
-                    }
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_CreateChallenge", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            
-                            // Add parameters with explicit types
-                            command.Parameters.Add("@Title", SqlDbType.NVarChar, 255).Value = request.Title;
-                            command.Parameters.Add("@Description", SqlDbType.NVarChar).Value = request.Description ?? (object)DBNull.Value;
-                            command.Parameters.Add("@Rules", SqlDbType.NVarChar).Value = request.Rules ?? (object)DBNull.Value;
-                            command.Parameters.Add("@Prizes", SqlDbType.NVarChar).Value = request.Prizes ?? (object)DBNull.Value;
-                            command.Parameters.Add("@GoalKm", SqlDbType.Decimal).Value = request.GoalKm;
-                            command.Parameters.Add("@ActivityType", SqlDbType.NVarChar, 50).Value = request.ActivityType;
-                            command.Parameters.Add("@StartDate", SqlDbType.DateTime).Value = request.StartDate;
-                            command.Parameters.Add("@EndDate", SqlDbType.DateTime).Value = request.EndDate;
-                            
-                            // CRITICAL FIX: Explicitly set the parameter type and handle NULL properly
-                            var bannerImageParam = new SqlParameter("@BannerImage", SqlDbType.VarBinary, -1);
-                            if (bannerImageBytes != null && bannerImageBytes.Length > 0)
-                            {
-                                bannerImageParam.Value = bannerImageBytes;
-                            }
-                            else
-                            {
-                                bannerImageParam.Value = DBNull.Value;
-                            }
-                            command.Parameters.Add(bannerImageParam);
-                            
-                            command.Parameters.Add("@BannerImageName", SqlDbType.NVarChar, 255).Value = request.BannerImageName ?? (object)DBNull.Value;
-                            command.Parameters.Add("@BannerImageContentType", SqlDbType.NVarChar, 100).Value = request.BannerImageContentType ?? (object)DBNull.Value;
-                            command.Parameters.Add("@CreatedBy", SqlDbType.Int).Value = staffId;
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                if (await reader.ReadAsync())
-                                {
-                                    var status = reader["Status"].ToString();
-                                    var message = reader["Message"].ToString();
-                                    var challengeId = reader["ChallengeId"] != DBNull.Value ? Convert.ToInt32(reader["ChallengeId"]) : (int?)null;
-                                    
-                                    if (status == "Success")
-                                    {
-                                        await LogAdminAction(staffId, adminName, "Create Challenge",
-                                            request.Title, "Success");
-                                        
-                                        return Json(new { success = true, message = message, challengeId = challengeId });
-                                    }
-                                    else
-                                    {
-                                        return Json(new { success = false, message = message });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { success = false, message = "Failed to create challenge" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            // POST: Update challenge
-            [HttpPost]
-            public async Task<IActionResult> UpdateChallenge([FromBody] UpdateChallengeRequest request)
-            {
-                try
-                {
-                    var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
-                    var adminName = HttpContext.Session.GetString("Username") ?? "System";
-                    
-                    byte[] bannerImageBytes = null;
-                    bool hasNewImage = false;
-                    
-                    // Only process if there's a NEW image (not the existing one)
-                    if (!string.IsNullOrEmpty(request.BannerBase64) && 
-                        request.BannerBase64 != "#" && 
-                        request.BannerBase64 != "null" &&
-                        !request.BannerBase64.StartsWith("http")) // If it's a URL, it's existing
-                    {
-                        // Check if it's a data URL (new image) vs an existing one
-                        if (request.BannerBase64.StartsWith("data:"))
-                        {
-                            try
-                            {
-                                string base64Data = request.BannerBase64;
-                                
-                                // Remove data URL prefix if present
-                                if (base64Data.Contains(","))
-                                {
-                                    base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
-                                }
-                                
-                                // Remove whitespace and newlines
-                                base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
-                                
-                                // Convert to byte array
-                                if (!string.IsNullOrEmpty(base64Data))
-                                {
-                                    bannerImageBytes = Convert.FromBase64String(base64Data);
-                                    hasNewImage = true;
-                                    Console.WriteLine($"New image converted: {bannerImageBytes.Length} bytes");
-                                }
-                            }
-                            catch (FormatException fe)
-                            {
-                                Console.WriteLine($"Base64 format error: {fe.Message}");
-                                bannerImageBytes = null;
-                                hasNewImage = false;
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"Image conversion error: {ex.Message}");
-                                bannerImageBytes = null;
-                                hasNewImage = false;
-                            }
-                        }
-                    }
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_UpdateChallenge", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
-                            command.Parameters.AddWithValue("@Title", request.Title);
-                            command.Parameters.AddWithValue("@Description", request.Description ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@Rules", request.Rules ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@Prizes", request.Prizes ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@GoalKm", request.GoalKm);
-                            command.Parameters.AddWithValue("@ActivityType", request.ActivityType);
-                            command.Parameters.AddWithValue("@StartDate", request.StartDate);
-                            command.Parameters.AddWithValue("@EndDate", request.EndDate);
-                            command.Parameters.AddWithValue("@Status", request.Status ?? (object)DBNull.Value);
-                            
-                            // FIX: Only pass new image if there is one, otherwise pass NULL to keep existing
-                            if (hasNewImage && bannerImageBytes != null)
-                            {
-                                command.Parameters.AddWithValue("@BannerImage", bannerImageBytes);
-                                command.Parameters.AddWithValue("@BannerImageName", request.BannerImageName ?? (object)DBNull.Value);
-                                command.Parameters.AddWithValue("@BannerImageContentType", request.BannerImageContentType ?? (object)DBNull.Value);
-                            }
-                            else
-                            {
-                                // Don't update the image - keep existing
-                                command.Parameters.AddWithValue("@BannerImage", DBNull.Value);
-                                command.Parameters.AddWithValue("@BannerImageName", DBNull.Value);
-                                command.Parameters.AddWithValue("@BannerImageContentType", DBNull.Value);
-                            }
-                            
-                            command.Parameters.AddWithValue("@UpdatedBy", staffId);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                if (await reader.ReadAsync())
-                                {
-                                    var status = reader["Status"].ToString();
-                                    var message = reader["Message"].ToString();
-                                    
-                                    if (status == "Success")
-                                    {
-                                        await LogAdminAction(staffId, adminName, "Update Challenge",
-                                            request.Title, "Success");
-                                        
-                                        return Json(new { success = true, message = message });
-                                    }
-                                    else
-                                    {
-                                        return Json(new { success = false, message = message });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { success = false, message = "Failed to update challenge" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            // POST: Join challenge
-            [HttpPost]
-            public async Task<IActionResult> JoinChallenge([FromBody] JoinChallengeRequest request)
-            {
-                try
-                {
-                    var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
-                    
-                    // Get consumer_id from user_id
-                    int consumerId = 0;
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        var cmd = new SqlCommand("SELECT consumer_id FROM consumers WHERE user_id = @UserId", connection);
-                        cmd.Parameters.AddWithValue("@UserId", userId);
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@Status", status ?? (object)DBNull.Value);
+                        
                         await connection.OpenAsync();
-                        var result = await cmd.ExecuteScalarAsync();
-                        if (result != null)
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            consumerId = Convert.ToInt32(result);
-                        }
-                    }
-                    
-                    if (consumerId == 0)
-                    {
-                        return Json(new { success = false, message = "Consumer profile not found" });
-                    }
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_JoinChallenge", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
-                            command.Parameters.AddWithValue("@UserId", userId);
-                            command.Parameters.AddWithValue("@ConsumerId", consumerId);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
+                            while (await reader.ReadAsync())
                             {
-                                if (await reader.ReadAsync())
+                                var challenge = new ChallengeViewModel
                                 {
-                                    var status = reader["Status"].ToString();
-                                    var message = reader["Message"].ToString();
-                                    
-                                    return Json(new { success = status == "Success", message = message });
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { success = false, message = "Failed to join challenge" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            // POST: Add activity
-            [HttpPost]
-            public async Task<IActionResult> AddActivity([FromBody] AddActivityRequest request)
-            {
-                try
-                {
-                    var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_AddChallengeActivity", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
-                            command.Parameters.AddWithValue("@UserId", userId);
-                            command.Parameters.AddWithValue("@ActivityDate", request.ActivityDate);
-                            command.Parameters.AddWithValue("@DistanceKm", request.DistanceKm);
-                            command.Parameters.AddWithValue("@DurationSeconds", request.DurationSeconds);
-                            command.Parameters.AddWithValue("@ActivityType", request.ActivityType);
-                            command.Parameters.AddWithValue("@Notes", request.Notes ?? (object)DBNull.Value);
-                            command.Parameters.AddWithValue("@AutoVerify", request.AutoVerify);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                if (await reader.ReadAsync())
+                                    ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
+                                    Title = reader.GetString(reader.GetOrdinal("title")),
+                                    Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+                                    Rules = reader.IsDBNull(reader.GetOrdinal("rules")) ? null : reader.GetString(reader.GetOrdinal("rules")),
+                                    Prizes = reader.IsDBNull(reader.GetOrdinal("prizes")) ? null : reader.GetString(reader.GetOrdinal("prizes")),
+                                    GoalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
+                                    ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
+                                    StartDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
+                                    EndDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
+                                    Status = reader.GetString(reader.GetOrdinal("status")),
+                                    BannerImageName = reader.IsDBNull(reader.GetOrdinal("banner_image_name")) ? null : reader.GetString(reader.GetOrdinal("banner_image_name")),
+                                    BannerImageContentType = reader.IsDBNull(reader.GetOrdinal("banner_image_content_type")) ? null : reader.GetString(reader.GetOrdinal("banner_image_content_type")),
+                                    TotalParticipants = reader.GetInt32(reader.GetOrdinal("total_participants")),
+                                    TotalCompleted = reader.GetInt32(reader.GetOrdinal("total_completed")),
+                                    CompletionRate = reader.GetDecimal(reader.GetOrdinal("completion_rate")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                                    UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
+                                };
+                                
+                                // Convert binary image to Base64
+                                if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
                                 {
-                                    var status = reader["Status"].ToString();
-                                    var message = reader["Message"].ToString();
-                                    
-                                    return Json(new { success = status == "Success", message = message });
-                                }
-                            }
-                        }
-                    }
-                    
-                    return Json(new { success = false, message = "Failed to add activity" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            // POST: Verify activity
-            [HttpPost]
-            public async Task<IActionResult> VerifyActivity([FromBody] VerifyActivityRequest request)
-            {
-                try
-                {
-                    var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
-                    var adminName = HttpContext.Session.GetString("Username") ?? "System";
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_VerifyChallengeActivity", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@ActivityId", request.ActivityId);
-                            command.Parameters.AddWithValue("@VerifiedBy", staffId);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                if (await reader.ReadAsync())
-                                {
-                                    var status = reader["Status"].ToString();
-                                    var message = reader["Message"].ToString();
-                                    
-                                    if (status == "Success")
+                                    try
                                     {
-                                        await LogAdminAction(staffId, adminName, "Verify Activity",
-                                            $"Activity ID: {request.ActivityId}", "Success");
+                                        byte[] imageData = (byte[])reader["banner_image"];
+                                        if (imageData != null && imageData.Length > 0)
+                                        {
+                                            string contentType = challenge.BannerImageContentType ?? "image/jpeg";
+                                            string base64String = Convert.ToBase64String(imageData);
+                                            challenge.BannerBase64 = $"data:{contentType};base64,{base64String}";
+                                        }
                                     }
-                                    
-                                    return Json(new { success = status == "Success", message = message });
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Error converting image for challenge {challenge.ChallengeId}: {ex.Message}");
+                                        challenge.BannerBase64 = null;
+                                    }
+                                }
+                                
+                                challenges.Add(challenge);
+                            }
+                        }
+                    }
+                }
+                
+                return Json(challenges);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // GET: Get challenge details
+        [HttpGet]
+        public async Task<IActionResult> GetChallengeDetails(int id)
+        {
+            try
+            {
+                ChallengeViewModel challenge = null;
+                var leaderboard = new List<ParticipantLeaderboard>();
+                decimal avgDistanceKm = 0;
+                decimal avgTimeMinutes = 0;
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetChallengeDetails", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ChallengeId", id);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            // First result set - Challenge details
+                            if (await reader.ReadAsync())
+                            {
+                                challenge = new ChallengeViewModel
+                                {
+                                    ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
+                                    Title = reader.GetString(reader.GetOrdinal("title")),
+                                    Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+                                    Rules = reader.IsDBNull(reader.GetOrdinal("rules")) ? null : reader.GetString(reader.GetOrdinal("rules")),
+                                    Prizes = reader.IsDBNull(reader.GetOrdinal("prizes")) ? null : reader.GetString(reader.GetOrdinal("prizes")),
+                                    GoalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
+                                    ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
+                                    StartDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
+                                    EndDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
+                                    Status = reader.GetString(reader.GetOrdinal("status")),
+                                    BannerImageName = reader.IsDBNull(reader.GetOrdinal("banner_image_name")) ? null : reader.GetString(reader.GetOrdinal("banner_image_name")),
+                                    BannerImageContentType = reader.IsDBNull(reader.GetOrdinal("banner_image_content_type")) ? null : reader.GetString(reader.GetOrdinal("banner_image_content_type")),
+                                    TotalParticipants = reader.GetInt32(reader.GetOrdinal("total_participants")),
+                                    TotalCompleted = reader.GetInt32(reader.GetOrdinal("total_completed")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+                                };
+                                
+                                avgDistanceKm = reader.GetDecimal(reader.GetOrdinal("avg_distance_km"));
+                                avgTimeMinutes = reader.GetDecimal(reader.GetOrdinal("avg_time_minutes"));
+                                
+                                // Convert binary image to Base64
+                                if (!reader.IsDBNull(reader.GetOrdinal("banner_image")))
+                                {
+                                    try
+                                    {
+                                        byte[] imageData = (byte[])reader["banner_image"];
+                                        if (imageData != null && imageData.Length > 0)
+                                        {
+                                            string contentType = challenge.BannerImageContentType ?? "image/jpeg";
+                                            string base64String = Convert.ToBase64String(imageData);
+                                            challenge.BannerBase64 = $"data:{contentType};base64,{base64String}";
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Error converting image: {ex.Message}");
+                                        challenge.BannerBase64 = null;
+                                    }
+                                }
+                            }
+                            
+                            // Second result set - Leaderboard
+                            await reader.NextResultAsync();
+                            while (await reader.ReadAsync())
+                            {
+                                leaderboard.Add(new ParticipantLeaderboard
+                                {
+                                    Rank = reader.GetInt32(reader.GetOrdinal("rank")),
+                                    ParticipantId = reader.GetInt32(reader.GetOrdinal("participant_id")),
+                                    UserId = reader.GetInt32(reader.GetOrdinal("user_id")),
+                                    AthleteName = reader.GetString(reader.GetOrdinal("athlete_name")),
+                                    Username = reader.GetString(reader.GetOrdinal("username")),
+                                    PhoneNumber = reader.IsDBNull(reader.GetOrdinal("phone_number")) ? null : reader.GetString(reader.GetOrdinal("phone_number")),
+                                    TotalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
+                                    TotalActivities = reader.GetInt32(reader.GetOrdinal("total_activities")),
+                                    TotalTimeSeconds = reader.GetInt32(reader.GetOrdinal("total_time_seconds")),
+                                    AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
+                                    IsCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
+                                    LastActivityDate = reader.IsDBNull(reader.GetOrdinal("last_activity_date")) ? null : reader.GetDateTime(reader.GetOrdinal("last_activity_date")),
+                                    AvatarUrl = reader.GetString(reader.GetOrdinal("avatar_url")),
+                                    ChallengeGoalKm = challenge?.GoalKm ?? 0
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { 
+                    success = true, 
+                    challenge = challenge, 
+                    leaderboard = leaderboard,
+                    avgDistanceKm = avgDistanceKm,
+                    avgTimeMinutes = avgTimeMinutes
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // GET: Get challenge prizes
+        [HttpGet]
+        public async Task<IActionResult> GetChallengePrizes(int challengeId)
+        {
+            try
+            {
+                var prizes = new List<ChallengePrize>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    var sql = @"
+                        SELECT cp.*, pt.type_name, pt.type_code
+                        FROM challenge_prizes cp
+                        INNER JOIN prize_types pt ON cp.prize_type_id = pt.prize_type_id
+                        WHERE cp.challenge_id = @ChallengeId AND cp.is_active = 1
+                        ORDER BY cp.tier";
+                    
+                    using (var cmd = new SqlCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@ChallengeId", challengeId);
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                prizes.Add(new ChallengePrize
+                                {
+                                    PrizeId = reader.GetInt32(reader.GetOrdinal("prize_id")),
+                                    ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
+                                    PrizeTypeId = reader.GetInt32(reader.GetOrdinal("prize_type_id")),
+                                    Tier = reader.GetInt32(reader.GetOrdinal("tier")),
+                                    TierName = reader.IsDBNull(reader.GetOrdinal("tier_name")) ? null : reader.GetString(reader.GetOrdinal("tier_name")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    CashAmount = reader.IsDBNull(reader.GetOrdinal("cash_amount")) ? null : reader.GetDecimal(reader.GetOrdinal("cash_amount")),
+                                    VoucherDiscountPercent = reader.IsDBNull(reader.GetOrdinal("voucher_discount_percent")) ? null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_percent")),
+                                    VoucherDiscountFixed = reader.IsDBNull(reader.GetOrdinal("voucher_discount_fixed")) ? null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_fixed")),
+                                    VoucherMinimumPurchase = reader.IsDBNull(reader.GetOrdinal("voucher_minimum_purchase")) ? null : reader.GetDecimal(reader.GetOrdinal("voucher_minimum_purchase")),
+                                    VoucherType = reader.IsDBNull(reader.GetOrdinal("voucher_type")) ? null : reader.GetString(reader.GetOrdinal("voucher_type")),
+                                    RewardName = reader.IsDBNull(reader.GetOrdinal("reward_name")) ? null : reader.GetString(reader.GetOrdinal("reward_name")),
+                                    RewardValue = reader.IsDBNull(reader.GetOrdinal("reward_value")) ? null : reader.GetDecimal(reader.GetOrdinal("reward_value")),
+                                    Quantity = reader.GetInt32(reader.GetOrdinal("quantity")),
+                                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = true, prizes = prizes });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // POST: Create challenge prize
+        [HttpPost]
+        public async Task<IActionResult> CreatePrize([FromBody] CreatePrizeRequest request)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_CreateChallengePrize", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                        command.Parameters.AddWithValue("@PrizeTypeId", request.PrizeTypeId);
+                        command.Parameters.AddWithValue("@Tier", request.Tier);
+                        command.Parameters.AddWithValue("@TierName", request.TierName ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Description", request.Description);
+                        command.Parameters.AddWithValue("@CashAmount", request.CashAmount ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@VoucherDiscountPercent", request.VoucherDiscountPercent ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@VoucherDiscountFixed", request.VoucherDiscountFixed ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@VoucherMinimumPurchase", request.VoucherMinimumPurchase ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@VoucherType", request.VoucherType ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@RewardName", request.RewardName ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@RewardValue", request.RewardValue ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Quantity", request.Quantity);
+                        
+                        await connection.OpenAsync();
+                        var prizeId = Convert.ToInt32(await command.ExecuteScalarAsync());
+                        
+                        return Json(new { success = true, message = "Prize created successfully", prizeId = prizeId });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: Auto-assign prizes when challenge ends
+        [HttpPost]
+        public async Task<IActionResult> AutoAssignPrizes(int challengeId)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var cmd = new SqlCommand("sp_AutoAssignChallengePrizes", connection))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ChallengeId", challengeId);
+                        
+                        await connection.OpenAsync();
+                        await cmd.ExecuteNonQueryAsync();
+                        
+                        return Json(new { success = true, message = "Prizes assigned successfully" });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // GET: Get participant activities
+        [HttpGet]
+        public async Task<IActionResult> GetParticipantActivities(int participantId)
+        {
+            try
+            {
+                var activities = new List<ActivityLogViewModel>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetParticipantActivities", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ParticipantId", participantId);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                activities.Add(new ActivityLogViewModel
+                                {
+                                    ActivityId = reader.GetInt32(reader.GetOrdinal("activity_id")),
+                                    ActivityDate = reader.GetDateTime(reader.GetOrdinal("activity_date")),
+                                    DistanceKm = reader.GetDecimal(reader.GetOrdinal("distance_km")),
+                                    DurationSeconds = reader.GetInt32(reader.GetOrdinal("duration_seconds")),
+                                    AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
+                                    ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
+                                    IsVerified = reader.GetBoolean(reader.GetOrdinal("is_verified")),
+                                    VerifiedByName = reader.IsDBNull(reader.GetOrdinal("verified_by_name")) ? null : reader.GetString(reader.GetOrdinal("verified_by_name")),
+                                    VerifiedAt = reader.IsDBNull(reader.GetOrdinal("verified_at")) ? null : reader.GetDateTime(reader.GetOrdinal("verified_at")),
+                                    Notes = reader.IsDBNull(reader.GetOrdinal("notes")) ? null : reader.GetString(reader.GetOrdinal("notes")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = true, activities = activities });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // POST: Create new challenge
+        [HttpPost]
+        public async Task<IActionResult> CreateChallenge([FromBody] CreateChallengeRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                
+                byte[] bannerImageBytes = null;
+                
+                // ONLY process if there's actual image data
+                if (!string.IsNullOrEmpty(request.BannerBase64) && 
+                    request.BannerBase64 != "#" && 
+                    request.BannerBase64 != "null" &&
+                    request.BannerBase64.Length > 100)
+                {
+                    try
+                    {
+                        string base64Data = request.BannerBase64;
+                        
+                        if (base64Data.Contains(","))
+                        {
+                            base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
+                        }
+                        
+                        base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
+                        
+                        bannerImageBytes = Convert.FromBase64String(base64Data);
+                        Console.WriteLine($"Image converted: {bannerImageBytes.Length} bytes");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Image conversion error: {ex.Message}");
+                        bannerImageBytes = null;
+                    }
+                }
+                
+                int? newChallengeId = null;
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_CreateChallenge", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        
+                        command.Parameters.Add("@Title", SqlDbType.NVarChar, 255).Value = request.Title;
+                        command.Parameters.Add("@Description", SqlDbType.NVarChar).Value = request.Description ?? (object)DBNull.Value;
+                        command.Parameters.Add("@Rules", SqlDbType.NVarChar).Value = request.Rules ?? (object)DBNull.Value;
+                        command.Parameters.Add("@Prizes", SqlDbType.NVarChar).Value = request.Prizes ?? (object)DBNull.Value;
+                        command.Parameters.Add("@GoalKm", SqlDbType.Decimal).Value = request.GoalKm;
+                        command.Parameters.Add("@ActivityType", SqlDbType.NVarChar, 50).Value = request.ActivityType;
+                        command.Parameters.Add("@StartDate", SqlDbType.DateTime).Value = request.StartDate;
+                        command.Parameters.Add("@EndDate", SqlDbType.DateTime).Value = request.EndDate;
+                        
+                        var bannerImageParam = new SqlParameter("@BannerImage", SqlDbType.VarBinary, -1);
+                        if (bannerImageBytes != null && bannerImageBytes.Length > 0)
+                        {
+                            bannerImageParam.Value = bannerImageBytes;
+                        }
+                        else
+                        {
+                            bannerImageParam.Value = DBNull.Value;
+                        }
+                        command.Parameters.Add(bannerImageParam);
+                        
+                        command.Parameters.Add("@BannerImageName", SqlDbType.NVarChar, 255).Value = request.BannerImageName ?? (object)DBNull.Value;
+                        command.Parameters.Add("@BannerImageContentType", SqlDbType.NVarChar, 100).Value = request.BannerImageContentType ?? (object)DBNull.Value;
+                        command.Parameters.Add("@CreatedBy", SqlDbType.Int).Value = staffId;
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                newChallengeId = reader["ChallengeId"] != DBNull.Value ? Convert.ToInt32(reader["ChallengeId"]) : (int?)null;
+                                
+                                if (status != "Success")
+                                {
+                                    return Json(new { success = false, message = message });
                                 }
                             }
                         }
                     }
-                    
-                    return Json(new { success = false, message = "Failed to verify activity" });
                 }
-                catch (Exception ex)
+                
+                // Create prizes if challenge was created successfully and there are prizes
+                if (newChallengeId.HasValue && request.PrizesData != null && request.PrizesData.Any())
                 {
-                    return Json(new { success = false, message = ex.Message });
-                }
-            }
-
-            // GET: Get challenge statistics
-            [HttpGet]
-            public async Task<IActionResult> GetChallengeStatistics()
-            {
-                try
-                {
-                    ChallengeStatistics stats = null;
-                    
                     using (var connection = new SqlConnection(_connectionString))
                     {
-                        using (var command = new SqlCommand("sp_GetChallengeStatistics", connection))
+                        await connection.OpenAsync();
+                        
+                        foreach (var prize in request.PrizesData)
                         {
-                            command.CommandType = CommandType.StoredProcedure;
-                            
+                            using (var cmd = new SqlCommand("sp_CreateChallengePrize", connection))
+                            {
+                                cmd.CommandType = CommandType.StoredProcedure;
+                                cmd.Parameters.AddWithValue("@ChallengeId", newChallengeId.Value);
+                                cmd.Parameters.AddWithValue("@PrizeTypeId", prize.PrizeTypeId);
+                                cmd.Parameters.AddWithValue("@Tier", prize.Tier);
+                                cmd.Parameters.AddWithValue("@TierName", prize.TierName ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@Description", prize.Description);
+                                cmd.Parameters.AddWithValue("@CashAmount", prize.CashAmount ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherDiscountPercent", prize.VoucherDiscountPercent ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherDiscountFixed", prize.VoucherDiscountFixed ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherMinimumPurchase", prize.VoucherMinimumPurchase ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherType", prize.VoucherType ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@RewardName", prize.RewardName ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@RewardValue", prize.RewardValue ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@Quantity", prize.Quantity);
+                                
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                    }
+                    
+                    await LogAdminAction(staffId, adminName, "Create Challenge",
+                        request.Title, "Success", $"Created with {request.PrizesData.Count} prize tiers");
+                }
+                else
+                {
+                    await LogAdminAction(staffId, adminName, "Create Challenge",
+                        request.Title, "Success");
+                }
+                
+                return Json(new { success = true, message = "Challenge created successfully", challengeId = newChallengeId });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: Update challenge
+        [HttpPost]
+        public async Task<IActionResult> UpdateChallenge([FromBody] UpdateChallengeRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                
+                byte[] bannerImageBytes = null;
+                bool hasNewImage = false;
+                
+                // Store original status before update to check if it's changing to Completed
+                string originalStatus = null;
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    var getStatusCmd = new SqlCommand("SELECT status FROM challenges WHERE challenge_id = @ChallengeId", connection);
+                    getStatusCmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                    await connection.OpenAsync();
+                    originalStatus = (await getStatusCmd.ExecuteScalarAsync())?.ToString();
+                }
+                
+                // Only process if there's a NEW image
+                if (!string.IsNullOrEmpty(request.BannerBase64) && 
+                    request.BannerBase64 != "#" && 
+                    request.BannerBase64 != "null" &&
+                    request.BannerBase64.StartsWith("data:"))
+                {
+                    try
+                    {
+                        string base64Data = request.BannerBase64;
+                        
+                        if (base64Data.Contains(","))
+                        {
+                            base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
+                        }
+                        
+                        base64Data = base64Data.Trim().Replace(" ", "").Replace("\n", "").Replace("\r", "");
+                        
+                        if (!string.IsNullOrEmpty(base64Data))
+                        {
+                            bannerImageBytes = Convert.FromBase64String(base64Data);
+                            hasNewImage = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Image conversion error: {ex.Message}");
+                        bannerImageBytes = null;
+                        hasNewImage = false;
+                    }
+                }
+                
+                bool updateSuccess = false;
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_UpdateChallenge", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                        command.Parameters.AddWithValue("@Title", request.Title);
+                        command.Parameters.AddWithValue("@Description", request.Description ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Rules", request.Rules ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Prizes", request.Prizes ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@GoalKm", request.GoalKm);
+                        command.Parameters.AddWithValue("@ActivityType", request.ActivityType);
+                        command.Parameters.AddWithValue("@StartDate", request.StartDate);
+                        command.Parameters.AddWithValue("@EndDate", request.EndDate);
+                        command.Parameters.AddWithValue("@Status", request.Status ?? (object)DBNull.Value);
+                        
+                        if (hasNewImage && bannerImageBytes != null)
+                        {
+                            command.Parameters.AddWithValue("@BannerImage", bannerImageBytes);
+                            command.Parameters.AddWithValue("@BannerImageName", request.BannerImageName ?? (object)DBNull.Value);
+                            command.Parameters.AddWithValue("@BannerImageContentType", request.BannerImageContentType ?? (object)DBNull.Value);
+                        }
+                        else
+                        {
+                            command.Parameters.AddWithValue("@BannerImage", DBNull.Value);
+                            command.Parameters.AddWithValue("@BannerImageName", DBNull.Value);
+                            command.Parameters.AddWithValue("@BannerImageContentType", DBNull.Value);
+                        }
+                        
+                        command.Parameters.AddWithValue("@UpdatedBy", staffId);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                updateSuccess = status == "Success";
+                                
+                                if (!updateSuccess)
+                                {
+                                    return Json(new { success = false, message = message });
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Update prizes if provided
+                if (updateSuccess && request.PrizesData != null && request.PrizesData.Any())
+                {
+                    using (var connection = new SqlConnection(_connectionString))
+                    {
+                        await connection.OpenAsync();
+                        
+                        // First, delete existing prizes for this challenge
+                        using (var deleteCmd = new SqlCommand("DELETE FROM challenge_prizes WHERE challenge_id = @ChallengeId", connection))
+                        {
+                            deleteCmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                            await deleteCmd.ExecuteNonQueryAsync();
+                        }
+                        
+                        // Then insert new prizes
+                        foreach (var prize in request.PrizesData)
+                        {
+                            using (var cmd = new SqlCommand("sp_CreateChallengePrize", connection))
+                            {
+                                cmd.CommandType = CommandType.StoredProcedure;
+                                cmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                                cmd.Parameters.AddWithValue("@PrizeTypeId", prize.PrizeTypeId);
+                                cmd.Parameters.AddWithValue("@Tier", prize.Tier);
+                                cmd.Parameters.AddWithValue("@TierName", prize.TierName ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@Description", prize.Description);
+                                cmd.Parameters.AddWithValue("@CashAmount", prize.CashAmount ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherDiscountPercent", prize.VoucherDiscountPercent ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherDiscountFixed", prize.VoucherDiscountFixed ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherMinimumPurchase", prize.VoucherMinimumPurchase ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@VoucherType", prize.VoucherType ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@RewardName", prize.RewardName ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@RewardValue", prize.RewardValue ?? (object)DBNull.Value);
+                                cmd.Parameters.AddWithValue("@Quantity", prize.Quantity);
+                                
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                    }
+                    
+                    await LogAdminAction(staffId, adminName, "Update Challenge",
+                        request.Title, "Success", $"Updated with {request.PrizesData.Count} prize tiers");
+                }
+                else
+                {
+                    await LogAdminAction(staffId, adminName, "Update Challenge",
+                        request.Title, "Success");
+                }
+                
+                // Assign prizes when challenge status changes to "Completed"
+                if (updateSuccess && request.Status == "Completed" && originalStatus != "Completed")
+                {
+                    try
+                    {
+                        using (var connection = new SqlConnection(_connectionString))
+                        {
                             await connection.OpenAsync();
                             
-                            using (var reader = await command.ExecuteReaderAsync())
+                            // First, check if there are any prizes for this challenge
+                            int prizeCount = 0;
+                            using (var countCmd = new SqlCommand("SELECT COUNT(*) FROM challenge_prizes WHERE challenge_id = @ChallengeId AND is_active = 1", connection))
                             {
-                                if (await reader.ReadAsync())
+                                countCmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                                prizeCount = (int)await countCmd.ExecuteScalarAsync();
+                            }
+                            
+                            if (prizeCount > 0)
+                            {
+                                // Update ranks first
+                                var updateRankSql = @"
+                                    WITH RankedParticipants AS (
+                                        SELECT 
+                                            participant_id,
+                                            ROW_NUMBER() OVER (ORDER BY total_distance_km DESC) as rank
+                                        FROM challenge_participants
+                                        WHERE challenge_id = @ChallengeId
+                                    )
+                                    UPDATE cp
+                                    SET rank = rp.rank
+                                    FROM challenge_participants cp
+                                    INNER JOIN RankedParticipants rp ON cp.participant_id = rp.participant_id
+                                    WHERE cp.challenge_id = @ChallengeId";
+                                
+                                using (var rankCmd = new SqlCommand(updateRankSql, connection))
                                 {
-                                    stats = new ChallengeStatistics
+                                    rankCmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                                    await rankCmd.ExecuteNonQueryAsync();
+                                }
+                                
+                                // Call the stored procedure to assign prizes to ranked participants
+                                using (var assignCmd = new SqlCommand("sp_AssignPrizesToRankedParticipants", connection))
+                                {
+                                    assignCmd.CommandType = CommandType.StoredProcedure;
+                                    assignCmd.Parameters.AddWithValue("@ChallengeId", request.ChallengeId);
+                                    await assignCmd.ExecuteNonQueryAsync();
+                                }
+                                
+                                await LogAdminAction(staffId, adminName, "Assign Prizes",
+                                    $"Challenge: {request.Title}", "Success", $"Assigned {prizeCount} prize tiers to participants");
+                                
+                                Console.WriteLine($"Prizes assigned successfully for challenge {request.ChallengeId}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error assigning prizes: {ex.Message}");
+                        await LogAdminAction(staffId, adminName, "Assign Prizes Failed",
+                            $"Challenge: {request.Title}", "Error", ex.Message);
+                    }
+                }
+                
+                return Json(new { success = true, message = "Challenge updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: Claim prize
+        [HttpPost]
+        public async Task<IActionResult> ClaimPrize([FromBody] ClaimPrizeRequest request)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                
+                if (userId == 0)
+                {
+                    // Try to get from staff session
+                    userId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                }
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_ClaimPrizeWithCode", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ClaimCode", request.ClaimCode);
+                        command.Parameters.AddWithValue("@UserId", userId);
+                        command.Parameters.AddWithValue("@ClaimDetails", request.ClaimDetails ?? (object)DBNull.Value);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Failed to process claim" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: Verify and claim prize with code (alternative method)
+        [HttpPost]
+        public async Task<IActionResult> VerifyAndClaimPrize([FromBody] VerifyAndClaimRequest request)
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                
+                if (userId == 0)
+                {
+                    userId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                }
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_ClaimPrizeWithCode", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ClaimCode", request.ClaimCode);
+                        command.Parameters.AddWithValue("@UserId", userId);
+                        command.Parameters.AddWithValue("@ClaimDetails", DBNull.Value);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Invalid claim code" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // GET: Get user prizes for a specific challenge
+        [HttpGet]
+        public async Task<IActionResult> GetUserPrizes(int challengeId, int userId)
+        {
+            try
+            {
+                var prizes = new List<object>();
+                bool isAdminView = false;
+                
+                // Check if the current user is an admin
+                var currentStaffId = HttpContext.Session.GetInt32("StaffId");
+                var currentUserRole = HttpContext.Session.GetString("UserType");
+                
+                if (currentStaffId.HasValue && currentStaffId.Value > 0)
+                {
+                    isAdminView = true;
+                }
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetChallengePrizes", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ChallengeId", challengeId);
+                        command.Parameters.AddWithValue("@UserId", userId);
+                        command.Parameters.AddWithValue("@IsAdminView", isAdminView ? 1 : 0);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                if (isAdminView)
+                                {
+                                    // Admin view - includes all prizes
+                                    var prize = new
                                     {
-                                        TotalAthletes = reader.GetInt32(reader.GetOrdinal("total_athletes")),
-                                        ActiveChallenges = reader.GetInt32(reader.GetOrdinal("active_challenges")),
-                                        AvgDistance = reader.GetDecimal(reader.GetOrdinal("avg_distance")),
-                                        TotalTimeHours = reader.GetDecimal(reader.GetOrdinal("total_time_hours"))
+                                        // Prize configuration
+                                        prizeId = reader.GetInt32(reader.GetOrdinal("prize_id")),
+                                        tier = reader.GetInt32(reader.GetOrdinal("tier")),
+                                        tierName = reader.IsDBNull(reader.GetOrdinal("tier_name")) ? null : reader.GetString(reader.GetOrdinal("tier_name")),
+                                        description = reader.GetString(reader.GetOrdinal("description")),
+                                        prizeType = reader.GetString(reader.GetOrdinal("prize_type")),
+                                        prizeTypeCode = reader.GetString(reader.GetOrdinal("type_code")),
+                                        quantity = reader.GetInt32(reader.GetOrdinal("quantity")),
+                                        isActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                                        
+                                        // Prize details
+                                        cashAmount = reader.IsDBNull(reader.GetOrdinal("cash_amount")) ? 0 : reader.GetDecimal(reader.GetOrdinal("cash_amount")),
+                                        voucherDiscountPercent = reader.IsDBNull(reader.GetOrdinal("voucher_discount_percent")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_percent")),
+                                        voucherDiscountFixed = reader.IsDBNull(reader.GetOrdinal("voucher_discount_fixed")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_fixed")),
+                                        voucherMinimumPurchase = reader.IsDBNull(reader.GetOrdinal("voucher_minimum_purchase")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_minimum_purchase")),
+                                        voucherType = reader.IsDBNull(reader.GetOrdinal("voucher_type")) ? null : reader.GetString(reader.GetOrdinal("voucher_type")),
+                                        rewardName = reader.IsDBNull(reader.GetOrdinal("reward_name")) ? null : reader.GetString(reader.GetOrdinal("reward_name")),
+                                        rewardValue = reader.IsDBNull(reader.GetOrdinal("reward_value")) ? 0 : reader.GetDecimal(reader.GetOrdinal("reward_value")),
+                                        
+                                        // Assignment info
+                                        assignmentStatus = reader.GetString(reader.GetOrdinal("assignment_status")),
+                                        winnerId = reader.IsDBNull(reader.GetOrdinal("winner_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("winner_id")),
+                                        claimStatus = reader.IsDBNull(reader.GetOrdinal("claim_status")) ? null : reader.GetString(reader.GetOrdinal("claim_status")),
+                                        claimCode = reader.IsDBNull(reader.GetOrdinal("claim_code")) ? null : reader.GetString(reader.GetOrdinal("claim_code")),
+                                        claimDeadline = reader.IsDBNull(reader.GetOrdinal("claim_deadline")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("claim_deadline")),
+                                        claimDate = reader.IsDBNull(reader.GetOrdinal("claim_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("claim_date")),
+                                        athleteName = reader.IsDBNull(reader.GetOrdinal("athlete_name")) ? "Not yet assigned" : reader.GetString(reader.GetOrdinal("athlete_name")),
+                                        athleteUsername = reader.IsDBNull(reader.GetOrdinal("athlete_username")) ? null : reader.GetString(reader.GetOrdinal("athlete_username")),
+                                        athleteTotalDistance = reader.IsDBNull(reader.GetOrdinal("athlete_total_distance")) ? 0 : reader.GetDecimal(reader.GetOrdinal("athlete_total_distance")),
+                                        athleteRank = reader.IsDBNull(reader.GetOrdinal("athlete_rank")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("athlete_rank"))
                                     };
+                                    prizes.Add(prize);
                                 }
-                            }
-                        }
-                    }
-                    
-                    return Json(stats);
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { error = ex.Message });
-                }
-            }
-
-            // GET: Get user's challenges
-            [HttpGet]
-            public async Task<IActionResult> GetUserChallenges()
-            {
-                try
-                {
-                    var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    var challenges = new List<object>();
-                    
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        using (var command = new SqlCommand("sp_GetUserChallenges", connection))
-                        {
-                            command.CommandType = CommandType.StoredProcedure;
-                            command.Parameters.AddWithValue("@UserId", userId);
-                            
-                            await connection.OpenAsync();
-                            
-                            using (var reader = await command.ExecuteReaderAsync())
-                            {
-                                while (await reader.ReadAsync())
+                                else
                                 {
-                                    challenges.Add(new
+                                    // User view - only their assigned prizes
+                                    var prize = new
                                     {
-                                        challengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
-                                        title = reader.GetString(reader.GetOrdinal("title")),
-                                        description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
-                                        goalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
-                                        activityType = reader.GetString(reader.GetOrdinal("activity_type")),
-                                        startDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
-                                        endDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
-                                        status = reader.GetString(reader.GetOrdinal("status")),
+                                        // Prize winner info
+                                        winnerId = reader.GetInt32(reader.GetOrdinal("winner_id")),
+                                        rankPosition = reader.GetInt32(reader.GetOrdinal("rank_position")),
+                                        claimStatus = reader.GetString(reader.GetOrdinal("claim_status")),
+                                        claimCode = reader.GetString(reader.GetOrdinal("claim_code")),
+                                        claimDeadline = reader.GetDateTime(reader.GetOrdinal("claim_deadline")),
+                                        claimDate = reader.IsDBNull(reader.GetOrdinal("claim_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("claim_date")),
+                                        claimNotes = reader.IsDBNull(reader.GetOrdinal("claim_notes")) ? null : reader.GetString(reader.GetOrdinal("claim_notes")),
+                                        
+                                        // Prize details
+                                        cashAmount = reader.IsDBNull(reader.GetOrdinal("cash_amount")) ? 0 : reader.GetDecimal(reader.GetOrdinal("cash_amount")),
+                                        voucherDiscountPercent = reader.IsDBNull(reader.GetOrdinal("voucher_discount_percent")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_percent")),
+                                        voucherDiscountFixed = reader.IsDBNull(reader.GetOrdinal("voucher_discount_fixed")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_discount_fixed")),
+                                        voucherMinimumPurchase = reader.IsDBNull(reader.GetOrdinal("voucher_minimum_purchase")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("voucher_minimum_purchase")),
+                                        voucherType = reader.IsDBNull(reader.GetOrdinal("voucher_type")) ? null : reader.GetString(reader.GetOrdinal("voucher_type")),
+                                        rewardName = reader.IsDBNull(reader.GetOrdinal("reward_name")) ? null : reader.GetString(reader.GetOrdinal("reward_name")),
+                                        rewardValue = reader.IsDBNull(reader.GetOrdinal("reward_value")) ? 0 : reader.GetDecimal(reader.GetOrdinal("reward_value")),
+                                        tierName = reader.IsDBNull(reader.GetOrdinal("tier_name")) ? null : reader.GetString(reader.GetOrdinal("tier_name")),
+                                        description = reader.GetString(reader.GetOrdinal("description")),
+                                        prizeType = reader.GetString(reader.GetOrdinal("prize_type")),
+                                        prizeTypeCode = reader.GetString(reader.GetOrdinal("type_code")),
+                                        
+                                        // Voucher specific
+                                        voucherCode = reader.IsDBNull(reader.GetOrdinal("voucher_code")) ? null : reader.GetString(reader.GetOrdinal("voucher_code")),
+                                        voucherExpiry = reader.IsDBNull(reader.GetOrdinal("voucher_expiry")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("voucher_expiry")),
+                                        voucherSentDate = reader.IsDBNull(reader.GetOrdinal("voucher_sent_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("voucher_sent_date")),
+                                        voucherUsed = reader.IsDBNull(reader.GetOrdinal("voucher_used")) ? false : reader.GetBoolean(reader.GetOrdinal("voucher_used")),
+                                        
+                                        // Physical reward specific
+                                        shippingAddress = reader.IsDBNull(reader.GetOrdinal("shipping_address")) ? null : reader.GetString(reader.GetOrdinal("shipping_address")),
+                                        trackingNumber = reader.IsDBNull(reader.GetOrdinal("tracking_number")) ? null : reader.GetString(reader.GetOrdinal("tracking_number")),
+                                        shippedDate = reader.IsDBNull(reader.GetOrdinal("shipped_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("shipped_date")),
+                                        deliveryDate = reader.IsDBNull(reader.GetOrdinal("delivery_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("delivery_date")),
+                                        
+                                        // Cash specific
+                                        bankName = reader.IsDBNull(reader.GetOrdinal("bank_name")) ? null : reader.GetString(reader.GetOrdinal("bank_name")),
+                                        accountNumber = reader.IsDBNull(reader.GetOrdinal("account_number")) ? null : reader.GetString(reader.GetOrdinal("account_number")),
+                                        accountName = reader.IsDBNull(reader.GetOrdinal("account_name")) ? null : reader.GetString(reader.GetOrdinal("account_name")),
+                                        transactionReference = reader.IsDBNull(reader.GetOrdinal("transaction_reference")) ? null : reader.GetString(reader.GetOrdinal("transaction_reference")),
+                                        transferDate = reader.IsDBNull(reader.GetOrdinal("transfer_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("transfer_date")),
+                                        
+                                        // Digital reward specific
+                                        digitalCode = reader.IsDBNull(reader.GetOrdinal("digital_code")) ? null : reader.GetString(reader.GetOrdinal("digital_code")),
+                                        digitalCodeSentDate = reader.IsDBNull(reader.GetOrdinal("digital_code_sent_date")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("digital_code_sent_date")),
+                                        digitalCodeUsed = reader.IsDBNull(reader.GetOrdinal("digital_code_used")) ? false : reader.GetBoolean(reader.GetOrdinal("digital_code_used")),
+                                        
+                                        // Admin processing
+                                        processedBy = reader.IsDBNull(reader.GetOrdinal("processed_by")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("processed_by")),
+                                        processedAt = reader.IsDBNull(reader.GetOrdinal("processed_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("processed_at")),
+                                        rejectionReason = reader.IsDBNull(reader.GetOrdinal("rejection_reason")) ? null : reader.GetString(reader.GetOrdinal("rejection_reason")),
+                                        adminNotes = reader.IsDBNull(reader.GetOrdinal("admin_notes")) ? null : reader.GetString(reader.GetOrdinal("admin_notes")),
+                                        
+                                        // Participant stats
                                         totalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
                                         totalActivities = reader.GetInt32(reader.GetOrdinal("total_activities")),
+                                        totalTimeSeconds = reader.GetInt32(reader.GetOrdinal("total_time_seconds")),
+                                        participantRank = reader.IsDBNull(reader.GetOrdinal("rank")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("rank")),
                                         isCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
-                                        joinedAt = reader.GetDateTime(reader.GetOrdinal("joined_at")),
-                                        rank = reader.IsDBNull(reader.GetOrdinal("rank")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("rank")),
-                                        progressPercent = reader.GetDecimal(reader.GetOrdinal("progress_percent"))
-                                    });
+                                        completedAt = reader.IsDBNull(reader.GetOrdinal("completed_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("completed_at")),
+                                        hasPrizes = reader.GetBoolean(reader.GetOrdinal("has_prizes")),
+                                        isParticipant = reader.GetBoolean(reader.GetOrdinal("is_participant"))
+                                    };
+                                    prizes.Add(prize);
                                 }
                             }
                         }
                     }
-                    
-                    return Json(challenges);
                 }
-                catch (Exception ex)
+                
+                // If admin view and no prizes found, still return empty list
+                if (isAdminView && prizes.Count == 0)
                 {
-                    return Json(new { error = ex.Message });
+                    return Json(new { success = true, prizes = new List<object>(), isAdminView = true, message = "No prizes configured for this challenge" });
                 }
+                
+                // If user view and no prizes found
+                if (!isAdminView && prizes.Count == 0)
+                {
+                    return Json(new { success = true, prizes = new List<object>(), isAdminView = false, message = "No prizes assigned to you for this challenge" });
+                }
+                
+                return Json(new { success = true, prizes = prizes, isAdminView = isAdminView });
             }
-
-            public class JoinChallengeRequest
+            catch (Exception ex)
             {
-                public int ChallengeId { get; set; }
+                Console.WriteLine($"Error in GetUserPrizes: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return Json(new { success = false, error = ex.Message, prizes = new List<object>() });
             }
+        }
 
-            #endregion
+        // POST: Verify activity
+        [HttpPost]
+        public async Task<IActionResult> VerifyActivity([FromBody] VerifyActivityRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_VerifyChallengeActivity", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ActivityId", request.ActivityId);
+                        command.Parameters.AddWithValue("@VerifiedBy", staffId);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                if (status == "Success")
+                                {
+                                    await LogAdminAction(staffId, adminName, "Verify Activity",
+                                        $"Activity ID: {request.ActivityId}", "Success");
+                                }
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Failed to verify activity" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // GET: Get challenge statistics
+        [HttpGet]
+        public async Task<IActionResult> GetChallengeStatistics()
+        {
+            try
+            {
+                ChallengeStatistics stats = null;
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetChallengeStatistics", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                stats = new ChallengeStatistics
+                                {
+                                    TotalAthletes = reader.GetInt32(reader.GetOrdinal("total_athletes")),
+                                    ActiveChallenges = reader.GetInt32(reader.GetOrdinal("active_challenges")),
+                                    AvgDistance = reader.GetDecimal(reader.GetOrdinal("avg_distance")),
+                                    TotalTimeHours = reader.GetDecimal(reader.GetOrdinal("total_time_hours"))
+                                };
+                            }
+                        }
+                    }
+                }
+                
+                return Json(stats);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // GET: Get user's challenges
+        [HttpGet]
+        public async Task<IActionResult> GetUserChallenges()
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                
+                if (userId == 0)
+                {
+                    userId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                }
+                
+                var challenges = new List<object>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetUserChallenges", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@UserId", userId);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                challenges.Add(new
+                                {
+                                    challengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
+                                    title = reader.GetString(reader.GetOrdinal("title")),
+                                    description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+                                    goalKm = reader.GetDecimal(reader.GetOrdinal("goal_km")),
+                                    activityType = reader.GetString(reader.GetOrdinal("activity_type")),
+                                    startDate = reader.GetDateTime(reader.GetOrdinal("start_date")),
+                                    endDate = reader.GetDateTime(reader.GetOrdinal("end_date")),
+                                    status = reader.GetString(reader.GetOrdinal("status")),
+                                    totalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
+                                    totalActivities = reader.GetInt32(reader.GetOrdinal("total_activities")),
+                                    isCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
+                                    joinedAt = reader.GetDateTime(reader.GetOrdinal("joined_at")),
+                                    rank = reader.IsDBNull(reader.GetOrdinal("rank")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("rank")),
+                                    progressPercent = reader.GetDecimal(reader.GetOrdinal("progress_percent"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(challenges);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        #endregion
 
             // HelpCenter - Accessible by all admin roles
             public IActionResult HelpCenter()
@@ -3085,8 +3494,25 @@
             public string Reason { get; set; }
             public string ProductName { get; set; }
         }
-    public class DeleteGlobalPromotionRequest
-    {
-        public int Id { get; set; }
-    }
+        public class DeleteGlobalPromotionRequest
+        {
+            public int Id { get; set; }
+        }
+
+
+        public class ClaimPrizeRequest
+        {
+            public string ClaimCode { get; set; }
+            public string ClaimDetails { get; set; }
+        }
+
+        public class VerifyAndClaimRequest
+        {
+            public string ClaimCode { get; set; }
+        }
+
+        public class VerifyActivityRequest
+        {
+            public int ActivityId { get; set; }
+        }
     }

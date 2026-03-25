@@ -1,4 +1,4 @@
-﻿@{
+﻿﻿@{
     ViewData["Title"] = "Challenge Details";
     Layout = "_AdminLayout";
 }
@@ -57,6 +57,22 @@
         </div>
     </div>
 
+    <!-- Prize Claim Section -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" id="prizeSection">
+        <div class="card-header bg-white border-0 py-3 px-4">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-gift text-warning me-2"></i>Your Prizes
+            </h5>
+        </div>
+        <div class="card-body" id="prizeListContainer">
+            <div class="text-center py-4" id="noPrizeMessage">
+                <i class="bi bi-trophy text-muted fs-1"></i>
+                <p class="text-muted mt-2">No prizes available for this challenge</p>
+            </div>
+            <div id="prizeList" style="display: none;"></div>
+        </div>
+    </div>
+
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header bg-white border-0 py-3 px-4">
             <div class="row align-items-center">
@@ -107,6 +123,54 @@
             </div>
             <div class="modal-footer border-0 p-3">
                 <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prize Claim Modal -->
+<div class="modal fade" id="claimPrizeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-gift me-2"></i>Claim Your Prize
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="claimPrizeForm">
+                <!-- Dynamic form will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prize Code Verification Modal -->
+<div class="modal fade" id="verifyPrizeCodeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-qr-code me-2"></i>Verify Prize Code
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-ticket-perforated fs-1 text-primary"></i>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Enter your prize claim code</label>
+                    <input type="text" class="form-control form-control-lg text-center" id="claimCodeInput" 
+                           placeholder="e.g., CH0001P0001-XXXXXXXX" style="font-family: monospace;">
+                    <small class="text-muted">Enter the unique code you received for your prize</small>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary rounded-pill py-2" onclick="verifyAndClaimPrize()">
+                        <i class="bi bi-check-circle me-2"></i>Verify & Claim
+                    </button>
+                    <button class="btn btn-light rounded-pill py-2" data-bs-dismiss="modal">Cancel</button>
+                </div>
             </div>
         </div>
     </div>

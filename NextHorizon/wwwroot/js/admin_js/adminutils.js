@@ -80,7 +80,8 @@ function openEditChallengeModal(challengeId, title, description, rules, prizes, 
     if (fileInput) fileInput.value = '';
     
     // Show modal
-    new bootstrap.Modal(modal).show();
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
 }
 
 // Open create challenge modal
@@ -117,7 +118,21 @@ function openCreateChallengeModal() {
     const fileInput = document.getElementById('challengeImgInput');
     if (fileInput) fileInput.value = '';
     
-    new bootstrap.Modal(modal).show();
+    // Reset prize section
+    const prizeSection = document.getElementById('prizeManagementSection');
+    if (prizeSection) prizeSection.style.display = 'none';
+    
+    const prizeContainer = document.getElementById('prizeTiersContainer');
+    if (prizeContainer) prizeContainer.innerHTML = '';
+    
+    window.prizeTierCount = 0;
+    
+    // Reset radio buttons
+    const hasPrizesNo = document.getElementById('hasPrizesNo');
+    if (hasPrizesNo) hasPrizesNo.checked = true;
+    
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
 }
 
 // Preview challenge image
@@ -128,9 +143,13 @@ function previewChallengeImage(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.classList.remove('d-none');
-            placeholder.classList.add('d-none');
+            if (preview) {
+                preview.src = e.target.result;
+                preview.classList.remove('d-none');
+            }
+            if (placeholder) {
+                placeholder.classList.add('d-none');
+            }
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -138,8 +157,16 @@ function previewChallengeImage(input) {
 
 // Format date
 function formatDate(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Format date and time
+function formatDateTime(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // Escape HTML
@@ -171,4 +198,13 @@ function showToast(message, isError = false) {
     
     const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
     toast.show();
+}
+
+// Format seconds to HH:MM:SS
+function formatTime(seconds) {
+    if (!seconds || seconds <= 0) return '00:00:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }

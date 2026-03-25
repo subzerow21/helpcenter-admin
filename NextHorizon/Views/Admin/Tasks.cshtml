@@ -1,4 +1,4 @@
-﻿@{
+﻿﻿@{
     ViewData["Title"] = "Admin Portal - Task and Challenges";
     Layout = "_AdminLayout";
 }
@@ -89,7 +89,7 @@
                                 <th>Activities</th>
                                 <th>Total Time</th>
                                 <th>Progress</th>
-                             </tr>
+                              </tr>
                         </thead>
                         <tbody id="leaderboardBody">
                             <tr><td colspan="7" class="text-center py-4">Loading...</td></tr>
@@ -189,6 +189,35 @@
                         <label class="small fw-bold text-secondary mb-1">Prizes & Rewards</label>
                         <textarea id="challengePrizes" class="form-control rounded-3" rows="2" placeholder="What do they win?" required></textarea>
                     </div>
+
+                    <!-- Prize Management Section -->
+                    <div class="mb-3">
+                        <label class="small fw-bold text-secondary mb-1">Does this challenge have prizes?</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hasPrizes" id="hasPrizesYes" value="yes" onchange="togglePrizeManagement('yes')">
+                                <label class="form-check-label" for="hasPrizesYes">Yes, there are prizes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hasPrizes" id="hasPrizesNo" value="no" onchange="togglePrizeManagement('no')" checked>
+                                <label class="form-check-label" for="hasPrizesNo">No prizes</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="prizeManagementSection" style="display: none;">
+                        <hr class="my-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold text-secondary">
+                                <i class="bi bi-trophy me-1 text-warning"></i>Prize Structure
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="addPrizeTier()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Prize Tier
+                            </button>
+                        </div>
+                        <div id="prizeTiersContainer"></div>
+                        <small class="text-muted">Configure prizes for 1st, 2nd, 3rd place, etc.</small>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
@@ -196,6 +225,83 @@
                 </div>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- Prize Type Template (Hidden) -->
+<div id="prizeTypeTemplate" style="display: none;">
+    <div class="prize-tier-card border rounded-3 p-3 mb-3 bg-light">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="fw-bold mb-0">Tier <span class="tier-number"></span></h6>
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removePrizeTier(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="small fw-bold">Prize Type</label>
+                <select class="form-select form-select-sm prize-type-select" onchange="togglePrizeFields(this)">
+                    <option value="">Select Type</option>
+                    <option value="cash">💰 Cash Prize</option>
+                    <option value="shipping_voucher">📦 Free Shipping Voucher</option>
+                    <option value="product_voucher">🏷️ Product Discount Voucher</option>
+                    <option value="reward">🎁 Physical Reward</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="small fw-bold">Tier Name</label>
+                <input type="text" class="form-control form-control-sm tier-name" placeholder="e.g., Gold, 1st Place">
+            </div>
+            <div class="col-md-4">
+                <label class="small fw-bold">Description</label>
+                <input type="text" class="form-control form-control-sm prize-description" placeholder="Describe the prize">
+            </div>
+        </div>
+        
+        <!-- Cash Prize Fields -->
+        <div class="cash-fields mt-2" style="display: none;">
+            <div class="row g-2">
+                <div class="col-md-12">
+                    <label class="small fw-bold">Cash Amount (PHP)</label>
+                    <input type="number" class="form-control form-control-sm cash-amount" placeholder="e.g., 5000">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Voucher Fields -->
+        <div class="voucher-fields mt-2" style="display: none;">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="small fw-bold">Discount (%)</label>
+                    <input type="number" class="form-control form-control-sm voucher-percent" placeholder="e.g., 20">
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold">Discount (Fixed)</label>
+                    <input type="number" class="form-control form-control-sm voucher-fixed" placeholder="e.g., 500">
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold">Min. Purchase</label>
+                    <input type="number" class="form-control form-control-sm voucher-min-purchase" placeholder="e.g., 1000">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reward Fields -->
+        <div class="reward-fields mt-2" style="display: none;">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="small fw-bold">Reward Name</label>
+                    <input type="text" class="form-control form-control-sm reward-name" placeholder="e.g., Premium Water Bottle">
+                </div>
+                <div class="col-md-6">
+                    <label class="small fw-bold">Reward Value (PHP)</label>
+                    <input type="number" class="form-control form-control-sm reward-value" placeholder="e.g., 1500">
+                </div>
+            </div>
+        </div>
+        
+        <input type="hidden" class="prize-type-id" value="">
+        <input type="hidden" class="voucher-type" value="">
     </div>
 </div>
 

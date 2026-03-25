@@ -102,6 +102,7 @@ namespace NextHorizon.Models.Admin_Models
         public string BannerBase64 { get; set; }
         public string BannerImageName { get; set; }
         public string BannerImageContentType { get; set; }
+        public List<PrizeData> PrizesData { get; set; } // Add this
     }
 
     public class UpdateChallengeRequest
@@ -119,6 +120,23 @@ namespace NextHorizon.Models.Admin_Models
         public string BannerBase64 { get; set; }
         public string BannerImageName { get; set; }
         public string BannerImageContentType { get; set; }
+        public List<PrizeData> PrizesData { get; set; } 
+    }
+
+    public class PrizeData
+    {
+        public int Tier { get; set; }
+        public string TierName { get; set; }
+        public string Description { get; set; }
+        public int PrizeTypeId { get; set; }
+        public decimal? CashAmount { get; set; }
+        public decimal? VoucherDiscountPercent { get; set; }
+        public decimal? VoucherDiscountFixed { get; set; }
+        public decimal? VoucherMinimumPurchase { get; set; }
+        public string VoucherType { get; set; }
+        public string RewardName { get; set; }
+        public decimal? RewardValue { get; set; }
+        public int Quantity { get; set; }
     }
 
     public class AddActivityRequest
@@ -144,4 +162,128 @@ namespace NextHorizon.Models.Admin_Models
         public decimal AvgDistance { get; set; }
         public decimal TotalTimeHours { get; set; }
     }
+
+    public class PrizeType
+    {
+        public int PrizeTypeId { get; set; }
+        public string TypeName { get; set; }
+        public string TypeCode { get; set; }
+        public string Description { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class ChallengePrize
+    {
+        public int PrizeId { get; set; }
+        public int ChallengeId { get; set; }
+        public int PrizeTypeId { get; set; }
+        public int Tier { get; set; }
+        public string TierName { get; set; }
+        public string Description { get; set; }
+        
+        // Cash
+        public decimal? CashAmount { get; set; }
+        
+        // Voucher
+        public decimal? VoucherDiscountPercent { get; set; }
+        public decimal? VoucherDiscountFixed { get; set; }
+        public decimal? VoucherMinimumPurchase { get; set; }
+        public string VoucherType { get; set; }
+        
+        // Reward
+        public string RewardName { get; set; }
+        public decimal? RewardValue { get; set; }
+        public int? RewardQuantity { get; set; }
+        
+        public int Quantity { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class PrizeWinner
+    {
+        public int WinnerId { get; set; }
+        public int PrizeId { get; set; }
+        public int ParticipantId { get; set; }
+        public int ChallengeId { get; set; }
+        public int RankPosition { get; set; }
+        
+        public string ClaimStatus { get; set; }
+        public DateTime? ClaimDate { get; set; }
+        public DateTime? ClaimDeadline { get; set; }
+        public string ClaimNotes { get; set; }
+        
+        public string ClaimCode { get; set; }
+        public DateTime? ClaimCodeGeneratedAt { get; set; }
+        
+        // Cash
+        public string BankName { get; set; }
+        public string AccountNumber { get; set; }
+        public string AccountName { get; set; }
+        public string TransactionReference { get; set; }
+        public DateTime? TransferDate { get; set; }
+        
+        // Voucher
+        public string VoucherCode { get; set; }
+        public DateTime? VoucherExpiry { get; set; }
+        public DateTime? VoucherSentDate { get; set; }
+        public DateTime? VoucherRedemptionDate { get; set; }
+        public bool VoucherUsed { get; set; }
+        
+        // Physical Reward
+        public string ShippingAddress { get; set; }
+        public string TrackingNumber { get; set; }
+        public DateTime? ShippedDate { get; set; }
+        public DateTime? DeliveryDate { get; set; }
+        
+        // Digital Reward
+        public string DigitalCode { get; set; }
+        public DateTime? DigitalCodeSentDate { get; set; }
+        public bool DigitalCodeUsed { get; set; }
+        
+        public int? ProcessedBy { get; set; }
+        public DateTime? ProcessedAt { get; set; }
+        public string RejectionReason { get; set; }
+        public string AdminNotes { get; set; }
+    }
+
+    // Request Models
+    public class CreatePrizeRequest
+    {
+        public int ChallengeId { get; set; }
+        public int PrizeTypeId { get; set; }
+        public int Tier { get; set; }
+        public string TierName { get; set; }
+        public string Description { get; set; }
+        public decimal? CashAmount { get; set; }
+        public decimal? VoucherDiscountPercent { get; set; }
+        public decimal? VoucherDiscountFixed { get; set; }
+        public decimal? VoucherMinimumPurchase { get; set; }
+        public string VoucherType { get; set; }
+        public string RewardName { get; set; }
+        public decimal? RewardValue { get; set; }
+        public int? RewardQuantity { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    public class ClaimPrizeRequest
+    {
+        public string ClaimCode { get; set; }
+        public string ClaimDetails { get; set; } // JSON string
+    }
+
+    public class ProcessPrizeRequest
+    {
+        public int WinnerId { get; set; }
+        public string Action { get; set; } // approve, reject
+        public string RejectionReason { get; set; }
+        public string AdminNotes { get; set; }
+        
+        // For approved prizes
+        public string VoucherCode { get; set; }
+        public DateTime? VoucherExpiry { get; set; }
+        public string TrackingNumber { get; set; }
+        public string DigitalCode { get; set; }
+        public string TransactionReference { get; set; }
+    }
+
 }
