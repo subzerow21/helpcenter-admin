@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NextHorizon.Models;
 using NextHorizon.Models.Admin_Models;
 using NextHorizon.Services.AdminServices;
@@ -11,12 +12,13 @@ namespace NextHorizon.Controllers
 {
     public class AdminController : Controller
     {
-        private readonly DashboardService _dashboardService = new DashboardService();
+        private readonly DashboardService _dashboardService;
         private readonly AppDbContext _context;
 
         public AdminController(AppDbContext context)
         {
             _context = context;
+            _dashboardService = new DashboardService();
         }
 
         public IActionResult Dashboard()
@@ -89,11 +91,13 @@ namespace NextHorizon.Controllers
             return View("FinanceRequest", viewModel);
         }
 
-        // ── HELP CENTER ──────────────────────────────────────────────
+        // ════════════════════════════════════════════════════════
+        //  HELP CENTER
+        // ════════════════════════════════════════════════════════
 
         public IActionResult HelpCenter()
         {
-            // Fetch active FAQs from DB and map to view model
+            // Load all active FAQs from DB
             var faqs = _context.FAQs
                 .Where(f => f.Status == "active" || f.Status == "Active")
                 .OrderByDescending(f => f.DateAdded)
@@ -107,7 +111,7 @@ namespace NextHorizon.Controllers
                 })
                 .ToList();
 
-            // Get distinct categories from DB
+            // Get distinct categories from DB (active FAQs only)
             var categories = _context.FAQs
                 .Where(f => f.Status == "active" || f.Status == "Active")
                 .Select(f => f.Category)
@@ -149,7 +153,7 @@ namespace NextHorizon.Controllers
             return View(viewModel);
         }
 
-        // ── QUEUE ENDPOINTS ──────────────────────────────────────────
+        // ── QUEUE ENDPOINTS ──────────────────────────────────────
 
         [HttpPost]
         public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
@@ -189,7 +193,7 @@ namespace NextHorizon.Controllers
             return Json(new { success = true });
         }
 
-        // ── FAQ ENDPOINTS ────────────────────────────────────────────
+        // ── FAQ ENDPOINTS ─────────────────────────────────────────
 
         [HttpPost]
         public IActionResult FaqAdd([FromBody] AddFaqRequest model)
@@ -212,7 +216,7 @@ namespace NextHorizon.Controllers
             _context.FAQs.Add(faq);
             _context.SaveChanges();
 
-            return Json(new { success = true, id = faq.FaqID, question = faq.Question, answer = faq.Answer, category = faq.Category, message = "FAQ added successfully." });
+            return Json(new { success = true, id = faq.FaqID, message = "FAQ added successfully." });
         }
 
         [HttpPost]
@@ -245,7 +249,7 @@ namespace NextHorizon.Controllers
             if (faq == null)
                 return NotFound(new { success = false, message = "FAQ not found." });
 
-            // Soft delete
+            // Soft delete — keeps record, just hides it
             faq.Status = "deleted";
             faq.LastUpdated = DateTime.Now;
             _context.SaveChanges();
@@ -257,8 +261,20 @@ namespace NextHorizon.Controllers
         public IActionResult FaqCategoryAdd([FromBody] AddCategoryRequest model)
         {
             if (model == null || string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { success = false });
-            return Json(new { success = true, name = model.Name });
+                return BadRequest(new { success = false, message = "Category name required." });
+
+            var name = model.Name.Trim();
+
+            // Check if any active FAQ already uses this category name (case-insensitive)
+            var exists = _context.FAQs.Any(f =>
+                (f.Status == "active" || f.Status == "Active") &&
+                f.Category.ToLower() == name.ToLower());
+
+            if (exists)
+                return Json(new { success = false, message = "Category already exists." });
+
+            // Category persists when first FAQ uses it — no separate table needed
+            return Json(new { success = true, name = name, message = "Category ready to use." });
         }
 
         [HttpPost]
@@ -266,7 +282,19 @@ namespace NextHorizon.Controllers
         {
             if (model == null || string.IsNullOrWhiteSpace(model.Name))
                 return BadRequest(new { success = false });
-            return Json(new { success = true, name = model.Name });
+
+            var name = model.Name.Trim();
+
+            // Check if any active FAQ still uses this category
+            var hasFaqs = _context.FAQs.Any(f =>
+                (f.Status == "active" || f.Status == "Active") &&
+                f.Category == name);
+
+            if (hasFaqs)
+                return Json(new { success = false, message = "Cannot delete — category has active FAQs. Remove them first." });
+
+            // No FAQs use this category — safe to remove from UI
+            return Json(new { success = true, name = name, message = "Category deleted." });
         }
 
         public IActionResult Logout()
