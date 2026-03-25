@@ -48,12 +48,10 @@
 
         .admin-content {
             padding: 20px !important;
-            width: 100%;
-            max-width: 100vw;
-            overflow-x: hidden;
+            overflow-y: auto !important;
+            height: calc(100vh - 62px) !important;
         }
 
-        /* ── Stats ── */
         .q-stats {
             display: grid;
             grid-template-columns: repeat(5,1fr);
@@ -107,12 +105,10 @@
             font-weight: 600;
         }
 
-        /* ── Shell ── */
         .hc-shell {
             display: grid;
             grid-template-columns: 1fr 380px;
             gap: 14px;
-            height: calc(100vh - 62px - 52px - 80px - 14px);
             min-height: 580px;
         }
 
@@ -120,14 +116,12 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
-            overflow: hidden;
         }
 
         .hc-right {
             display: flex;
             flex-direction: column;
             gap: 14px;
-            overflow: hidden;
         }
 
         .panel {
@@ -202,7 +196,7 @@
                 stroke-linejoin: round;
             }
 
-        /* ── Queue ── */
+        /* QUEUE */
         .q-scroll {
             overflow-y: auto;
             flex: 1;
@@ -269,14 +263,12 @@
             font-size: 12px;
             font-weight: 600;
             color: #1a1a1a;
-            text-transform: capitalize;
         }
 
         .q-role {
             font-size: 10.5px;
             color: #aaa;
             font-weight: 300;
-            text-transform: capitalize;
         }
 
         .q-wait {
@@ -432,7 +424,7 @@
                 flex-shrink: 0;
             }
 
-        /* ── Agent 3-col ── */
+        /* AGENT 3-COL */
         .agent-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -548,7 +540,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            text-transform: capitalize;
         }
 
         .ag-chat {
@@ -572,7 +563,7 @@
                 border-bottom: none;
             }
 
-        /* ── FAQ Form ── */
+        /* FAQ FORM */
         .faq-form {
             background: #fff;
             border: 1px solid #e8e8e8;
@@ -595,6 +586,7 @@
             margin-bottom: 4px;
         }
 
+        /* CATEGORY INPUT + CHIPS */
         .cat-add-row {
             display: flex;
             align-items: center;
@@ -612,7 +604,6 @@
             color: #1a1a1a;
             outline: none;
             transition: border-color .2s;
-            text-transform: capitalize;
         }
 
             .cat-text-inp:focus {
@@ -621,7 +612,6 @@
 
             .cat-text-inp::placeholder {
                 color: #ccc;
-                text-transform: none;
             }
 
         .cat-add-btn {
@@ -660,7 +650,6 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            text-transform: capitalize;
         }
 
             .cat-chip.on {
@@ -708,16 +697,13 @@
                 color: #ccc;
             }
 
-        #faqQ {
-            text-transform: capitalize;
-        }
-
         textarea.faq-inp {
             resize: none;
             height: 70px;
             line-height: 1.5;
         }
 
+        /* RADIO */
         .radio-row {
             display: flex;
             align-items: center;
@@ -752,15 +738,14 @@
             justify-content: flex-end;
         }
 
-        /* ── FAQ List ── */
+        /* FAQ LIST */
         .faq-list-panel {
             background: #fff;
             border: 1px solid #e8e8e8;
-            flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            min-height: 0;
+            height: 500px;
         }
 
         .faq-search {
@@ -817,7 +802,6 @@
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
             transition: all .15s;
-            text-transform: capitalize;
         }
 
             .ff.on {
@@ -867,7 +851,6 @@
             color: #1a1a1a;
             flex: 1;
             line-height: 1.4;
-            text-transform: capitalize;
         }
 
         .faq-actions {
@@ -927,7 +910,7 @@
             font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            text-transform: capitalize;
+            text-transform: uppercase;
         }
 
         .ut-consumer {
@@ -975,7 +958,7 @@
             font-size: 12px;
         }
 
-        /* ── Modal ── */
+        /* CONFIRM MODAL */
         .nh-modal-bg {
             position: fixed;
             inset: 0;
@@ -1128,508 +1111,6 @@
             .nh-toast.show {
                 opacity: 1;
             }
-
-        /* ============================================
-           ENHANCED RESPONSIVE BREAKPOINTS
-           ============================================ */
-
-        /* Large Desktop */
-        @@media (min-width: 1400px) {
-            .hc-shell {
-                grid-template-columns: 1fr 420px;
-                gap: 20px;
-            }
-            
-            .qs-val {
-                font-size: 24px;
-            }
-            
-            .qtbl th, .qtbl td {
-                padding: 12px 20px;
-            }
-        }
-
-        /* Desktop */
-        @@media (max-width: 1200px) {
-            .hc-shell {
-                grid-template-columns: 1fr 360px;
-                gap: 12px;
-            }
-            
-            .q-stats {
-                gap: 10px;
-            }
-            
-            .qs {
-                padding: 10px 14px;
-            }
-            
-            .qs-val {
-                font-size: 18px;
-            }
-        }
-
-        /* Tablet Landscape */
-        @@media (max-width: 1024px) {
-            .admin-content {
-                padding: 15px !important;
-            }
-            
-            .hc-shell {
-                grid-template-columns: 1fr;
-                height: auto;
-                min-height: unset;
-                gap: 20px;
-            }
-            
-            .hc-left, .hc-right {
-                overflow: visible;
-                max-height: none;
-            }
-            
-            .hc-left .panel:first-child {
-                min-height: 400px;
-            }
-            
-            .panel {
-                max-height: none;
-            }
-            
-            .agent-grid {
-                grid-template-columns: repeat(3, 1fr);
-                max-height: none;
-            }
-            
-            .agent-col-body {
-                max-height: 200px;
-            }
-        }
-
-        /* Tablet Portrait */
-        @@media (max-width: 768px) {
-            .admin-content {
-                padding: 12px !important;
-            }
-            
-            .q-stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-                margin-bottom: 15px;
-            }
-            
-            .qs {
-                padding: 12px;
-            }
-            
-            .qs-val {
-                font-size: 20px;
-            }
-            
-            .qs-lbl {
-                font-size: 10px;
-            }
-            
-            .qs-sub {
-                font-size: 9px;
-            }
-            
-            .hc-shell {
-                gap: 15px;
-            }
-            
-            .hc-left, .hc-right {
-                gap: 15px;
-            }
-            
-            .ph {
-                padding: 10px 15px;
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            
-            .ph-title {
-                font-size: 11px;
-            }
-            
-            .ph-sub {
-                font-size: 10px;
-            }
-            
-            .q-scroll {
-                overflow-x: auto;
-                overflow-y: auto;
-            }
-            
-            .qtbl {
-                min-width: 600px;
-            }
-            
-            .qtbl th, .qtbl td {
-                padding: 10px 12px;
-                font-size: 11px;
-            }
-            
-            .agent-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0;
-            }
-            
-            .agent-col {
-                border-right: 1px solid #f0f0f0;
-                border-bottom: none;
-            }
-            
-            .agent-col:nth-child(2) {
-                border-right: none;
-            }
-            
-            .agent-col:last-child {
-                grid-column: 1 / -1;
-                border-top: 1px solid #f0f0f0;
-                border-right: none;
-                margin-top: -1px;
-            }
-            
-            .agent-col-hd {
-                padding: 8px 10px;
-                font-size: 9px;
-            }
-            
-            .agent-slot {
-                padding: 8px 10px;
-            }
-            
-            .ag-av {
-                width: 32px;
-                height: 32px;
-                font-size: 11px;
-            }
-            
-            .ag-name {
-                font-size: 11px;
-            }
-            
-            .ag-chat {
-                font-size: 9px;
-            }
-            
-            .form-body {
-                padding: 12px;
-                gap: 12px;
-            }
-            
-            .cat-add-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-            }
-            
-            .cat-text-inp, .cat-add-btn {
-                width: 100%;
-            }
-            
-            .cat-add-btn {
-                padding: 8px 12px;
-            }
-            
-            .cat-chips {
-                gap: 6px;
-            }
-            
-            .cat-chip {
-                padding: 5px 10px;
-                font-size: 10px;
-            }
-            
-            .faq-inp {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            
-            textarea.faq-inp {
-                height: 80px;
-            }
-            
-            .radio-row {
-                gap: 20px;
-                flex-wrap: wrap;
-            }
-            
-            .faq-search {
-                padding: 8px 12px;
-            }
-            
-            .faq-filter {
-                padding: 8px 12px;
-                gap: 6px;
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            .ff {
-                font-size: 10px;
-                padding: 5px 10px;
-                white-space: nowrap;
-            }
-            
-            .faq-item {
-                padding: 12px;
-            }
-            
-            .faq-q {
-                font-size: 12px;
-            }
-            
-            .faq-a {
-                font-size: 11px;
-            }
-            
-            .nh-modal {
-                width: 90%;
-                max-width: 400px;
-                margin: 20px;
-            }
-        }
-
-        /* Mobile Landscape */
-        @@media (max-width: 640px) {
-            .admin-content {
-                padding: 10px !important;
-            }
-            
-            .q-stats {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                margin-bottom: 12px;
-            }
-            
-            .qs {
-                padding: 10px;
-            }
-            
-            .agent-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .agent-col {
-                border-right: none;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            
-            .agent-col:last-child {
-                grid-column: auto;
-                border-top: none;
-                border-bottom: none;
-            }
-            
-            .agent-col:nth-child(2) {
-                border-right: none;
-            }
-            
-            .agent-col-body {
-                max-height: 150px;
-            }
-            
-            .faq-filter {
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: thin;
-            }
-            
-            .nh-modal-foot {
-                flex-direction: column-reverse;
-                gap: 8px;
-            }
-            
-            .nh-modal-cancel, .nh-modal-confirm {
-                width: 100%;
-                text-align: center;
-                justify-content: center;
-            }
-            
-            .nh-toast {
-                left: 10px;
-                right: 10px;
-                bottom: 10px;
-                text-align: center;
-                width: auto;
-            }
-        }
-
-        /* Small Mobile */
-        @@media (max-width: 480px) {
-            .admin-content {
-                padding: 8px !important;
-            }
-            
-            .qtbl th:nth-child(5), 
-            .qtbl td:nth-child(5) {
-                display: none;
-            }
-            
-            .qtbl th:nth-child(4), 
-            .qtbl td:nth-child(4) {
-                display: none;
-            }
-            
-            .qtbl {
-                min-width: 400px;
-            }
-            
-            .qtbl th, .qtbl td {
-                padding: 8px 8px;
-                font-size: 10px;
-            }
-            
-            .q-cust {
-                gap: 6px;
-            }
-            
-            .q-av {
-                width: 24px;
-                height: 24px;
-                font-size: 9px;
-            }
-            
-            .q-name {
-                font-size: 11px;
-            }
-            
-            .q-role {
-                font-size: 9px;
-            }
-            
-            .agent-slot, .empty-slot {
-                padding: 6px 8px;
-            }
-            
-            .ag-av {
-                width: 28px;
-                height: 28px;
-                font-size: 10px;
-            }
-            
-            .ag-name {
-                font-size: 10px;
-            }
-            
-            .ag-chat {
-                font-size: 8px;
-            }
-            
-            .badge {
-                font-size: 8px;
-                padding: 1px 5px;
-            }
-            
-            .form-body {
-                padding: 10px;
-                gap: 10px;
-            }
-            
-            .field-lbl {
-                font-size: 9px;
-                margin-bottom: 3px;
-            }
-            
-            .cat-chip {
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            
-            .faq-inp {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-            
-            .faq-item {
-                padding: 10px;
-            }
-            
-            .faq-q {
-                font-size: 11px;
-            }
-            
-            .faq-a {
-                font-size: 10px;
-            }
-            
-            .ph {
-                padding: 8px 12px;
-            }
-            
-            .ph-title {
-                font-size: 10px;
-            }
-            
-            .pbtn {
-                padding: 5px 10px;
-                font-size: 10px;
-            }
-        }
-
-        /* Touch device optimizations */
-        @@media (hover: none) and (pointer: coarse) {
-            .pbtn, 
-            .cat-add-btn,
-            .cat-chip,
-            .ff,
-            .faq-act,
-            .nh-modal-cancel,
-            .nh-modal-confirm {
-                min-height: 44px;
-                min-width: 44px;
-            }
-            
-            .cat-chip {
-                padding: 8px 12px;
-            }
-            
-            .ff {
-                padding: 8px 12px;
-            }
-            
-            .faq-act {
-                padding: 8px;
-            }
-        }
-
-        /* Smooth transitions */
-        .hc-shell,
-        .q-stats,
-        .agent-grid,
-        .faq-filter,
-        .cat-chips {
-            transition: all 0.2s ease;
-        }
-
-        /* Improve scrolling on mobile */
-        .q-scroll,
-        .faq-scroll,
-        .agent-col-body {
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Fix for sticky headers on mobile */
-        .qtbl th {
-            position: sticky;
-            top: 0;
-            background: #fafafa;
-            z-index: 10;
-        }
-
-        /* Better modal backdrop on mobile */
-        .nh-modal-bg {
-            padding: 20px;
-        }
-
-        @@media (max-width: 640px) {
-            .nh-modal-bg {
-                padding: 10px;
-                align-items: flex-start;
-                padding-top: 20px;
-            }
-        }
     </style>
 }
 
@@ -1646,7 +1127,7 @@
     <!-- LEFT -->
     <div class="hc-left">
         <!-- QUEUE -->
-        <div class="panel" style="flex:1;min-height:0;">
+        <div class="panel" style="height:420px;">
             <div class="ph">
                 <div><div class="ph-title">Live Queue</div><div class="ph-sub" id="qMeta">@Model.Stats.InQueue in queue</div></div>
                 <span style="font-size:10.5px;color:#4ade80;font-weight:600;display:flex;align-items:center;gap:5px;">
@@ -1671,7 +1152,7 @@
         </div>
 
         <!-- AGENTS -->
-        <div class="panel" style="flex-shrink:0;height:240px;">
+        <div class="panel" style="height:280px;">
             <div class="ph">
                 <div><div class="ph-title">Agent Status</div><div class="ph-sub" id="agentMeta">@Model.Stats.AgentsOnline online &middot; max 3 chats each</div></div>
                 <div style="font-size:10px;color:#aaa;">Total capacity: <strong style="color:#1a1a1a;">9 sessions</strong></div>
@@ -1682,12 +1163,14 @@
 
     <!-- RIGHT: FAQ MANAGER -->
     <div class="hc-right">
+
         <!-- ADD FORM -->
         <div class="faq-form">
             <div class="ph">
                 <div><div class="ph-title">FAQ Manager</div><div class="ph-sub">Add, edit, or delete FAQs in real time</div></div>
             </div>
             <div class="form-body">
+
                 <!-- CATEGORY -->
                 <div>
                     <div class="field-lbl">Category</div>
@@ -1698,24 +1181,34 @@
                     </div>
                     <div class="cat-chips" id="catChips"></div>
                 </div>
+
                 <!-- QUESTION -->
                 <div>
                     <div class="field-lbl">Question</div>
                     <input class="faq-inp" id="faqQ" type="text" placeholder="e.g. How do I track my order?" maxlength="500" />
                 </div>
-                <!-- ANSWER -->
+
+                <!-- ANSWER — no maxlength matches nvarchar(max) -->
                 <div>
                     <div class="field-lbl">Answer</div>
                     <textarea class="faq-inp" id="faqA" placeholder="Type the full response here..."></textarea>
                 </div>
+
                 <!-- VISIBLE TO -->
                 <div>
                     <div class="field-lbl">Visible to</div>
                     <div class="radio-row">
-                        <label class="radio-opt"><input type="radio" name="userType" value="Consumer" checked /><span>Consumer</span></label>
-                        <label class="radio-opt"><input type="radio" name="userType" value="Seller" /><span>Seller</span></label>
+                        <label class="radio-opt">
+                            <input type="radio" name="userType" value="Consumer" checked />
+                            <span>Consumer</span>
+                        </label>
+                        <label class="radio-opt">
+                            <input type="radio" name="userType" value="Seller" />
+                            <span>Seller</span>
+                        </label>
                     </div>
                 </div>
+
             </div>
             <div class="form-foot">
                 <button class="pbtn" onclick="addFaq()">
@@ -1735,13 +1228,19 @@
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                 <input type="text" placeholder="Search FAQs..." oninput="filterFaqs(this.value)" />
             </div>
+            <!-- Consumer / Seller toggle -->
+            <div style="display:flex;gap:5px;padding:8px 16px;border-bottom:1px solid #f5f5f5;flex-shrink:0;flex-wrap:wrap;" id="utFilterBar">
+                <button class="ff on" onclick="setUtFilter(this,'all')">All</button>
+                <button class="ff" onclick="setUtFilter(this,'Consumer')">Consumer</button>
+                <button class="ff" onclick="setUtFilter(this,'Seller')">Seller</button>
+            </div>
             <div class="faq-filter" id="faqFilterBar"></div>
             <div class="faq-scroll" id="faqList"></div>
         </div>
+
     </div>
 </div>
 
-<!-- CONFIRM MODAL -->
 <div class="nh-modal-bg" id="nhModalBg">
     <div class="nh-modal">
         <div class="nh-modal-hd">
@@ -1775,351 +1274,350 @@
         var FAQS       = @Html.Raw(faqsJson);
         var CATEGORIES = @Html.Raw(categoriesJson);
 
-        var selCat          = CATEGORIES.length ? CATEGORIES[0] : 'General';
+        var selCat   = CATEGORIES.length ? CATEGORIES[0] : 'General';
         var faqFilterActive = 'all';
-        var faqSearch       = '';
-        var nextId          = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
+                var userTypeFilter  = 'all';
+        var faqSearch = '';
+        var nextId    = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
 
-        /* ── Helpers ── */
-        function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+        function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+        function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+        function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function slaClass(s){ return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
+        function slaPct(s)  { return Math.min(100,Math.round(s/360*100)); }
+        function getUserType(){ return document.querySelector('input[name="userType"]:checked').value; }
 
-        function titleCase(str) {
-            if (!str) return str;
-            return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
-        }
-
-        function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        function slaClass(s) { return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
-        function slaPct(s)   { return Math.min(100,Math.round(s/360*100)); }
-        function getUserType() { return document.querySelector('input[name="userType"]:checked').value; }
-
-        function showToast(msg) {
-            var t = document.getElementById('nhToast');
-            t.textContent = msg; t.classList.add('show');
+        function showToast(msg){
+            var t=document.getElementById('nhToast');
+            t.textContent=msg; t.classList.add('show');
             setTimeout(function(){ t.classList.remove('show'); }, 2400);
         }
 
         /* ── CATEGORY CHIPS ── */
-        function renderCatChips() {
-            var wrap = document.getElementById('catChips');
-            wrap.innerHTML = '';
-            CATEGORIES.forEach(function(c) {
-                var d = document.createElement('div');
-                d.className = 'cat-chip' + (c === selCat ? ' on' : '');
-                d.onclick = function() { selCat = c; renderCatChips(); };
-                d.innerHTML = escH(titleCase(c))
-                    + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\'' + escH(c) + '\')">'
-                    + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        function renderCatChips(){
+            var wrap=document.getElementById('catChips');
+            wrap.innerHTML='';
+            CATEGORIES.forEach(function(c){
+                var d=document.createElement('div');
+                d.className='cat-chip'+(c===selCat?' on':'');
+                d.onclick=function(){ selCat=c; renderCatChips(); };
+                d.innerHTML=escH(c)
+                    +'<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\''+escH(c)+'\')">'
+                    +'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
                 wrap.appendChild(d);
             });
             renderFaqFilterBar();
         }
 
-        function addCategory() {
-            var inp = document.getElementById('newCatInp');
-            var v = inp.value.trim();
-            if (!v) { showToast('Enter a category name.'); return; }
-            var vTitle = titleCase(v);
-            if (CATEGORIES.find(function(c){ return c.toLowerCase() === vTitle.toLowerCase(); })) {
+        function addCategory(){
+            var inp=document.getElementById('newCatInp');
+            var v=inp.value.trim();
+            if(!v){ showToast('Enter a category name.'); return; }
+            if(CATEGORIES.find(function(c){ return c.toLowerCase()===v.toLowerCase(); })){
                 showToast('Category already exists.'); return;
             }
-            fetch('/Admin/FaqCategoryAdd', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: vTitle })
+            fetch('/Admin/FaqCategoryAdd',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ name: v })
             })
             .catch(function(){ return { success: true }; })
-            .then(function() {
-                CATEGORIES.push(vTitle);
-                selCat = vTitle;
+            .then(function(){
+                CATEGORIES.push(v);
+                selCat = v;
                 inp.value = '';
                 renderCatChips();
-                showToast('"' + vTitle + '" category added!');
+                showToast('"'+v+'" category added!');
             });
         }
 
-        function deleteCategory(cat) {
-            if (FAQS.find(function(f){ return f.cat === cat; })) {
-                showToast('Cannot delete "' + cat + '" — remove its FAQs first.'); return;
+        function deleteCategory(cat){
+            if(FAQS.find(function(f){ return f.cat===cat; })){
+                showToast('Cannot delete "'+cat+'" — remove its FAQs first.'); return;
             }
             showModal(
-                'Delete Category "' + titleCase(cat) + '"?',
-                'This category will be permanently removed from the system.',
-                function() {
-                    fetch('/Admin/FaqCategoryDelete', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                'Delete Category "'+cat+'"?',
+                'This category will be permanently removed.',
+                function(){
+                    fetch('/Admin/FaqCategoryDelete',{
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
                         body: JSON.stringify({ name: cat })
-                    }).catch(function(){});
-                    CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
-                    if (selCat === cat) selCat = CATEGORIES[0] || '';
-                    renderCatChips();
-                    showToast('"' + titleCase(cat) + '" deleted.');
-                }
-            );
-        }
-
-        /* ── FAQ FILTER BAR ── */
-        function renderFaqFilterBar() {
-            var bar = document.getElementById('faqFilterBar');
-            bar.innerHTML = '';
-            var allBtn = document.createElement('button');
-            allBtn.className = 'ff' + (faqFilterActive === 'all' ? ' on' : '');
-            allBtn.textContent = 'All';
-            allBtn.onclick = function() { faqFilterActive = 'all'; renderFaqFilterBar(); renderFaqs(); };
-            bar.appendChild(allBtn);
-            CATEGORIES.forEach(function(c) {
-                var b = document.createElement('button');
-                b.className = 'ff' + (faqFilterActive === c ? ' on' : '');
-                b.textContent = titleCase(c);
-                b.onclick = function() { faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
-                bar.appendChild(b);
-            });
-        }
-
-        /* ── ADD FAQ ── */
-        function addFaq() {
-            var qRaw = document.getElementById('faqQ').value.trim();
-            var a    = document.getElementById('faqA').value.trim();
-            var ut   = getUserType();
-            var q = titleCase(qRaw);
-            if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
-            if (!selCat)  { showToast('Please select a category.'); return; }
-
-            fetch('/Admin/FaqAdd', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, answer: a, category: selCat, userType: ut })
-            })
-            .then(function(r){ return r.json(); })
-            .catch(function(){ return { success: true, id: nextId }; })
-            .then(function(data) {
-                FAQS.push({ id: data.id || nextId++, q: q, a: a, cat: selCat, userType: ut });
-                document.getElementById('faqQ').value = '';
-                document.getElementById('faqA').value = '';
-                updateFaqCounts(); renderFaqs();
-                showToast('FAQ added successfully!');
-            });
-        }
-
-        function deleteFaq(id) {
-            var f = FAQS.find(function(x){ return x.id === id; });
-            if (!f) return;
-            showModal(
-                'Delete FAQ?',
-                'You are about to permanently delete: "' + escH(f.q) + '"',
-                function() {
-                    fetch('/Admin/FaqDelete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: id })
                     })
                     .then(function(r){ return r.json(); })
-                    .then(function(data) {
-                        if (data.success) {
-                            FAQS = FAQS.filter(function(x){ return x.id !== id; });
-                            updateFaqCounts(); renderFaqs();
-                            showToast('FAQ deleted permanently.');
+                    .then(function(data){
+                        if(data.success){
+                            CATEGORIES = CATEGORIES.filter(function(c){ return c!==cat; });
+                            if(selCat===cat) selCat = CATEGORIES[0]||'';
+                            renderCatChips();
+                            showToast('"'+cat+'" category deleted.');
                         } else {
-                            showToast('Delete failed — please try again.');
+                            showToast(data.message||'Cannot delete this category.');
                         }
                     })
-                    .catch(function() {
-                        FAQS = FAQS.filter(function(x){ return x.id !== id; });
-                        updateFaqCounts(); renderFaqs();
-                        showToast('FAQ deleted (offline mode).');
+                    .catch(function(){
+                        showToast('Network error — please check your connection.');
                     });
                 }
             );
         }
 
-        function editFaq(id) {
-            var f = FAQS.find(function(x){ return x.id === id; });
-            if (!f) return;
-            var item = document.getElementById('faq-' + id);
-            item.classList.add('editing');
-            var catOpts = CATEGORIES.map(function(c) {
-                return '<option value="' + escH(c) + '"' + (c === f.cat ? ' selected' : '') + '>' + escH(titleCase(c)) + '</option>';
-            }).join('');
-            item.innerHTML =
-                '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
-                + '<select class="edit-inp" id="ec-' + id + '">' + catOpts + '</select></div>'
-                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
-                + '<input class="edit-inp" id="eq-' + id + '" type="text" value="' + escH(f.q) + '" style="text-transform:capitalize;"/></div>'
-                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
-                + '<textarea class="edit-inp" id="ea-' + id + '">' + escH(f.a) + '</textarea></div>'
-                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
-                + '<div style="display:flex;gap:16px;">'
-                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType === 'Consumer' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Consumer'
-                    + '</label>'
-                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType === 'Seller' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Seller'
-                    + '</label>'
-                + '</div></div>'
-                + '<div class="edit-foot">'
-                    + '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit(' + id + ')">Save</button>'
-                    + '<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
-                + '</div>';
+        /* ── FAQ FILTER BAR ── */
+        function renderFaqFilterBar(){
+            var bar=document.getElementById('faqFilterBar');
+            bar.innerHTML='';
+            var allBtn=document.createElement('button');
+            allBtn.className='ff'+(faqFilterActive==='all'?' on':'');
+            allBtn.textContent='All';
+            allBtn.onclick=function(){ faqFilterActive='all'; renderFaqFilterBar(); renderFaqs(); };
+            bar.appendChild(allBtn);
+            CATEGORIES.forEach(function(c){
+                var b=document.createElement('button');
+                b.className='ff'+(faqFilterActive===c?' on':'');
+                b.textContent=c;
+                b.onclick=function(){ faqFilterActive=c; renderFaqFilterBar(); renderFaqs(); };
+                bar.appendChild(b);
+            });
         }
 
-        function saveEdit(id) {
-            var qRaw = document.getElementById('eq-' + id).value.trim();
-            var a    = document.getElementById('ea-' + id).value.trim();
-            var c    = document.getElementById('ec-' + id).value;
-            var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
-            var q = titleCase(qRaw);
-            if (!q || !a) { showToast('Both fields are required.'); return; }
-            var f = FAQS.find(function(x){ return x.id === id; });
-            f.q = q; f.a = a; f.cat = c; f.userType = ut;
-            fetch('/Admin/FaqUpdate', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, question: q, answer: a, category: c, userType: ut })
+        /* ── ADD FAQ ── */
+        function addFaq(){
+            var q  = document.getElementById('faqQ').value.trim();
+            var a  = document.getElementById('faqA').value.trim();
+            var ut = getUserType();
+            if(!q||!a){ showToast('Please fill in both question and answer.'); return; }
+            if(!selCat){ showToast('Please select a category.'); return; }
+
+            fetch('/Admin/FaqAdd',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ question:q, answer:a, category:selCat, userType:ut })
+            })
+            .then(function(r){ return r.json(); })
+            .catch(function(){ return { success:true, id:nextId }; })
+            .then(function(data){
+                FAQS.push({ id:data.id||nextId++, q:q, a:a, cat:selCat, userType:ut });
+                document.getElementById('faqQ').value='';
+                document.getElementById('faqA').value='';
+                updateFaqCounts(); renderFaqs();
+                showToast('FAQ added successfully!');
+            });
+        }
+
+        function deleteFaq(id){
+            var f = FAQS.find(function(x){ return x.id===id; });
+            if(!f) return;
+            showModal(
+                'Delete FAQ?',
+                'You are about to permanently delete: "'+escH(f.q)+'"',
+                function(){
+                    fetch('/Admin/FaqDelete',{
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ id: id })
+                    })
+                    .then(function(r){ return r.json(); })
+                    .then(function(data){
+                        if(data.success){
+                            FAQS = FAQS.filter(function(x){ return x.id!==id; });
+                            updateFaqCounts(); renderFaqs();
+                            showToast('FAQ deleted permanently.');
+                        } else {
+                            showToast('Delete failed: '+(data.message||'please try again.'));
+                        }
+                    })
+                    .catch(function(){
+                        showToast('Network error — please check your connection.');
+                    });
+                }
+            );
+        }
+
+        function editFaq(id){
+            var f=FAQS.find(function(x){ return x.id===id; });
+            if(!f) return;
+            var item=document.getElementById('faq-'+id);
+            item.classList.add('editing');
+            var catOpts=CATEGORIES.map(function(c){
+                return '<option value="'+escH(c)+'"'+(c===f.cat?' selected':'')+'>'+escH(c)+'</option>';
+            }).join('');
+            item.innerHTML=
+                '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
+                +'<select class="edit-inp" id="ec-'+id+'">'+catOpts+'</select></div>'
+                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
+                +'<input class="edit-inp" id="eq-'+id+'" type="text" value="'+escH(f.q)+'"/></div>'
+                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
+                +'<textarea class="edit-inp" id="ea-'+id+'">'+escH(f.a)+'</textarea></div>'
+                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
+                +'<div style="display:flex;gap:16px;">'
+                    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        +'<input type="radio" name="eut-'+id+'" value="Consumer"'+(f.userType==='Consumer'?' checked':'')+' style="accent-color:#1a1a1a;"/> Consumer'
+                    +'</label>'
+                    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        +'<input type="radio" name="eut-'+id+'" value="Seller"'+(f.userType==='Seller'?' checked':'')+' style="accent-color:#1a1a1a;"/> Seller'
+                    +'</label>'
+                +'</div></div>'
+                +'<div class="edit-foot">'
+                    +'<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit('+id+')">Save</button>'
+                    +'<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
+                +'</div>';
+        }
+
+        function saveEdit(id){
+            var q  = document.getElementById('eq-'+id).value.trim();
+            var a  = document.getElementById('ea-'+id).value.trim();
+            var c  = document.getElementById('ec-'+id).value;
+            var ut = document.querySelector('input[name="eut-'+id+'"]:checked').value;
+            if(!q||!a){ showToast('Both fields are required.'); return; }
+            var f=FAQS.find(function(x){ return x.id===id; });
+            f.q=q; f.a=a; f.cat=c; f.userType=ut;
+            fetch('/Admin/FaqUpdate',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ id:id, question:q, answer:a, category:c, userType:ut })
             }).catch(function(){});
             renderFaqs();
             showToast('FAQ updated!');
         }
 
-        function filterFaqs(v) { faqSearch = v.toLowerCase(); renderFaqs(); }
+        function filterFaqs(v){ faqSearch=v.toLowerCase(); renderFaqs(); }
 
-        function updateFaqCounts() {
-            document.getElementById('statFaqCount').textContent = FAQS.length;
-            document.getElementById('faqListCount').textContent = FAQS.length + ' FAQs';
+                function setUtFilter(el, ut){
+                    document.querySelectorAll('#utFilterBar .ff').forEach(function(b){ b.classList.remove('on'); });
+                    el.classList.add('on');
+                    userTypeFilter=ut;
+                    renderFaqs();
+                }
+
+        function updateFaqCounts(){
+            document.getElementById('statFaqCount').textContent=FAQS.length;
+            document.getElementById('faqListCount').textContent=FAQS.length+' FAQs';
         }
 
-        function renderFaqs() {
-            var list = document.getElementById('faqList');
-            list.innerHTML = '';
-            var filtered = FAQS.filter(function(f) {
-                return (faqFilterActive === 'all' || f.cat === faqFilterActive)
-                    && (!faqSearch || f.q.toLowerCase().includes(faqSearch) || f.a.toLowerCase().includes(faqSearch));
+        function renderFaqs(){
+            var list=document.getElementById('faqList');
+            list.innerHTML='';
+            var filtered=FAQS.filter(function(f){
+                return (faqFilterActive==='all'||f.cat===faqFilterActive)
+                    && (userTypeFilter==='all'||(f.userType||'Consumer')===userTypeFilter)
+                    && (!faqSearch||f.q.toLowerCase().includes(faqSearch)||f.a.toLowerCase().includes(faqSearch));
             });
-            if (!filtered.length) { list.innerHTML = '<div class="faq-empty">No FAQs found.</div>'; return; }
-            filtered.forEach(function(f) {
-                var d = document.createElement('div');
-                d.className = 'faq-item'; d.id = 'faq-' + f.id;
-                d.innerHTML =
+            if(!filtered.length){ list.innerHTML='<div class="faq-empty">No FAQs found.</div>'; return; }
+            filtered.forEach(function(f){
+                var d=document.createElement('div');
+                d.className='faq-item'; d.id='faq-'+f.id;
+                d.innerHTML=
                     '<div class="faq-item-hd">'
-                        + '<div class="faq-q">' + escH(titleCase(f.q)) + '</div>'
-                        + '<div class="faq-actions">'
-                            + '<button class="faq-act" onclick="editFaq(' + f.id + ')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                            + '<button class="faq-act del" onclick="deleteFaq(' + f.id + ')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
-                        + '</div>'
-                    + '</div>'
-                    + '<div class="faq-a">' + escH(f.a) + '</div>'
-                    + '<div class="faq-meta">'
-                        + '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">' + escH(titleCase(f.cat)) + '</span>'
-                        + '<span class="faq-cat-badge ' + (f.userType === 'Seller' ? 'ut-seller' : 'ut-consumer') + '">' + escH(f.userType || 'Consumer') + '</span>'
-                    + '</div>';
+                        +'<div class="faq-q">'+escH(f.q)+'</div>'
+                        +'<div class="faq-actions">'
+                            +'<button class="faq-act" onclick="editFaq('+f.id+')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                            +'<button class="faq-act del" onclick="deleteFaq('+f.id+')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+                        +'</div>'
+                    +'</div>'
+                    +'<div class="faq-a">'+escH(f.a)+'</div>'
+                    +'<div class="faq-meta">'
+                        +'<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">'+escH(f.cat)+'</span>'
+                        +'<span class="faq-cat-badge '+(f.userType==='Seller'?'ut-seller':'ut-consumer')+'">'+escH(f.userType||'Consumer')+'</span>'
+                    +'</div>';
                 list.appendChild(d);
             });
         }
 
         /* ── CONFIRM MODAL ── */
         var _modalCallback = null;
-        function showModal(title, msg, onConfirm) {
+        function showModal(title, msg, onConfirm){
             document.getElementById('nhModalTitle').textContent = title;
             document.getElementById('nhModalMsg').textContent   = msg;
             _modalCallback = onConfirm;
             document.getElementById('nhModalBg').classList.add('show');
         }
-        function closeModal() {
+        function closeModal(){
             document.getElementById('nhModalBg').classList.remove('show');
             _modalCallback = null;
         }
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('nhModalConfirm').onclick = function() {
-                var cb = _modalCallback;
+        document.addEventListener('DOMContentLoaded', function(){
+            document.getElementById('nhModalConfirm').onclick = function(){
                 closeModal();
-                if (cb) cb();
+                if(_modalCallback) _modalCallback();
             };
-            document.getElementById('nhModalBg').addEventListener('click', function(e) {
-                if (e.target === this) closeModal();
+            document.getElementById('nhModalBg').addEventListener('click', function(e){
+                if(e.target === this) closeModal();
             });
         });
 
         /* ── QUEUE ── */
-        function autoAssignAll() {
-            SESSIONS.forEach(function(s) {
-                if (s.agent === 'Unassigned' || !s.agent) {
-                    var avail = AGENTS.find(function(a){
-                        return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
-                    });
-                    if (avail) { s.agent = avail.name; s.status = 'active'; avail.sessions++; }
+        function autoAssignAll(){
+            SESSIONS.forEach(function(s){
+                if(s.agent==='Unassigned'||!s.agent){
+                    var avail=AGENTS.find(function(a){ return (a.status==='online'||a.status==='busy')&&a.sessions<a.max; });
+                    if(avail){ s.agent=avail.name; s.status='active'; avail.sessions++; }
                 }
             });
         }
 
-        function renderQueue() {
-            var body = document.getElementById('qBody');
-            body.innerHTML = '';
-            var over5 = 0;
-            SESSIONS.forEach(function(s, i) {
-                if (s.waitSec >= 300) over5++;
-                var tr  = document.createElement('tr');
-                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
-                var sb  = s.status === 'active' ? 'b-active' : s.status === 'idle' ? 'b-idle' : 'b-waiting';
-                var sl  = s.status === 'active' ? 'Active' : s.status === 'idle' ? 'Idle' : 'Waiting';
-                var pct = slaPct(s.waitSec); var sc = slaClass(s.waitSec);
-                var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
-                tr.innerHTML =
-                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
-                    + '<td><div class="q-cust"><div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
-                    + '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
-                    + '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div></div></td>'
-                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
-                    + '<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill ' + sc + '" style="width:' + pct + '%"></div></div>'
-                    + '<span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">' + fmt(s.waitSec) + '</span></div></td>'
-                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
-                    + '<td><span class="badge ' + sb + '">' + sl + '</span></td>';
+        function renderQueue(){
+            var body=document.getElementById('qBody');
+            body.innerHTML='';
+            var over5=0;
+            SESSIONS.forEach(function(s,i){
+                if(s.waitSec>=300) over5++;
+                var tr=document.createElement('tr');
+                var wc=s.waitSec>=300?'q-wait over5':'q-wait';
+                var sb=s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
+                var sl=s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
+                var pct=slaPct(s.waitSec); var sc=slaClass(s.waitSec);
+                var pc=i===0?'p1':i===1?'p2':i===2?'p3':'';
+                tr.innerHTML=
+                    '<td><div class="q-pos-badge '+pc+'">'+(i+1)+'</div></td>'
+                    +'<td><div class="q-cust"><div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
+                    +'<div><div class="q-name">'+s.name+'</div><div class="q-role">'+s.role+'</div></div></div></td>'
+                    +'<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
+                    +'<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div><span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">'+fmt(s.waitSec)+'</span></div></td>'
+                    +'<td><span style="font-size:11px;color:#666;font-weight:500;">'+cap(s.cat)+'</span></td>'
+                    +'<td><span class="badge '+sb+'">'+sl+'</span></td>';
                 body.appendChild(tr);
             });
-            var w = document.getElementById('waitWarn');
-            w.classList.toggle('show', over5 > 0);
-            if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
-            var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
-            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
-            document.getElementById('qsInQueue').textContent = SESSIONS.length;
+            var w=document.getElementById('waitWarn');
+            w.classList.toggle('show',over5>0);
+            if(over5>0) document.getElementById('warnTxt').textContent=over5+' customer(s) waiting over 5 minutes';
+            var longest=SESSIONS.length?Math.max.apply(null,SESSIONS.map(function(s){return s.waitSec;})):0;
+            document.getElementById('qMeta').textContent=SESSIONS.length+' in queue · longest: '+fmt(longest);
+            document.getElementById('qsInQueue').textContent=SESSIONS.length;
         }
 
         /* ── AGENTS ── */
-        function renderAgents() {
-            var grid = document.getElementById('agentGrid');
-            grid.innerHTML = '';
-            for (var slot = 0; slot < 3; slot++) {
-                var col  = document.createElement('div'); col.className = 'agent-col';
-                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
-                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot+1);
+        function renderAgents(){
+            var grid=document.getElementById('agentGrid');
+            grid.innerHTML='';
+            for(var slot=0;slot<3;slot++){
+                var col=document.createElement('div'); col.className='agent-col';
+                var hd=document.createElement('div'); hd.className='agent-col-hd';
+                hd.innerHTML='<div class="slot-dot filled"></div>Chat Slot '+(slot+1);
                 col.appendChild(hd);
-                var body = document.createElement('div'); body.className = 'agent-col-body';
-                AGENTS.forEach(function(a) {
-                    var hasChat   = slot < a.sessions;
-                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
-                    var statusCls = 'b-' + a.status;
-                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
-                    var d = document.createElement('div');
-                    if (a.status === 'offline' || a.status === 'away') {
-                        d.className = 'agent-slot';
-                        d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
-                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
-                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
-                    } else if (hasChat) {
-                        var isFull   = a.sessions >= a.max && slot === a.max - 1;
-                        var chatSess = SESSIONS.filter(function(s){ return s.agent === a.name && s.status === 'active'; })[slot] || null;
-                        var chatTxt  = chatSess ? titleCase(chatSess.name) + ' · ' + fmt(chatSess.waitSec) : 'Slot ' + (slot+1) + ' occupied';
-                        d.className = 'agent-slot';
-                        d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
-                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">' + escH(chatTxt) + '</div></div>'
-                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">' + (isFull ? 'Full' : a.status) + '</span>';
+                var body=document.createElement('div'); body.className='agent-col-body';
+                AGENTS.forEach(function(a){
+                    var hasChat=slot<a.sessions;
+                    var dotCls=a.status==='online'?'d-on':a.status==='busy'?'d-busy':a.status==='away'?'d-away':'d-off';
+                    var statusCls='b-'+a.status;
+                    var avBg=(a.status==='offline'||a.status==='away')?'#ccc':'#1a1a1a';
+                    if(a.status==='offline'||a.status==='away'){
+                        var d=document.createElement('div'); d.className='agent-slot';
+                        d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
+                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+cap(a.status)+'</div></div>'
+                            +'<span class="badge '+statusCls+'" style="font-size:9px;padding:1px 6px;">'+a.status+'</span>';
+                        body.appendChild(d);
+                    } else if(hasChat){
+                        var isFull=a.sessions>=a.max&&slot===a.max-1;
+                        var chatSess=SESSIONS.filter(function(s){return s.agent===a.name&&s.status==='active';})[slot]||null;
+                        var chatTxt=chatSess?chatSess.name+' · '+fmt(chatSess.waitSec):'Slot '+(slot+1)+' occupied';
+                        var d=document.createElement('div'); d.className='agent-slot';
+                        d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
+                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+chatTxt+'</div></div>'
+                            +'<span class="badge '+(isFull?'b-full':statusCls)+'" style="font-size:9px;padding:1px 6px;">'+(isFull?'Full':a.status)+'</span>';
+                        body.appendChild(d);
                     } else {
-                        d.className   = 'empty-slot';
-                        d.textContent = 'Available slot';
+                        var d=document.createElement('div'); d.className='empty-slot'; d.textContent='Available slot';
+                        body.appendChild(d);
                     }
-                    body.appendChild(d);
                 });
-                col.appendChild(body);
-                grid.appendChild(col);
+                col.appendChild(body); grid.appendChild(col);
             }
         }
 
