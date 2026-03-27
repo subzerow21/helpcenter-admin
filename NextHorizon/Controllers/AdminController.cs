@@ -1247,16 +1247,14 @@
                         {
                             var payout = new PayoutRequest
                             {
-                                // Fix: Using GetInt64 for long, or Convert.ToInt32 if your model uses int
                                 WithdrawalId = reader.GetInt64(reader.GetOrdinal("withdrawal_id")),
                                 SellerId = reader.GetInt32(reader.GetOrdinal("seller_id")),
-                                Amount = reader.GetDecimal(reader.GetOrdinal("amount")),
+                                Amount = reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetDecimal(reader.GetOrdinal("amount")),
                                 RequestedAt = reader.GetDateTime(reader.GetOrdinal("requested_at")),
                                 SellerName = reader.IsDBNull(reader.GetOrdinal("seller_name")) ? "" : reader.GetString(reader.GetOrdinal("seller_name")),
                                 ShopName = reader.IsDBNull(reader.GetOrdinal("shop_name")) ? "" : reader.GetString(reader.GetOrdinal("shop_name")),
                                 SellerEmail = reader.IsDBNull(reader.GetOrdinal("seller_email")) ? "" : reader.GetString(reader.GetOrdinal("seller_email")),
                                 BankName = reader.IsDBNull(reader.GetOrdinal("bank_name")) ? "" : reader.GetString(reader.GetOrdinal("bank_name")),
-                                // Fix: Added SellerNote to resolve "does not contain a definition" error
                                 SellerNote = reader.IsDBNull(reader.GetOrdinal("seller_note")) ? "" : reader.GetString(reader.GetOrdinal("seller_note"))
                             };
 
@@ -1266,7 +1264,7 @@
                     }
                 }
 
-                // 2. Get pending discounts
+                // 2. Get pending discounts - HANDLE ALL DECIMAL FIELDS
                 using (var cmd = new SqlCommand("sp_GetPendingDiscounts", connection))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -1274,27 +1272,56 @@
                     {
                         while (await reader.ReadAsync())
                         {
-                            viewModel.PendingDiscounts.Add(new DiscountRequest
+                            var discount = new DiscountRequest
                             {
+                                // Basic fields
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? "" : reader.GetString(reader.GetOrdinal("Name")),
-                                TotalDiscountPercent = reader.GetDecimal(reader.GetOrdinal("TotalDiscountPercent")),
-                                TotalDiscountFix = reader.GetDecimal(reader.GetOrdinal("TotalDiscountFix")),
+                                Name = reader.IsDBNull(reader.GetOrdinal("name")) ? "" : reader.GetString(reader.GetOrdinal("name")),
+                                Type = reader.IsDBNull(reader.GetOrdinal("type")) ? "" : reader.GetString(reader.GetOrdinal("type")),
+                                BannerSize = reader.IsDBNull(reader.GetOrdinal("BannerSize")) ? "" : reader.GetString(reader.GetOrdinal("BannerSize")),
+                                
+                                // Decimal fields from stored procedure
+                                TotalDiscountPercent = reader.IsDBNull(reader.GetOrdinal("TotalDiscountPercent")) ? 0 : reader.GetDecimal(reader.GetOrdinal("TotalDiscountPercent")),
+                                TotalDiscountFix = reader.IsDBNull(reader.GetOrdinal("TotalDiscountFix")) ? 0 : reader.GetDecimal(reader.GetOrdinal("TotalDiscountFix")),
+                                DiscountPercent = reader.IsDBNull(reader.GetOrdinal("DiscountPercent")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DiscountPercent")),
+                                DiscountedPrice = reader.IsDBNull(reader.GetOrdinal("DiscountedPrice")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DiscountedPrice")),
+                                OriginalPrice = reader.IsDBNull(reader.GetOrdinal("OriginalPrice")) ? 0 : reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
+                                MinimumPurchaseAmount = reader.IsDBNull(reader.GetOrdinal("MinimumPurchaseAmount")) ? 0 : reader.GetDecimal(reader.GetOrdinal("MinimumPurchaseAmount")),
+                                
+                                // Integer fields
+                                UsageLimit = reader.IsDBNull(reader.GetOrdinal("UsageLimit")) ? 0 : reader.GetInt32(reader.GetOrdinal("UsageLimit")),
+                                BuyQuantity = reader.IsDBNull(reader.GetOrdinal("BuyQuantity")) ? 0 : reader.GetInt32(reader.GetOrdinal("BuyQuantity")),
+                                TakeQuantity = reader.IsDBNull(reader.GetOrdinal("TakeQuantity")) ? 0 : reader.GetInt32(reader.GetOrdinal("TakeQuantity")),
+                                ReturnWindowDays = reader.IsDBNull(reader.GetOrdinal("ReturnWindowDays")) ? 0 : reader.GetInt32(reader.GetOrdinal("ReturnWindowDays")),
+                                UserId = reader.IsDBNull(reader.GetOrdinal("user_id")) ? 0 : reader.GetInt32(reader.GetOrdinal("user_id")),
+                                
+                                // Boolean field
+                                UntilPromotionLast = reader.IsDBNull(reader.GetOrdinal("UntilPromotionLast")) ? false : reader.GetBoolean(reader.GetOrdinal("UntilPromotionLast")),
+                                
+                                // String fields
                                 Status = reader.IsDBNull(reader.GetOrdinal("status")) ? "Pending" : reader.GetString(reader.GetOrdinal("status")),
-                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                                 ShopName = reader.IsDBNull(reader.GetOrdinal("ShopName")) ? "" : reader.GetString(reader.GetOrdinal("ShopName")),
                                 ProductName = reader.IsDBNull(reader.GetOrdinal("ProductName")) ? "" : reader.GetString(reader.GetOrdinal("ProductName")),
-                                OriginalPrice = reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
-                                ProductImage = reader.IsDBNull(reader.GetOrdinal("ProductImage")) ? null : reader.GetString(reader.GetOrdinal("ProductImage"))
-                            });
+                                MinimumRequirementType = reader.IsDBNull(reader.GetOrdinal("MinimumRequirementType")) ? null : reader.GetString(reader.GetOrdinal("MinimumRequirementType")),
+                                FreeItemRequirement = reader.IsDBNull(reader.GetOrdinal("FreeItemRequirement")) ? null : reader.GetString(reader.GetOrdinal("FreeItemRequirement")),
+                                ProductImage = reader.IsDBNull(reader.GetOrdinal("ProductImage")) ? null : reader.GetString(reader.GetOrdinal("ProductImage")),
+                                
+                                // DateTime fields
+                                CreatedAt = reader.IsDBNull(reader.GetOrdinal("CreatedAt")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                                StartDate = reader.IsDBNull(reader.GetOrdinal("StartDate")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("StartDate")),
+                                EndDate = reader.IsDBNull(reader.GetOrdinal("EndDate")) ? DateTime.Now.AddDays(7) : reader.GetDateTime(reader.GetOrdinal("EndDate"))
+                            };
+                            
+                            viewModel.PendingDiscounts.Add(discount);
                         }
                     }
                     viewModel.TotalPendingDiscountsCount = viewModel.PendingDiscounts.Count;
                 }
-
-                // 3. Fix: Added PendingProducts logic (Fixes the "does not contain a definition" error)
-                using (var cmd = new SqlCommand("SELECT * FROM Products WHERE Status = 'Pending'", connection))
+                // 3. Get pending products
+                using (var cmd = new SqlCommand("sp_GetPendingProducts", connection))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
@@ -1303,14 +1330,107 @@
                             {
                                 ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
                                 ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
-                                SellerName = reader.IsDBNull(reader.GetOrdinal("SellerName")) ? "Unknown" : reader.GetString(reader.GetOrdinal("SellerName"))
+                                SellerName = reader.GetString(reader.GetOrdinal("SellerName")),
+                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "Uncategorized" : reader.GetString(reader.GetOrdinal("Category")),
+                                Price = reader.IsDBNull(reader.GetOrdinal("Price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Price")),
+                                MainImage = reader.IsDBNull(reader.GetOrdinal("ImagePath")) ? null : reader.GetString(reader.GetOrdinal("ImagePath")),
+                                Status = reader.GetString(reader.GetOrdinal("Status"))
                             });
                         }
                     }
+                    viewModel.TotalPendingProductsCount = viewModel.PendingProducts.Count;
                 }
             }
 
             return viewModel;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPendingProducts()
+        {
+            try
+            {
+                var products = new List<ProductApprovalRequest>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetPendingProducts", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                products.Add(new ProductApprovalRequest
+                                {
+                                    ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                                    ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
+                                    SellerName = reader.GetString(reader.GetOrdinal("SellerName")),
+                                    Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "Uncategorized" : reader.GetString(reader.GetOrdinal("Category")),
+                                    Price = reader.GetDecimal(reader.GetOrdinal("Price")),
+                                    MainImage = reader.IsDBNull(reader.GetOrdinal("ImagePath")) ? null : reader.GetString(reader.GetOrdinal("ImagePath")),
+                                    ShopName = reader.IsDBNull(reader.GetOrdinal("ShopName")) ? reader.GetString(reader.GetOrdinal("SellerName")) : reader.GetString(reader.GetOrdinal("ShopName"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(products);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateProductStatus([FromBody] UpdateProductStatusRequest request)
+        {
+            try
+            {
+                var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
+                var adminName = HttpContext.Session.GetString("Username") ?? "System";
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var userAgent = Request.Headers["User-Agent"].ToString();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_UpdateProductStatus", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ProductId", request.ProductId);
+                        command.Parameters.AddWithValue("@Status", request.Action);
+                        command.Parameters.AddWithValue("@Reason", request.Reason ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@ProcessedBy", staffId);
+                        command.Parameters.AddWithValue("@IpAddress", ipAddress ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@UserAgent", userAgent ?? (object)DBNull.Value);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                var message = reader["Message"].ToString();
+                                
+                                return Json(new { success = status == "Success", message = message });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(new { success = false, message = "Failed to update product status" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         private async Task LogAdminAction(int staffId, string adminName, string action, string target, string status, string details = null)
@@ -1825,6 +1945,129 @@
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetGlobalLeaderboard(int? challengeId = null)
+        {
+            try
+            {
+                var leaderboard = new List<GlobalLeaderboardEntry>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    using (var command = new SqlCommand("sp_GetGlobalLeaderboard", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@ChallengeId", challengeId ?? (object)DBNull.Value);
+                        
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                // Convert BIGINT to Int32
+                                object globalRankObj = reader["global_rank"];
+                                int globalRank = globalRankObj != DBNull.Value ? Convert.ToInt32(globalRankObj) : 0;
+                                
+                                object participantIdObj = reader["participant_id"];
+                                int participantId = participantIdObj != DBNull.Value ? Convert.ToInt32(participantIdObj) : 0;
+                                
+                                object userIdObj = reader["user_id"];
+                                int userId = userIdObj != DBNull.Value ? Convert.ToInt32(userIdObj) : 0;
+                                
+                                object consumerIdObj = reader["consumer_id"];
+                                int consumerId = consumerIdObj != DBNull.Value ? Convert.ToInt32(consumerIdObj) : 0;
+                                
+                                object challengeIdObj = reader["challenge_id"];
+                                int challengeIdVal = challengeIdObj != DBNull.Value ? Convert.ToInt32(challengeIdObj) : 0;
+                                
+                                object totalActivitiesObj = reader["total_activities"];
+                                int totalActivities = totalActivitiesObj != DBNull.Value ? Convert.ToInt32(totalActivitiesObj) : 0;
+                                
+                                object totalTimeSecondsObj = reader["total_time_seconds"];
+                                int totalTimeSeconds = totalTimeSecondsObj != DBNull.Value ? Convert.ToInt32(totalTimeSecondsObj) : 0;
+                                
+                                leaderboard.Add(new GlobalLeaderboardEntry
+                                {
+                                    GlobalRank = globalRank,
+                                    ParticipantId = participantId,
+                                    UserId = userId,
+                                    ConsumerId = consumerId,
+                                    ChallengeId = challengeIdVal,
+                                    ChallengeTitle = reader.GetString(reader.GetOrdinal("challenge_title")),
+                                    ActivityType = reader.GetString(reader.GetOrdinal("activity_type")),
+                                    ChallengeGoalKm = reader.GetDecimal(reader.GetOrdinal("challenge_goal_km")),
+                                    AthleteName = reader.GetString(reader.GetOrdinal("athlete_name")),
+                                    Username = reader.GetString(reader.GetOrdinal("username")),
+                                    PhoneNumber = reader.IsDBNull(reader.GetOrdinal("phone_number")) ? null : reader.GetString(reader.GetOrdinal("phone_number")),
+                                    TotalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
+                                    TotalActivities = totalActivities,
+                                    TotalTimeSeconds = totalTimeSeconds,
+                                    TotalTimeFormatted = reader.IsDBNull(reader.GetOrdinal("total_time_formatted")) ? "00:00:00" : reader.GetString(reader.GetOrdinal("total_time_formatted")),
+                                    AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
+                                    IsCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
+                                    LastActivityDate = reader.IsDBNull(reader.GetOrdinal("last_activity_date")) ? null : reader.GetDateTime(reader.GetOrdinal("last_activity_date")),
+                                    CompletedAt = reader.IsDBNull(reader.GetOrdinal("completed_at")) ? null : reader.GetDateTime(reader.GetOrdinal("completed_at")),
+                                    ChallengeRank = reader.IsDBNull(reader.GetOrdinal("challenge_rank")) ? (int?)null : Convert.ToInt32(reader["challenge_rank"]),
+                                    ProgressPercent = reader.GetDecimal(reader.GetOrdinal("progress_percent")),
+                                    AvatarUrl = reader.GetString(reader.GetOrdinal("avatar_url"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(leaderboard);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetGlobalLeaderboard: {ex.Message}");
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // GET: Get all active challenges for filter dropdown
+        [HttpGet]
+        public async Task<IActionResult> GetActiveChallenges()
+        {
+            try
+            {
+                var challenges = new List<object>();
+                
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    var sql = @"
+                        SELECT challenge_id, title, activity_type 
+                        FROM challenges 
+                        WHERE status = 'Live' 
+                        ORDER BY start_date DESC";
+                    
+                    using (var cmd = new SqlCommand(sql, connection))
+                    {
+                        await connection.OpenAsync();
+                        
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                challenges.Add(new
+                                {
+                                    challengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
+                                    title = reader.GetString(reader.GetOrdinal("title")),
+                                    activityType = reader.GetString(reader.GetOrdinal("activity_type"))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return Json(challenges);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
         // GET: Get challenge details
         [HttpGet]
         public async Task<IActionResult> GetChallengeDetails(int id)
@@ -1838,12 +2081,12 @@
                 
                 using (var connection = new SqlConnection(_connectionString))
                 {
+                    await connection.OpenAsync();
+                    
                     using (var command = new SqlCommand("sp_GetChallengeDetails", connection))
                     {
                         command.CommandType = CommandType.StoredProcedure;
                         command.Parameters.AddWithValue("@ChallengeId", id);
-                        
-                        await connection.OpenAsync();
                         
                         using (var reader = await command.ExecuteReaderAsync())
                         {
@@ -1892,36 +2135,71 @@
                                     }
                                 }
                             }
+                            else
+                            {
+                                return Json(new { success = false, error = "Challenge not found" });
+                            }
                             
                             // Second result set - Leaderboard
-                            await reader.NextResultAsync();
-                            while (await reader.ReadAsync())
+                            if (await reader.NextResultAsync())
                             {
-                                leaderboard.Add(new ParticipantLeaderboard
+                                while (await reader.ReadAsync())
                                 {
-                                    Rank = reader.GetInt32(reader.GetOrdinal("rank")),
-                                    ParticipantId = reader.GetInt32(reader.GetOrdinal("participant_id")),
-                                    UserId = reader.GetInt32(reader.GetOrdinal("user_id")),
-                                    AthleteName = reader.GetString(reader.GetOrdinal("athlete_name")),
-                                    Username = reader.GetString(reader.GetOrdinal("username")),
-                                    PhoneNumber = reader.IsDBNull(reader.GetOrdinal("phone_number")) ? null : reader.GetString(reader.GetOrdinal("phone_number")),
-                                    TotalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
-                                    TotalActivities = reader.GetInt32(reader.GetOrdinal("total_activities")),
-                                    TotalTimeSeconds = reader.GetInt32(reader.GetOrdinal("total_time_seconds")),
-                                    AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
-                                    IsCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
-                                    LastActivityDate = reader.IsDBNull(reader.GetOrdinal("last_activity_date")) ? null : reader.GetDateTime(reader.GetOrdinal("last_activity_date")),
-                                    AvatarUrl = reader.GetString(reader.GetOrdinal("avatar_url")),
-                                    ChallengeGoalKm = challenge?.GoalKm ?? 0
-                                });
+                                    // Convert BIGINT to Int32 for rank
+                                    object rankObj = reader["rank"];
+                                    int rank = rankObj != DBNull.Value ? Convert.ToInt32(rankObj) : 0;
+                                    
+                                    // Convert other BIGINT values
+                                    object participantIdObj = reader["participant_id"];
+                                    int participantId = participantIdObj != DBNull.Value ? Convert.ToInt32(participantIdObj) : 0;
+                                    
+                                    object userIdObj = reader["user_id"];
+                                    int userId = userIdObj != DBNull.Value ? Convert.ToInt32(userIdObj) : 0;
+                                    
+                                    object consumerIdObj = reader["consumer_id"];
+                                    int consumerId = consumerIdObj != DBNull.Value ? Convert.ToInt32(consumerIdObj) : 0;
+                                    
+                                    object totalActivitiesObj = reader["total_activities"];
+                                    int totalActivities = totalActivitiesObj != DBNull.Value ? Convert.ToInt32(totalActivitiesObj) : 0;
+                                    
+                                    object totalTimeSecondsObj = reader["total_time_seconds"];
+                                    int totalTimeSeconds = totalTimeSecondsObj != DBNull.Value ? Convert.ToInt32(totalTimeSecondsObj) : 0;
+                                    
+                                    object storedRankObj = reader["stored_rank"];
+                                    int? storedRank = storedRankObj != DBNull.Value ? Convert.ToInt32(storedRankObj) : (int?)null;
+                                    
+                                    leaderboard.Add(new ParticipantLeaderboard
+                                    {
+                                        Rank = rank,
+                                        ParticipantId = participantId,
+                                        UserId = userId,
+                                        ConsumerId = consumerId,
+                                        AthleteName = reader.GetString(reader.GetOrdinal("athlete_name")),
+                                        Username = reader.GetString(reader.GetOrdinal("username")),
+                                        PhoneNumber = reader.IsDBNull(reader.GetOrdinal("phone_number")) ? null : reader.GetString(reader.GetOrdinal("phone_number")),
+                                        TotalDistanceKm = reader.GetDecimal(reader.GetOrdinal("total_distance_km")),
+                                        TotalActivities = totalActivities,
+                                        TotalTimeSeconds = totalTimeSeconds,
+                                        TotalTimeFormatted = reader.IsDBNull(reader.GetOrdinal("total_time_formatted")) ? "00:00:00" : reader.GetString(reader.GetOrdinal("total_time_formatted")),
+                                        AveragePace = reader.GetDecimal(reader.GetOrdinal("average_pace")),
+                                        IsCompleted = reader.GetBoolean(reader.GetOrdinal("is_completed")),
+                                        LastActivityDate = reader.IsDBNull(reader.GetOrdinal("last_activity_date")) ? null : reader.GetDateTime(reader.GetOrdinal("last_activity_date")),
+                                        CompletedAt = reader.IsDBNull(reader.GetOrdinal("completed_at")) ? null : reader.GetDateTime(reader.GetOrdinal("completed_at")),
+                                        StoredRank = storedRank,
+                                        AvatarUrl = reader.GetString(reader.GetOrdinal("avatar_url")),
+                                        ProgressPercent = reader.GetDecimal(reader.GetOrdinal("progress_percent")),
+                                        ChallengeGoalKm = challenge?.GoalKm ?? 0
+                                    });
+                                }
                             }
                         }
                     }
                 }
                 
-                return Json(new { 
-                    success = true, 
-                    challenge = challenge, 
+                return Json(new
+                {
+                    success = true,
+                    challenge = challenge,
                     leaderboard = leaderboard,
                     avgDistanceKm = avgDistanceKm,
                     avgTimeMinutes = avgTimeMinutes
@@ -1929,10 +2207,12 @@
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error in GetChallengeDetails: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return Json(new { success = false, error = ex.Message });
             }
-        }
-
+        }        
+        
         // GET: Get challenge prizes
         [HttpGet]
         public async Task<IActionResult> GetChallengePrizes(int challengeId)
@@ -2075,9 +2355,11 @@
                         {
                             while (await reader.ReadAsync())
                             {
-                                activities.Add(new ActivityLogViewModel
+                                var activity = new ActivityLogViewModel
                                 {
                                     ActivityId = reader.GetInt32(reader.GetOrdinal("activity_id")),
+                                    ParticipantId = reader.GetInt32(reader.GetOrdinal("participant_id")),
+                                    ChallengeId = reader.GetInt32(reader.GetOrdinal("challenge_id")),
                                     ActivityDate = reader.GetDateTime(reader.GetOrdinal("activity_date")),
                                     DistanceKm = reader.GetDecimal(reader.GetOrdinal("distance_km")),
                                     DurationSeconds = reader.GetInt32(reader.GetOrdinal("duration_seconds")),
@@ -2087,8 +2369,22 @@
                                     VerifiedByName = reader.IsDBNull(reader.GetOrdinal("verified_by_name")) ? null : reader.GetString(reader.GetOrdinal("verified_by_name")),
                                     VerifiedAt = reader.IsDBNull(reader.GetOrdinal("verified_at")) ? null : reader.GetDateTime(reader.GetOrdinal("verified_at")),
                                     Notes = reader.IsDBNull(reader.GetOrdinal("notes")) ? null : reader.GetString(reader.GetOrdinal("notes")),
-                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
-                                });
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                                    ChallengeTitle = reader.IsDBNull(reader.GetOrdinal("challenge_title")) ? null : reader.GetString(reader.GetOrdinal("challenge_title"))
+                                };
+                                
+                                // Handle image proof if exists
+                                if (!reader.IsDBNull(reader.GetOrdinal("imageproof")))
+                                {
+                                    byte[] imageData = (byte[])reader["imageproof"];
+                                    if (imageData != null && imageData.Length > 0)
+                                    {
+                                        activity.ImageProof = imageData;
+                                        activity.ImageProofBase64 = Convert.ToBase64String(imageData);
+                                    }
+                                }
+                                
+                                activities.Add(activity);
                             }
                         }
                     }

@@ -102,7 +102,7 @@ namespace NextHorizon.Models.Admin_Models
         public int CreatedBy { get; set; }
     }
 
-    // --- Added Request DTOs to fix "Non-nullable property must contain value" errors ---
+
 
     public class ProcessActionRequest
     {
@@ -113,7 +113,7 @@ namespace NextHorizon.Models.Admin_Models
 
     public class ProcessDiscountRequest : ProcessActionRequest { }
 
-    public class UpdateProductStatusRequest : ProcessActionRequest { }
+    public class UpdateProductStatusRequest : ProcessActionRequest { public int ProductId { get; set; }}
 
     public class SaveGlobalPromotionRequest
     {

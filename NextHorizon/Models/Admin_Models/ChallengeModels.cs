@@ -47,33 +47,33 @@ namespace NextHorizon.Models.Admin_Models
     }
 
     public class ParticipantLeaderboard
-    {
-        public int Rank { get; set; }
+    {    
+        public int Rank { get; set; }  
         public int ParticipantId { get; set; }
         public int UserId { get; set; }
+        public int ConsumerId { get; set; }
         public string AthleteName { get; set; }
         public string Username { get; set; }
         public string PhoneNumber { get; set; }
         public decimal TotalDistanceKm { get; set; }
         public int TotalActivities { get; set; }
         public int TotalTimeSeconds { get; set; }
-        public string TotalTimeFormatted => TimeSpan.FromSeconds(TotalTimeSeconds).ToString(@"hh\:mm\:ss");
+        public string TotalTimeFormatted { get; set; }
         public decimal AveragePace { get; set; }
-        public string AveragePaceFormatted => $"{AveragePace:F2} min/km";
         public bool IsCompleted { get; set; }
         public DateTime? LastActivityDate { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public int? StoredRank { get; set; }  // The rank stored in challenge_participants table
         public string AvatarUrl { get; set; }
-        public int ProgressPercent => TotalDistanceKm > 0 && ChallengeGoalKm > 0 
-            ? (int)((TotalDistanceKm / ChallengeGoalKm) * 100) 
-            : 0;
-        
-        // This will be set from the challenge
         public decimal ChallengeGoalKm { get; set; }
+        public decimal ProgressPercent { get; set; }
     }
 
     public class ActivityLogViewModel
     {
         public int ActivityId { get; set; }
+        public int ParticipantId { get; set; }        // Add this - needed for tracking
+         public int ChallengeId { get; set; }
         public DateTime ActivityDate { get; set; }
         public decimal DistanceKm { get; set; }
         public int DurationSeconds { get; set; }
@@ -87,6 +87,9 @@ namespace NextHorizon.Models.Admin_Models
         public DateTime? VerifiedAt { get; set; }
         public string Notes { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string ChallengeTitle { get; set; }
+        public string ImageProofBase64 { get; set; }  
+        public byte[] ImageProof { get; set; }
     }
 
     public class CreateChallengeRequest
@@ -285,5 +288,29 @@ namespace NextHorizon.Models.Admin_Models
         public string DigitalCode { get; set; }
         public string TransactionReference { get; set; }
     }
-
+    public class GlobalLeaderboardEntry
+    {
+        public int GlobalRank { get; set; }
+        public int ParticipantId { get; set; }
+        public int UserId { get; set; }
+        public int ConsumerId { get; set; }
+        public int ChallengeId { get; set; }
+        public string ChallengeTitle { get; set; }
+        public string ActivityType { get; set; }
+        public decimal ChallengeGoalKm { get; set; }
+        public string AthleteName { get; set; }
+        public string Username { get; set; }
+        public string PhoneNumber { get; set; }
+        public decimal TotalDistanceKm { get; set; }
+        public int TotalActivities { get; set; }
+        public int TotalTimeSeconds { get; set; }
+        public string TotalTimeFormatted { get; set; }
+        public decimal AveragePace { get; set; }
+        public bool IsCompleted { get; set; }
+        public DateTime? LastActivityDate { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public int? ChallengeRank { get; set; }
+        public decimal ProgressPercent { get; set; }
+        public string AvatarUrl { get; set; }
+    }
 }

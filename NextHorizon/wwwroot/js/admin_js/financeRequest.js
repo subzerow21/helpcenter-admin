@@ -1,6 +1,4 @@
-﻿/**
- * --- GLOBAL STATE ---
- */
+﻿// Global variables
 let currentRequestId = "";
 let currentAction = "";
 let currentAmount = 0;
@@ -11,11 +9,10 @@ let selectedImageFile = null;
 let imageBase64Data = null;
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('Finance & Product Admin Dashboard Initialized');
 
     // Load all pending lists
     loadPendingPayouts();
-    loadPendingProductApprovals(); // NEW: For products needing approval
+    loadPendingProductApprovals(); 
     loadGlobalPromotions();
 
     // Delegation for Promo Buttons
@@ -31,89 +28,166 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-/**
- * --- PRODUCT APPROVAL WORKFLOW (NEW) ---
- * Specifically for new product listings awaiting admin green light.
- */
+// PRODUCT APPROVALS
 async function loadPendingProductApprovals() {
     try {
         const response = await fetch('/Admin/GetPendingProducts');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         const products = Array.isArray(result) ? result : (result.data || []);
-
+        
         const tbody = document.querySelector('#pendingProductsTable tbody');
         if (!tbody) return;
-
+        
         if (products.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No products awaiting approval.</td></tr>';
             return;
         }
-
+        
         tbody.innerHTML = products.map(p => `
             <tr>
                 <td class="ps-4">
                     <div class="d-flex align-items-center">
                         <img src="${p.mainImage || '/images/placeholder.png'}" class="rounded-3 me-2" style="width: 40px; height: 40px; object-fit: cover;">
                         <div>
-                            <span class="d-block fw-bold small">${escapeHtml(p.name)}</span>
+                            <span class="d-block fw-bold small">${escapeHtml(p.productName)}</span>
                             <span class="text-muted tiny">Category: ${escapeHtml(p.category)}</span>
                         </div>
                     </div>
                 </td>
-                <td><span class="small fw-bold">${escapeHtml(p.shopName)}</span></td>
-                <td><span class="fw-bold">₱${p.price.toLocaleString()}</span></td>
-                <td class="small text-muted">${new Date(p.createdAt).toLocaleDateString()}</td>
+                <td><span class="fw-bold">₱${(p.price || 0).toLocaleString()}</span></td>
+                <td><span class="small fw-bold">${escapeHtml(p.sellerName)}</span></td>
+                <td class="small text-muted">${p.submittedAt ? new Date(p.submittedAt).toLocaleDateString() : 'N/A'}</td>
                 <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
                         <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" 
-                                onclick="processProductApproval('${p.id}', 'approve')">Approve</button>
+                                onclick="openProductApproveModal('${p.productId}', '${escapeHtml(p.productName).replace(/'/g, "\\'")}')">Approve</button>
                         <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" 
-                                onclick="openProductRejectModal('${p.id}')">Reject</button>
+                                onclick="openProductRejectModalWithModal('${p.productId}', '${escapeHtml(p.productName).replace(/'/g, "\\'")}')">Reject</button>
                     </div>
                 </td>
             </tr>
         `).join('');
     } catch (err) {
         console.error("Error loading products:", err);
+        const tbody = document.querySelector('#pendingProductsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Error loading products. Please refresh the page.</td></tr>';
+        }
+        showToast('Error loading products: ' + err.message, true);
     }
 }
 
-// Quick Approval
+// Product Approval Modal Functions
+function openProductApproveModal(productId, productName) {
+    currentProductId = productId;
+    
+    // Hide reject content, show approve content
+    document.getElementById('productRejectContent').style.display = 'none';
+    document.getElementById('productApproveContent').style.display = 'block';
+    document.getElementById('productConfirmApproveBtn').style.display = 'block';
+    document.getElementById('productConfirmRejectBtn').style.display = 'none';
+    document.getElementById('productActionTitle').innerText = 'Approve Product';
+    document.getElementById('productApproveMessage').innerHTML = `
+        Are you sure you want to approve <strong>${escapeHtml(productName)}</strong>?
+        <br><br>
+        This product will become visible to customers immediately.
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('productActionModal'));
+    modal.show();
+}
+
+function openProductRejectModalWithModal(productId, productName) {
+    currentProductId = productId;
+    
+    // Hide approve content, show reject content
+    document.getElementById('productApproveContent').style.display = 'none';
+    document.getElementById('productRejectContent').style.display = 'block';
+    document.getElementById('productConfirmApproveBtn').style.display = 'none';
+    document.getElementById('productConfirmRejectBtn').style.display = 'block';
+    document.getElementById('productActionTitle').innerText = 'Reject Product';
+    document.getElementById('productRejectMessage').innerHTML = `
+        Please provide a reason for rejecting <strong>${escapeHtml(productName)}</strong>:
+    `;
+    document.getElementById('productRejectReason').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('productActionModal'));
+    modal.show();
+}
+
+// Core approval function
 async function processProductApproval(productId, status, reason = "") {
-    showFinanceToast('Updating product status...');
+    showToast('Updating product status...');
+    
     try {
         const response = await fetch('/Admin/UpdateProductStatus', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId, status, reason })
+            body: JSON.stringify({ 
+                productId: productId, 
+                action: status, 
+                reason: reason 
+            })
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        
         if (data.success) {
-            showFinanceToast(data.message);
-            loadPendingProductApprovals();
+            showToast(data.message);
+            // Reload the page to refresh all data
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         } else {
-            showFinanceToast(data.message, true);
+            showToast(data.message || 'Error updating product', true);
         }
     } catch (err) {
-        showFinanceToast('Error updating product', true);
+        console.error('Error updating product:', err);
+        showToast('Error updating product: ' + err.message, true);
     }
 }
 
-// Rejection requires a reason
-function openProductRejectModal(productId) {
-    currentProductId = productId;
-    const reason = prompt("Please provide a reason for rejecting this product:");
-    if (reason === null) return; // Cancelled
-    if (reason.trim() === "") {
-        showFinanceToast("Rejection reason is mandatory", true);
+// Confirm product approval
+async function confirmProductApprove() {
+    if (!currentProductId) return;
+    
+    // Close modal first
+    const modal = bootstrap.Modal.getInstance(document.getElementById('productActionModal'));
+    modal.hide();
+    
+    // Process approval
+    await processProductApproval(currentProductId, 'approve', '');
+}
+
+// Confirm product rejection
+async function confirmProductReject() {
+    if (!currentProductId) return;
+    
+    const reason = document.getElementById('productRejectReason').value.trim();
+    
+    if (reason === "") {
+        showToast("Rejection reason is mandatory", true);
         return;
     }
-    processProductApproval(productId, 'reject', reason);
+    
+    // Close modal first
+    const modal = bootstrap.Modal.getInstance(document.getElementById('productActionModal'));
+    modal.hide();
+    
+    // Process rejection with reason
+    await processProductApproval(currentProductId, 'reject', reason);
 }
 
-/**
- * --- PAYOUT WORKFLOW ---
- */
+// PAYOUT WORKFLOW
 function openPayoutModal(id, amount, action) {
     currentRequestId = id;
     currentAction = action;
@@ -145,7 +219,7 @@ async function submitPayoutDecision() {
     }
 
     bootstrap.Modal.getInstance(document.getElementById('financeActionModal'))?.hide();
-    showFinanceToast('Processing...');
+    showToast('Processing...');
 
     try {
         const response = await fetch('/Admin/ProcessPayout', {
@@ -155,12 +229,16 @@ async function submitPayoutDecision() {
         });
         const data = await response.json();
         if (data.success) {
-            showFinanceToast(data.message);
-            loadPendingPayouts();
+            showToast(data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         } else {
-            showFinanceToast(data.message, true);
+            showToast(data.message, true);
         }
-    } catch (err) { showFinanceToast('Connection error', true); }
+    } catch (err) { 
+        showToast('Connection error', true); 
+    }
 }
 
 async function loadPendingPayouts() {
@@ -188,9 +266,194 @@ async function loadPendingPayouts() {
     } catch (err) { console.error(err); }
 }
 
-/**
- * --- GLOBAL PROMO LOGIC ---
- */
+// DISCOUNT REVIEW FUNCTIONS
+function openDiscountReviewModal(discountId, productName, discountPercent, newPrice, createdAt, productImage) {
+    currentReviewId = discountId;
+    
+    // Set modal content
+    document.getElementById('discountProductName').innerText = productName;
+    document.getElementById('discountDiscountPercent').innerText = `${discountPercent}%`;
+    document.getElementById('discountNewPrice').innerText = `₱${newPrice.toLocaleString()}`;
+    document.getElementById('discountCreatedAt').innerText = createdAt;
+    
+    if (productImage) {
+        document.getElementById('discountProductImage').src = productImage;
+        document.getElementById('discountProductImage').style.display = 'block';
+    } else {
+        document.getElementById('discountProductImage').style.display = 'none';
+    }
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('discountReviewModal'));
+    modal.show();
+}
+
+// Approve discount from modal
+async function approveDiscount() {
+    if (!currentReviewId) return;
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('discountReviewModal'));
+    modal.hide();
+    
+    showToast('Processing discount approval...');
+    
+    try {
+        const response = await fetch('/Admin/ProcessDiscount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                discountId: currentReviewId, 
+                action: 'approve',
+                reason: ''
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(data.message || 'Error approving discount', true);
+        }
+        
+    } catch (err) {
+        console.error('Error approving discount:', err);
+        showToast('Error approving discount: ' + err.message, true);
+    }
+}
+
+let currentDiscountId = null;
+
+// Open discount reject modal
+function openDiscountRejectModal(discountId) {
+    currentDiscountId = discountId;
+    
+    // Clear previous input
+    document.getElementById('discountRejectReason').value = '';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('discountRejectModal'));
+    modal.show();
+}
+
+// Confirm discount rejection
+async function confirmDiscountReject() {
+    if (!currentDiscountId) return;
+    
+    const reason = document.getElementById('discountRejectReason').value.trim();
+    
+    if (reason === "") {
+        showToast("Rejection reason is mandatory", true);
+        return;
+    }
+    
+    // Close modal first
+    const modal = bootstrap.Modal.getInstance(document.getElementById('discountRejectModal'));
+    modal.hide();
+    
+    showToast('Processing discount rejection...');
+    
+    try {
+        const response = await fetch('/Admin/ProcessDiscount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                discountId: currentDiscountId, 
+                action: 'reject',
+                reason: reason
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message);
+            // Reload the page to refresh all data
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(data.message || 'Error rejecting discount', true);
+        }
+        
+    } catch (err) {
+        console.error('Error rejecting discount:', err);
+        showToast('Error rejecting discount: ' + err.message, true);
+    }
+}
+
+// Keep the approve discount function as is
+async function approveDiscount() {
+    if (!currentReviewId) return;
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('discountReviewModal'));
+    modal.hide();
+    
+    showToast('Processing discount approval...');
+    
+    try {
+        const response = await fetch('/Admin/ProcessDiscount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                discountId: currentReviewId, 
+                action: 'approve',
+                reason: ''
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(data.message || 'Error approving discount', true);
+        }
+        
+    } catch (err) {
+        console.error('Error approving discount:', err);
+        showToast('Error approving discount: ' + err.message, true);
+    }
+}
+
+// Update openDiscountReviewModal to store the ID and add Reject button with modal
+function openDiscountReviewModal(discountId, productName, discountPercent, newPrice, createdAt, productImage) {
+    currentReviewId = discountId;
+    
+    // Set modal content
+    document.getElementById('discountProductName').innerText = productName;
+    document.getElementById('discountDiscountPercent').innerText = `${discountPercent}%`;
+    document.getElementById('discountNewPrice').innerText = `₱${newPrice.toLocaleString()}`;
+    document.getElementById('discountCreatedAt').innerText = createdAt;
+    
+    if (productImage && productImage !== '') {
+        document.getElementById('discountProductImage').src = productImage;
+        document.getElementById('discountProductImage').style.display = 'block';
+    } else {
+        document.getElementById('discountProductImage').style.display = 'none';
+    }
+    
+    // Update reject button to use modal instead of prompt
+    const rejectBtn = document.querySelector('#discountReviewModal .btn-outline-danger');
+    if (rejectBtn) {
+        rejectBtn.onclick = () => openDiscountRejectModal(discountId);
+    }
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('discountReviewModal'));
+    modal.show();
+}
+
+
+// GLOBAL PROMO LOGIC
 async function handleGlobalPromoSubmission(event) {
     event.preventDefault();
     const requestData = {
@@ -204,6 +467,8 @@ async function handleGlobalPromoSubmission(event) {
         bannerImageBase64: imageBase64Data || document.getElementById('promoPreview').getAttribute('data-base64')
     };
 
+    showToast('Saving promotion...');
+    
     try {
         const resp = await fetch('/Admin/SaveGlobalPromotion', {
             method: 'POST',
@@ -212,51 +477,91 @@ async function handleGlobalPromoSubmission(event) {
         });
         const res = await resp.json();
         if (res.success) {
-            showFinanceToast(res.message);
+            showToast(res.message);
             resetPromoForm();
             loadGlobalPromotions();
+        } else {
+            showToast(res.message || 'Error saving promotion', true);
         }
-    } catch (e) { showFinanceToast('Error saving promo', true); }
+    } catch (e) { 
+        showToast('Error saving promo', true); 
+    }
 }
 
 async function loadGlobalPromotions() {
-    const response = await fetch('/Admin/GetGlobalPromotions');
-    const result = await response.json();
-    const promotions = Array.isArray(result) ? result : (result.data || []);
-    window.promotionsData = promotions;
+    try {
+        const response = await fetch('/Admin/GetGlobalPromotions');
+        const result = await response.json();
+        const promotions = Array.isArray(result) ? result : (result.data || []);
+        window.promotionsData = promotions;
 
-    const list = document.getElementById('activePromoList');
-    if (!list) return;
+        const list = document.getElementById('activePromoList');
+        if (!list) return;
 
-    list.innerHTML = promotions.map(promo => `
-        <div class="bg-light p-3 rounded-4 border mb-2 d-flex align-items-center">
-            <img src="${promo.bannerImageBase64 || '/images/placeholder.png'}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
-            <div class="flex-grow-1">
-                <div class="fw-bold small">${escapeHtml(promo.name)} (-${promo.discountPercent}%)</div>
-                <div class="tiny text-muted">Start: ${new Date(promo.startDate).toLocaleDateString()}</div>
+        if (promotions.length === 0) {
+            list.innerHTML = '<div class="text-center py-5"><i class="bi bi-calendar2-x text-muted fs-1"></i><p class="text-muted small mt-2">No active promotions</p></div>';
+            return;
+        }
+
+        list.innerHTML = promotions.map(promo => `
+            <div class="bg-light p-3 rounded-4 border mb-2 d-flex align-items-center">
+                <img src="${promo.bannerImageBase64 || '/images/placeholder.png'}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                <div class="flex-grow-1">
+                    <div class="fw-bold small">${escapeHtml(promo.name)} (-${promo.discountPercent}%)</div>
+                    <div class="tiny text-muted">Start: ${new Date(promo.startDate).toLocaleDateString()}</div>
+                </div>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-white border rounded-pill edit-promo-btn" data-promo-id="${promo.id}">Edit</button>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill delete-promo-btn" data-promo-id="${promo.id}">End</button>
+                </div>
             </div>
-            <div class="d-flex gap-1">
-                <button class="btn btn-sm btn-white border rounded-pill edit-promo-btn" data-promo-id="${promo.id}">Edit</button>
-                <button class="btn btn-sm btn-outline-danger rounded-pill delete-promo-btn" data-promo-id="${promo.id}">End</button>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    } catch (error) {
+        console.error('Error loading promotions:', error);
+        showToast('Error loading promotions', true);
+    }
 }
 
-/**
- * --- HELPERS ---
- */
-function showFinanceToast(msg, isError = false) {
+// HELPER FUNCTIONS - Updated to match challengeDetails.js style
+function showToast(message, isError = false) {
+    const toastMsg = document.getElementById('toastMsg');
+    const toastIcon = document.getElementById('toastIcon');
     const toastEl = document.getElementById('financeToast');
-    if (!toastEl) return;
-    document.getElementById('financeToastMessage').innerText = msg;
-    document.getElementById('financeToastIcon').innerHTML = isError ? '⚠️' : '✅';
-    bootstrap.Toast.getOrCreateInstance(toastEl).show();
+    
+    if (!toastMsg || !toastEl) {
+        console.log('Toast element not found:', message);
+        if (isError) alert('Error: ' + message);
+        return;
+    }
+    
+    toastMsg.innerText = message;
+    toastIcon.className = isError ? 'bi bi-exclamation-triangle-fill text-danger fs-5' : 'bi bi-check-circle-fill text-success fs-5';
+    
+    // Change toast background based on error/success
+    if (isError) {
+        toastEl.classList.add('bg-danger', 'text-white');
+        setTimeout(() => {
+            toastEl.classList.remove('bg-danger', 'text-white');
+        }, 3000);
+    } else {
+        toastEl.classList.add('bg-success', 'text-white');
+        setTimeout(() => {
+            toastEl.classList.remove('bg-success', 'text-white');
+        }, 3000);
+    }
+    
+    try {
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+    } catch (err) {
+        console.error('Error showing toast:', err);
+    }
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
-    div.textContent = text || "";
+    div.textContent = text;
     return div.innerHTML;
 }
 
@@ -264,5 +569,6 @@ function resetPromoForm() {
     currentEditingPromoId = null;
     imageBase64Data = null;
     document.getElementById('adminDiscountForm').reset();
-    document.getElementById('promoPreview').classList.add('d-none');
+    const preview = document.getElementById('promoPreview');
+    if (preview) preview.classList.add('d-none');
 }

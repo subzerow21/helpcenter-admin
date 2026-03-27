@@ -454,23 +454,44 @@ async function viewActivityLog(participantId, athleteName) {
         } else {
             container.innerHTML = '';
             data.activities.forEach(activity => {
+                const activityDate = new Date(activity.activityDate);
+                const formattedDate = activityDate.toLocaleDateString('en-PH', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
                 const activityDiv = document.createElement('div');
                 activityDiv.className = 'list-group-item p-3 border-0 border-bottom text-start';
                 activityDiv.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold small text-dark">${activity.activityType}</span>
-                        <span class="badge bg-light text-dark border">${activity.distanceKm.toFixed(1)} km</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="fw-bold small text-dark">${escapeHtml(activity.activityType)}</span>
+                            ${activity.challengeTitle ? `<span class="badge bg-light text-dark ms-2">${escapeHtml(activity.challengeTitle)}</span>` : ''}
+                        </div>
+                        <span class="badge bg-primary">${activity.distanceKm.toFixed(2)} km</span>
                     </div>
-                    <div class="d-flex justify-content-between small text-muted">
-                        <span>${formatDateTime(activity.activityDate)}</span>
-                        <span>${activity.durationFormatted}</span>
-                        <span class="${activity.isVerified ? 'text-success' : 'text-warning'}">
+                    <div class="d-flex justify-content-between small text-muted mb-2">
+                        <span><i class="bi bi-calendar me-1"></i>${formattedDate}</span>
+                        <span><i class="bi bi-stopwatch me-1"></i>${activity.durationFormatted || formatTime(activity.durationSeconds)}</span>
+                        <span><i class="bi bi-speedometer2 me-1"></i>${activity.averagePace.toFixed(2)} min/km</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="${activity.isVerified ? 'text-success' : 'text-warning'} small">
                             <i class="bi ${activity.isVerified ? 'bi-check-circle-fill' : 'bi-clock-history'} me-1"></i>
-                            ${activity.isVerified ? 'Verified' : 'Pending'}
+                            ${activity.isVerified ? `Verified${activity.verifiedByName ? ' by ' + escapeHtml(activity.verifiedByName) : ''}` : 'Pending Verification'}
                         </span>
+                        ${!activity.isVerified ? `<button class="btn btn-sm btn-outline-success rounded-pill" onclick="verifyActivity(${activity.activityId})">Verify Activity</button>` : ''}
                     </div>
-                    ${activity.notes ? `<div class="small text-muted mt-1">${escapeHtml(activity.notes)}</div>` : ''}
-                    ${!activity.isVerified ? `<button class="btn btn-sm btn-outline-success rounded-pill mt-2" onclick="verifyActivity(${activity.activityId})">Verify Activity</button>` : ''}
+                    ${activity.notes ? `<div class="small text-muted mt-2 border-top pt-2"><i class="bi bi-chat me-1"></i>${escapeHtml(activity.notes)}</div>` : ''}
+                    ${activity.imageProofBase64 ? `
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-link p-0 text-primary" onclick="viewActivityProof('${activity.imageProofBase64}')">
+                                <i class="bi bi-image"></i> View Proof Image
+                            </button>
+                        </div>
+                    ` : ''}
                 `;
                 container.appendChild(activityDiv);
             });
@@ -482,6 +503,16 @@ async function viewActivityLog(participantId, athleteName) {
         console.error('Error loading activities:', error);
         showToast('Error loading activities', true);
     }
+}
+
+// Add this function to view the proof image
+function viewActivityProof(base64Image) {
+    const modal = new bootstrap.Modal(document.getElementById('imageProofModal'));
+    const imgElement = document.getElementById('proofImage');
+    if (imgElement) {
+        imgElement.src = `data:image/jpeg;base64,${base64Image}`;
+    }
+    modal.show();
 }
 
 async function verifyActivity(activityId) {

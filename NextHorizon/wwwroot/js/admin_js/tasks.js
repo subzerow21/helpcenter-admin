@@ -8,11 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadChallengeStatistics();
     loadAllChallenges();
     loadLeaderboard();
+    loadChallengeFilters();
 
     // Search functionality
     const searchInput = document.getElementById('leaderboardSearch');
     if (searchInput) {
-        searchInput.addEventListener('keyup', filterLeaderboard);
+        searchInput.addEventListener('keyup', filterLeaderboardBySearch);
     }
 });
 
@@ -45,6 +46,11 @@ async function loadAllChallenges() {
     
     try {
         const response = await fetch('/Admin/GetAllChallenges');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const challenges = await response.json();
         
         if (!Array.isArray(challenges) || challenges.length === 0) {
@@ -57,15 +63,19 @@ async function loadAllChallenges() {
             const statusClass = challenge.status === 'Live' ? 'bg-success' : 
                                (challenge.status === 'Upcoming' ? 'bg-warning' : 'bg-secondary');
             
+            // Handle null/undefined bannerBase64
+            const bannerImage = challenge.bannerBase64 && challenge.bannerBase64 !== 'null' ? 
+                               challenge.bannerBase64 : '/images/challenge-placeholder.jpg';
+            
             const card = document.createElement('div');
             card.className = 'col-md-6 col-lg-4';
             card.innerHTML = `
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100 challenge-card-hover"
                      onclick="window.location.href='/Admin/ChallengeDetails/${challenge.challengeId}'" style="cursor:pointer;">
                     <div class="position-relative">
-                        <img src="${challenge.bannerBase64 || '/images/challenge-placeholder.jpg'}" 
+                        <img src="${bannerImage}" 
                              class="card-img-top" style="height: 150px; object-fit: cover;" 
-                             onerror="this.src='/images/placeholder.png'">
+                             onerror="this.src='/images/challenge-placeholder.jpg'">
                         <span class="position-absolute top-0 end-0 m-2 badge ${statusClass} shadow-sm">${challenge.status}</span>
                     </div>
                     <div class="p-3">
@@ -85,78 +95,133 @@ async function loadAllChallenges() {
         });
     } catch (error) {
         console.error('Error loading challenges:', error);
-        container.innerHTML = '<div class="col-12 text-center py-5">Error loading challenges</div>';
+        container.innerHTML = '<div class="col-12 text-center py-5 text-danger">Error loading challenges</div>';
+        showToast('Error loading challenges: ' + error.message, true);
     }
 }
 
-// Load leaderboard
+// Global variables
+let currentLeaderboardData = [];
+let selectedChallengeId = null;
+
+// Load leaderboard (global or filtered by challenge)
 async function loadLeaderboard() {
     const leaderboardBody = document.getElementById('leaderboardBody');
     if (!leaderboardBody) return;
     
     try {
-        const response = await fetch('/Admin/GetAllChallenges?status=Live');
-        const challenges = await response.json();
-        
-        if (!Array.isArray(challenges) || challenges.length === 0) {
-            leaderboardBody.innerHTML = '\\n                <td colspan="7" class="text-center py-4">No active challenges\\n            ';
-            return;
+        let url = '/Admin/GetGlobalLeaderboard';
+        if (selectedChallengeId && selectedChallengeId !== 'all') {
+            url += `?challengeId=${selectedChallengeId}`;
         }
         
-        const liveChallenge = challenges.find(c => c.status === 'Live');
-        if (!liveChallenge) {
-            leaderboardBody.innerHTML = '\\n                <td colspan="7" class="text-center py-4">No active challenges\\n            ';
-            return;
+        console.log('Fetching leaderboard from:', url);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const detailsResponse = await fetch(`/Admin/GetChallengeDetails?id=${liveChallenge.challengeId}`);
-        const data = await detailsResponse.json();
+        const data = await response.json();
         
-        if (!data.success || !data.leaderboard || data.leaderboard.length === 0) {
-            leaderboardBody.innerHTML = '\\n                <td colspan="7" class="text-center py-4">No participants yet          ';
+        // Check for error response
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        currentLeaderboardData = data;
+        
+        if (!Array.isArray(data) || data.length === 0) {
+            leaderboardBody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No participants yet</td></tr>';
             return;
         }
         
         leaderboardBody.innerHTML = '';
         
-        data.leaderboard.forEach(participant => {
+        data.forEach(participant => {
             const progressPercent = participant.progressPercent || 0;
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="fw-bold">#${participant.rank}\\n                <td class="text-start ps-4">
-                    <div class="d-flex align-items-center gap-2" style="cursor:pointer" onclick="openUserView('${escapeHtml(participant.athleteName)}', ${participant.rank}, ${participant.totalDistanceKm}, ${participant.totalActivities}, '${participant.totalTimeFormatted || formatTime(participant.totalTimeSeconds)}', '${participant.avatarUrl}')">
+                <td class="fw-bold">#${participant.globalRank}</td>
+                <td class="text-start ps-4">
+                    <div class="d-flex align-items-center gap-2" style="cursor:pointer" onclick="openUserView('${escapeHtml(participant.athleteName)}', ${participant.globalRank}, ${participant.totalDistanceKm}, ${participant.totalActivities}, '${participant.totalTimeFormatted}', '${participant.avatarUrl}')">
                         <img src="${participant.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(participant.athleteName)}" class="rounded-circle border" width="30" height="30" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(participant.athleteName)}'">
                         <span class="fw-bold text-dark">${escapeHtml(participant.athleteName)}</span>
                     </div>
-                \\n                <td><span class="badge rounded-pill bg-light text-dark border">${escapeHtml(liveChallenge.activityType)}</span>\\n                <td><strong>${participant.totalDistanceKm.toFixed(1)} km</strong><br><small class="text-muted">/ ${liveChallenge.goalKm} km</small>\\n                <td>${participant.totalActivities}\\n                <td class="fw-bold">${formatTime(participant.totalTimeSeconds)}\\n                <td style="width: 120px;">
+                </td>
+                <td class="text-start">
+                    <div>
+                        <span class="fw-bold small d-block">${escapeHtml(participant.challengeTitle)}</span>
+                        <span class="badge bg-light text-dark border">${escapeHtml(participant.activityType)}</span>
+                    </div>
+                </td>
+                <td><strong>${participant.totalDistanceKm.toFixed(1)} km</strong><br><small class="text-muted">/ ${participant.challengeGoalKm} km</small></td>
+                <td>${participant.totalActivities}</td>
+                <td class="fw-bold">${participant.totalTimeFormatted}</td>
+                <td style="width: 120px;">
                     <div class="progress" style="height: 6px;">
                         <div class="progress-bar bg-success" style="width: ${progressPercent}%"></div>
                     </div>
-                    <small class="text-muted">${progressPercent}%</small>
-                \\n            `;
+                    <small class="text-muted">${progressPercent.toFixed(1)}%</small>
+                </td>
+            `;
             leaderboardBody.appendChild(row);
         });
+        
     } catch (error) {
         console.error('Error loading leaderboard:', error);
-        leaderboardBody.innerHTML = '\\n                <td colspan="7" class="text-center py-4">Error loading leaderboard\\n            ';
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (leaderboardBody) {
+            leaderboardBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error loading leaderboard: ' + error.message + '</td></tr>';
+        }
+        showToast('Error loading leaderboard: ' + error.message, true);
     }
 }
 
-// Filter leaderboard
-function filterLeaderboard() {
+// Load challenges for filter dropdown
+async function loadChallengeFilters() {
+    try {
+        const response = await fetch('/Admin/GetActiveChallenges');
+        const challenges = await response.json();
+        
+        const filterSelect = document.getElementById('challengeFilter');
+        if (!filterSelect) return;
+        
+        // Clear existing options except the "All Challenges" option
+        while (filterSelect.options.length > 1) {
+            filterSelect.remove(1);
+        }
+        
+        // Add challenges to dropdown
+        challenges.forEach(challenge => {
+            const option = document.createElement('option');
+            option.value = challenge.challengeId;
+            option.textContent = `${challenge.title} (${challenge.activityType})`;
+            filterSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading challenge filters:', error);
+    }
+}
+
+// Filter leaderboard by challenge
+function filterLeaderboardByChallenge() {
+    const filterSelect = document.getElementById('challengeFilter');
+    if (filterSelect) {
+        selectedChallengeId = filterSelect.value;
+        loadLeaderboard();
+    }
+}
+
+// Filter leaderboard by search term (for athlete name)
+function filterLeaderboardBySearch() {
     const searchTerm = document.getElementById('leaderboardSearch')?.value.toLowerCase() || '';
-    const category = document.getElementById('categoryFilter')?.value || 'All';
-    const rows = document.querySelectorAll('#leaderboardTable tbody tr');
+    const rows = document.querySelectorAll('#leaderboardBody tr');
     
     rows.forEach(row => {
-        const name = row.querySelector('td:nth-child(2) .fw-bold')?.innerText.toLowerCase() || '';
-        const categoryText = row.querySelector('td:nth-child(3) .badge')?.innerText || '';
-        
-        let show = true;
-        if (searchTerm && !name.includes(searchTerm)) show = false;
-        if (category !== 'All' && categoryText !== category) show = false;
-        
-        row.style.display = show ? '' : 'none';
+        const athleteName = row.querySelector('td:nth-child(2) .fw-bold')?.innerText.toLowerCase() || '';
+        row.style.display = athleteName.includes(searchTerm) ? '' : 'none';
     });
 }
 
