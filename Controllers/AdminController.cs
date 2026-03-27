@@ -7,6 +7,7 @@ using NextHorizon.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Data.SqlClient;
 
 namespace NextHorizon.Controllers
 {
@@ -91,10 +92,6 @@ namespace NextHorizon.Controllers
             return View("FinanceRequest", viewModel);
         }
 
-        // ════════════════════════════════════════════════════════
-        //  HELP CENTER
-        // ════════════════════════════════════════════════════════
-
         public IActionResult HelpCenter()
         {
             var faqs = _context.FAQs
@@ -151,37 +148,31 @@ namespace NextHorizon.Controllers
             return View(viewModel);
         }
 
-        // ── QUEUE ENDPOINTS ──────────────────────────────────────
-
         [HttpPost]
         public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
         {
-            if (model == null || model.SessionId <= 0)
-                return BadRequest(new { success = false });
+            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
             return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName });
         }
 
         [HttpPost]
         public IActionResult QueueSend([FromBody] QueueSendRequest model)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.Message))
-                return BadRequest(new { success = false });
+            if (model == null || string.IsNullOrWhiteSpace(model.Message)) return BadRequest(new { success = false });
             return Json(new { success = true, message = model.Message, isNote = model.IsNote, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
         [HttpPost]
         public IActionResult QueueEndSession([FromBody] QueueSessionActionRequest model)
         {
-            if (model == null || model.SessionId <= 0)
-                return BadRequest(new { success = false });
+            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
         [HttpPost]
         public IActionResult QueueResolve([FromBody] QueueSessionActionRequest model)
         {
-            if (model == null || model.SessionId <= 0)
-                return BadRequest(new { success = false });
+            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
@@ -191,30 +182,32 @@ namespace NextHorizon.Controllers
             return Json(new { success = true });
         }
 
-        // ── FAQ ENDPOINTS ─────────────────────────────────────────
-
         [HttpPost]
         public IActionResult FaqAdd([FromBody] AddFaqRequest model)
         {
             if (model == null || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Question and answer are required." });
 
-            var faq = new Faq
-            {
-                Question = model.Question,
-                Answer = model.Answer,
-                Category = model.Category,
-                UserType = model.UserType,
-                Status = "Active",
-                user_id = 1,
-                DateAdded = DateTime.Now
-                // LastUpdated omitted — let DB DEFAULT handle it
-            };
+            var sql = @"
+                INSERT INTO FAQs (Question, Answer, Category, UserType, Status, user_id, DateAdded, LastUpdated)
+                VALUES (@Question, @Answer, @Category, @UserType, 'Active', @UserId, @DateAdded, GETDATE());
+                SELECT SCOPE_IDENTITY();";
 
-            _context.FAQs.Add(faq);
-            _context.SaveChanges();
+            _context.Database.ExecuteSqlRaw(sql,
+                new SqlParameter("@Question", model.Question),
+                new SqlParameter("@Answer", model.Answer),
+                new SqlParameter("@Category", model.Category ?? ""),
+                new SqlParameter("@UserType", model.UserType ?? "Consumer"),
+                new SqlParameter("@UserId", 1),
+                new SqlParameter("@DateAdded", DateTime.Now));
 
-            return Json(new { success = true, id = faq.FaqID, message = "FAQ added successfully." });
+            var newId = _context.FAQs
+                .Where(f => f.Question == model.Question && f.Status == "Active")
+                .OrderByDescending(f => f.DateAdded)
+                .Select(f => f.FaqID)
+                .FirstOrDefault();
+
+            return Json(new { success = true, id = newId, message = "FAQ added successfully." });
         }
 
         [HttpPost]
@@ -223,18 +216,24 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0 || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Invalid request." });
 
-            var faq = _context.FAQs.Find(model.Id);
-            if (faq == null)
-                return NotFound(new { success = false, message = "FAQ not found." });
+            var faqExists = _context.FAQs.Any(f => f.FaqID == model.Id);
+            if (!faqExists) return NotFound(new { success = false, message = "FAQ not found." });
 
-            faq.Question = model.Question;
-            faq.Answer = model.Answer;
-            faq.Category = model.Category;
-            faq.UserType = model.UserType;
-            // LastUpdated omitted — let DB DEFAULT handle it
+            var sql = @"
+                UPDATE FAQs
+                SET Question = @Question, Answer = @Answer, Category = @Category, UserType = @UserType, LastUpdated = GETDATE()
+                WHERE FaqID = @FaqId";
 
-            _context.SaveChanges();
-            return Json(new { success = true, id = model.Id, message = "FAQ updated." });
+            var rows = _context.Database.ExecuteSqlRaw(sql,
+                new SqlParameter("@Question", model.Question),
+                new SqlParameter("@Answer", model.Answer),
+                new SqlParameter("@Category", model.Category ?? ""),
+                new SqlParameter("@UserType", model.UserType ?? "Consumer"),
+                new SqlParameter("@FaqId", model.Id));
+
+            return rows > 0
+                ? Json(new { success = true, id = model.Id, message = "FAQ updated." })
+                : Json(new { success = false, message = "Failed to update FAQ." });
         }
 
         [HttpPost]
@@ -243,15 +242,17 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0)
                 return BadRequest(new { success = false });
 
-            var faq = _context.FAQs.Find(model.Id);
-            if (faq == null)
-                return NotFound(new { success = false, message = "FAQ not found." });
+            var faqExists = _context.FAQs.Any(f => f.FaqID == model.Id);
+            if (!faqExists) return NotFound(new { success = false, message = "FAQ not found." });
 
-            faq.Status = "deleted";
-            // LastUpdated omitted — let DB DEFAULT handle it
+            var sql = "UPDATE FAQs SET Status = 'Inactive', LastUpdated = GETDATE() WHERE FaqID = @FaqId";
 
-            _context.SaveChanges();
-            return Json(new { success = true, id = model.Id, message = "FAQ deleted." });
+            var rows = _context.Database.ExecuteSqlRaw(sql,
+                new SqlParameter("@FaqId", model.Id));
+
+            return rows > 0
+                ? Json(new { success = true, id = model.Id, message = "FAQ set to inactive." })
+                : Json(new { success = false, message = "Failed to deactivate FAQ." });
         }
 
         [HttpPost]
@@ -261,15 +262,13 @@ namespace NextHorizon.Controllers
                 return BadRequest(new { success = false, message = "Category name required." });
 
             var name = model.Name.Trim();
-
             var exists = _context.FAQs.Any(f =>
                 (f.Status == "active" || f.Status == "Active") &&
                 f.Category.ToLower() == name.ToLower());
 
-            if (exists)
-                return Json(new { success = false, message = "Category already exists." });
-
-            return Json(new { success = true, name = name, message = "Category ready to use." });
+            return exists
+                ? Json(new { success = false, message = "Category already exists." })
+                : Json(new { success = true, name = name, message = "Category ready to use." });
         }
 
         [HttpPost]
@@ -280,14 +279,13 @@ namespace NextHorizon.Controllers
 
             var name = model.Name.Trim();
 
-            var hasFaqs = _context.FAQs.Any(f =>
-                (f.Status == "active" || f.Status == "Active") &&
-                f.Category == name);
+            // Set all FAQs in this category to Inactive
+            var sql = "UPDATE FAQs SET Status = 'Inactive', LastUpdated = GETDATE() WHERE Category = @Category AND (Status = 'active' OR Status = 'Active')";
 
-            if (hasFaqs)
-                return Json(new { success = false, message = "Cannot delete — category has active FAQs. Remove them first." });
+            var rows = _context.Database.ExecuteSqlRaw(sql,
+                new SqlParameter("@Category", name));
 
-            return Json(new { success = true, name = name, message = "Category deleted." });
+            return Json(new { success = true, name = name, deletedCount = rows, message = rows > 0 ? $"{rows} FAQ(s) set to inactive." : "Category removed." });
         }
 
         public IActionResult Logout()
