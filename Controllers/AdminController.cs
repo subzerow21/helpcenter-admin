@@ -97,7 +97,6 @@ namespace NextHorizon.Controllers
 
         public IActionResult HelpCenter()
         {
-            // Load all active FAQs from DB
             var faqs = _context.FAQs
                 .Where(f => f.Status == "active" || f.Status == "Active")
                 .OrderByDescending(f => f.DateAdded)
@@ -111,7 +110,6 @@ namespace NextHorizon.Controllers
                 })
                 .ToList();
 
-            // Get distinct categories from DB (active FAQs only)
             var categories = _context.FAQs
                 .Where(f => f.Status == "active" || f.Status == "Active")
                 .Select(f => f.Category)
@@ -209,8 +207,8 @@ namespace NextHorizon.Controllers
                 UserType = model.UserType,
                 Status = "Active",
                 user_id = 1,
-                DateAdded = DateTime.Now,
-                LastUpdated = DateTime.Now
+                DateAdded = DateTime.Now
+                // LastUpdated omitted — let DB DEFAULT handle it
             };
 
             _context.FAQs.Add(faq);
@@ -233,7 +231,7 @@ namespace NextHorizon.Controllers
             faq.Answer = model.Answer;
             faq.Category = model.Category;
             faq.UserType = model.UserType;
-            faq.LastUpdated = DateTime.Now;
+            // LastUpdated omitted — let DB DEFAULT handle it
 
             _context.SaveChanges();
             return Json(new { success = true, id = model.Id, message = "FAQ updated." });
@@ -249,11 +247,10 @@ namespace NextHorizon.Controllers
             if (faq == null)
                 return NotFound(new { success = false, message = "FAQ not found." });
 
-            // Soft delete — keeps record, just hides it
             faq.Status = "deleted";
-            faq.LastUpdated = DateTime.Now;
-            _context.SaveChanges();
+            // LastUpdated omitted — let DB DEFAULT handle it
 
+            _context.SaveChanges();
             return Json(new { success = true, id = model.Id, message = "FAQ deleted." });
         }
 
@@ -265,7 +262,6 @@ namespace NextHorizon.Controllers
 
             var name = model.Name.Trim();
 
-            // Check if any active FAQ already uses this category name (case-insensitive)
             var exists = _context.FAQs.Any(f =>
                 (f.Status == "active" || f.Status == "Active") &&
                 f.Category.ToLower() == name.ToLower());
@@ -273,7 +269,6 @@ namespace NextHorizon.Controllers
             if (exists)
                 return Json(new { success = false, message = "Category already exists." });
 
-            // Category persists when first FAQ uses it — no separate table needed
             return Json(new { success = true, name = name, message = "Category ready to use." });
         }
 
@@ -285,7 +280,6 @@ namespace NextHorizon.Controllers
 
             var name = model.Name.Trim();
 
-            // Check if any active FAQ still uses this category
             var hasFaqs = _context.FAQs.Any(f =>
                 (f.Status == "active" || f.Status == "Active") &&
                 f.Category == name);
@@ -293,7 +287,6 @@ namespace NextHorizon.Controllers
             if (hasFaqs)
                 return Json(new { success = false, message = "Cannot delete — category has active FAQs. Remove them first." });
 
-            // No FAQs use this category — safe to remove from UI
             return Json(new { success = true, name = name, message = "Category deleted." });
         }
 

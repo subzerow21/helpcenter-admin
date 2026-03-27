@@ -1265,6 +1265,7 @@
     </div>
 </div>
 
+@Html.AntiForgeryToken()
 <div class="nh-toast" id="nhToast"></div>
 
 @section Scripts {
@@ -1274,350 +1275,375 @@
         var FAQS       = @Html.Raw(faqsJson);
         var CATEGORIES = @Html.Raw(categoriesJson);
 
-        var selCat   = CATEGORIES.length ? CATEGORIES[0] : 'General';
+        var selCat          = CATEGORIES.length ? CATEGORIES[0] : 'General';
         var faqFilterActive = 'all';
-                var userTypeFilter  = 'all';
-        var faqSearch = '';
-        var nextId    = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
+        var faqSearch       = '';
+        var nextId          = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
 
-        function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-        function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-        function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        function slaClass(s){ return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
-        function slaPct(s)  { return Math.min(100,Math.round(s/360*100)); }
-        function getUserType(){ return document.querySelector('input[name="userType"]:checked').value; }
+        /* ── Antiforgery token — sent with every POST so ASP.NET accepts it ── */
+        var __af = document.querySelector('input[name="__RequestVerificationToken"]');
+        var AF_TOKEN = __af ? __af.value : '';
 
-        function showToast(msg){
-            var t=document.getElementById('nhToast');
-            t.textContent=msg; t.classList.add('show');
+        function postJson(url, data) {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': AF_TOKEN
+                },
+                body: JSON.stringify(data)
+            }).then(function(r) { return r.json(); });
+        }
+
+        function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+        function titleCase(str) {
+            if (!str) return str;
+            return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        }
+
+        function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function slaClass(s) { return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
+        function slaPct(s)   { return Math.min(100,Math.round(s/360*100)); }
+        function getUserType() { return document.querySelector('input[name="userType"]:checked').value; }
+
+        function showToast(msg) {
+            var t = document.getElementById('nhToast');
+            t.textContent = msg; t.classList.add('show');
             setTimeout(function(){ t.classList.remove('show'); }, 2400);
         }
 
-        /* ── CATEGORY CHIPS ── */
-        function renderCatChips(){
-            var wrap=document.getElementById('catChips');
-            wrap.innerHTML='';
-            CATEGORIES.forEach(function(c){
-                var d=document.createElement('div');
-                d.className='cat-chip'+(c===selCat?' on':'');
-                d.onclick=function(){ selCat=c; renderCatChips(); };
-                d.innerHTML=escH(c)
-                    +'<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\''+escH(c)+'\')">'
-                    +'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        function renderCatChips() {
+            var wrap = document.getElementById('catChips');
+            wrap.innerHTML = '';
+            CATEGORIES.forEach(function(c) {
+                var d = document.createElement('div');
+                d.className = 'cat-chip' + (c === selCat ? ' on' : '');
+                d.onclick = function() { selCat = c; renderCatChips(); };
+                d.innerHTML = escH(titleCase(c))
+                    + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\'' + escH(c) + '\')">'
+                    + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
                 wrap.appendChild(d);
             });
             renderFaqFilterBar();
         }
 
-        function addCategory(){
-            var inp=document.getElementById('newCatInp');
-            var v=inp.value.trim();
-            if(!v){ showToast('Enter a category name.'); return; }
-            if(CATEGORIES.find(function(c){ return c.toLowerCase()===v.toLowerCase(); })){
+        function addCategory() {
+            var inp = document.getElementById('newCatInp');
+            var v = inp.value.trim();
+            if (!v) { showToast('Enter a category name.'); return; }
+            var vTitle = titleCase(v);
+            if (CATEGORIES.find(function(c){ return c.toLowerCase() === vTitle.toLowerCase(); })) {
                 showToast('Category already exists.'); return;
             }
-            fetch('/Admin/FaqCategoryAdd',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ name: v })
+            postJson('/Admin/FaqCategoryAdd', { name: vTitle })
+            .then(function(data) {
+                if (data.success) {
+                    CATEGORIES.push(vTitle);
+                    selCat = vTitle;
+                    inp.value = '';
+                    renderCatChips();
+                    showToast('"' + vTitle + '" category added!');
+                } else {
+                    showToast('Failed to add category.');
+                }
             })
-            .catch(function(){ return { success: true }; })
-            .then(function(){
-                CATEGORIES.push(v);
-                selCat = v;
-                inp.value = '';
-                renderCatChips();
-                showToast('"'+v+'" category added!');
-            });
+            .catch(function() { showToast('Could not reach server.'); });
         }
 
-        function deleteCategory(cat){
-            if(FAQS.find(function(f){ return f.cat===cat; })){
-                showToast('Cannot delete "'+cat+'" — remove its FAQs first.'); return;
-            }
+        function deleteCategory(cat) {
+            var faqsInCat = FAQS.filter(function(f){ return f.cat === cat; });
+            var warnMsg   = faqsInCat.length > 0
+                ? 'This will also delete ' + faqsInCat.length + ' FAQ(s) under "' + titleCase(cat) + '".'
+                : 'Category "' + titleCase(cat) + '" will be permanently removed.';
+
             showModal(
-                'Delete Category "'+cat+'"?',
-                'This category will be permanently removed.',
-                function(){
-                    fetch('/Admin/FaqCategoryDelete',{
-                        method:'POST',
-                        headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({ name: cat })
-                    })
-                    .then(function(r){ return r.json(); })
-                    .then(function(data){
-                        if(data.success){
-                            CATEGORIES = CATEGORIES.filter(function(c){ return c!==cat; });
-                            if(selCat===cat) selCat = CATEGORIES[0]||'';
+                'Delete Category "' + titleCase(cat) + '"?',
+                warnMsg,
+                function() {
+                    postJson('/Admin/FaqCategoryDelete', { name: cat })
+                    .then(function(data) {
+                        if (data.success) {
+                            FAQS = FAQS.filter(function(f){ return f.cat !== cat; });
+                            CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
+                            if (selCat === cat) selCat = CATEGORIES[0] || '';
+                            updateFaqCounts();
                             renderCatChips();
-                            showToast('"'+cat+'" category deleted.');
+                            renderFaqs();
+                            var msg = data.deletedCount > 0
+                                ? '"' + titleCase(cat) + '" and ' + data.deletedCount + ' FAQ(s) deleted.'
+                                : '"' + titleCase(cat) + '" deleted.';
+                            showToast(msg);
                         } else {
-                            showToast(data.message||'Cannot delete this category.');
+                            showToast('Delete failed — please try again.');
                         }
                     })
-                    .catch(function(){
-                        showToast('Network error — please check your connection.');
-                    });
+                    .catch(function() { showToast('Could not reach server.'); });
                 }
             );
         }
 
-        /* ── FAQ FILTER BAR ── */
-        function renderFaqFilterBar(){
-            var bar=document.getElementById('faqFilterBar');
-            bar.innerHTML='';
-            var allBtn=document.createElement('button');
-            allBtn.className='ff'+(faqFilterActive==='all'?' on':'');
-            allBtn.textContent='All';
-            allBtn.onclick=function(){ faqFilterActive='all'; renderFaqFilterBar(); renderFaqs(); };
+        function renderFaqFilterBar() {
+            var bar = document.getElementById('faqFilterBar');
+            bar.innerHTML = '';
+            var allBtn = document.createElement('button');
+            allBtn.className = 'ff' + (faqFilterActive === 'all' ? ' on' : '');
+            allBtn.textContent = 'All';
+            allBtn.onclick = function() { faqFilterActive = 'all'; renderFaqFilterBar(); renderFaqs(); };
             bar.appendChild(allBtn);
-            CATEGORIES.forEach(function(c){
-                var b=document.createElement('button');
-                b.className='ff'+(faqFilterActive===c?' on':'');
-                b.textContent=c;
-                b.onclick=function(){ faqFilterActive=c; renderFaqFilterBar(); renderFaqs(); };
+            CATEGORIES.forEach(function(c) {
+                var b = document.createElement('button');
+                b.className = 'ff' + (faqFilterActive === c ? ' on' : '');
+                b.textContent = titleCase(c);
+                b.onclick = function() { faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
                 bar.appendChild(b);
             });
         }
 
-        /* ── ADD FAQ ── */
-        function addFaq(){
-            var q  = document.getElementById('faqQ').value.trim();
-            var a  = document.getElementById('faqA').value.trim();
-            var ut = getUserType();
-            if(!q||!a){ showToast('Please fill in both question and answer.'); return; }
-            if(!selCat){ showToast('Please select a category.'); return; }
+        function addFaq() {
+            var qRaw = document.getElementById('faqQ').value.trim();
+            var a    = document.getElementById('faqA').value.trim();
+            var ut   = getUserType();
+            var q    = titleCase(qRaw);
+            if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
+            if (!selCat)  { showToast('Please select a category.'); return; }
 
-            fetch('/Admin/FaqAdd',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ question:q, answer:a, category:selCat, userType:ut })
+            postJson('/Admin/FaqAdd', { question: q, answer: a, category: selCat, userType: ut })
+            .then(function(data) {
+                if (data.success) {
+                    FAQS.push({ id: data.id || nextId++, q: q, a: a, cat: selCat, userType: ut });
+                    document.getElementById('faqQ').value = '';
+                    document.getElementById('faqA').value = '';
+                    updateFaqCounts(); renderFaqs();
+                    showToast('FAQ added successfully!');
+                } else {
+                    showToast(data.message || 'Failed to add FAQ.');
+                }
             })
-            .then(function(r){ return r.json(); })
-            .catch(function(){ return { success:true, id:nextId }; })
-            .then(function(data){
-                FAQS.push({ id:data.id||nextId++, q:q, a:a, cat:selCat, userType:ut });
-                document.getElementById('faqQ').value='';
-                document.getElementById('faqA').value='';
-                updateFaqCounts(); renderFaqs();
-                showToast('FAQ added successfully!');
-            });
+            .catch(function() { showToast('Could not reach server.'); });
         }
 
-        function deleteFaq(id){
-            var f = FAQS.find(function(x){ return x.id===id; });
-            if(!f) return;
+        function deleteFaq(id) {
+            var f = FAQS.find(function(x){ return x.id === id; });
+            if (!f) return;
             showModal(
                 'Delete FAQ?',
-                'You are about to permanently delete: "'+escH(f.q)+'"',
-                function(){
-                    fetch('/Admin/FaqDelete',{
-                        method:'POST',
-                        headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({ id: id })
-                    })
-                    .then(function(r){ return r.json(); })
-                    .then(function(data){
-                        if(data.success){
-                            FAQS = FAQS.filter(function(x){ return x.id!==id; });
+                'You are about to permanently delete: "' + escH(f.q) + '"',
+                function() {
+                    postJson('/Admin/FaqDelete', { id: id })
+                    .then(function(data) {
+                        if (data.success) {
+                            FAQS = FAQS.filter(function(x){ return x.id !== id; });
                             updateFaqCounts(); renderFaqs();
-                            showToast('FAQ deleted permanently.');
+                            showToast('FAQ deleted.');
                         } else {
-                            showToast('Delete failed: '+(data.message||'please try again.'));
+                            showToast(data.message || 'Delete failed — please try again.');
                         }
                     })
-                    .catch(function(){
-                        showToast('Network error — please check your connection.');
-                    });
+                    .catch(function() { showToast('Could not reach server.'); });
                 }
             );
         }
 
-        function editFaq(id){
-            var f=FAQS.find(function(x){ return x.id===id; });
-            if(!f) return;
-            var item=document.getElementById('faq-'+id);
+        function editFaq(id) {
+            var f = FAQS.find(function(x){ return x.id === id; });
+            if (!f) return;
+            var item = document.getElementById('faq-' + id);
             item.classList.add('editing');
-            var catOpts=CATEGORIES.map(function(c){
-                return '<option value="'+escH(c)+'"'+(c===f.cat?' selected':'')+'>'+escH(c)+'</option>';
+            var catOpts = CATEGORIES.map(function(c) {
+                return '<option value="' + escH(c) + '"' + (c === f.cat ? ' selected' : '') + '>' + escH(titleCase(c)) + '</option>';
             }).join('');
-            item.innerHTML=
+            item.innerHTML =
                 '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
-                +'<select class="edit-inp" id="ec-'+id+'">'+catOpts+'</select></div>'
-                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
-                +'<input class="edit-inp" id="eq-'+id+'" type="text" value="'+escH(f.q)+'"/></div>'
-                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
-                +'<textarea class="edit-inp" id="ea-'+id+'">'+escH(f.a)+'</textarea></div>'
-                +'<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
-                +'<div style="display:flex;gap:16px;">'
-                    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        +'<input type="radio" name="eut-'+id+'" value="Consumer"'+(f.userType==='Consumer'?' checked':'')+' style="accent-color:#1a1a1a;"/> Consumer'
-                    +'</label>'
-                    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        +'<input type="radio" name="eut-'+id+'" value="Seller"'+(f.userType==='Seller'?' checked':'')+' style="accent-color:#1a1a1a;"/> Seller'
-                    +'</label>'
-                +'</div></div>'
-                +'<div class="edit-foot">'
-                    +'<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit('+id+')">Save</button>'
-                    +'<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
-                +'</div>';
+                + '<select class="edit-inp" id="ec-' + id + '">' + catOpts + '</select></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
+                + '<input class="edit-inp" id="eq-' + id + '" type="text" value="' + escH(f.q) + '" style="text-transform:capitalize;"/></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
+                + '<textarea class="edit-inp" id="ea-' + id + '">' + escH(f.a) + '</textarea></div>'
+                + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
+                + '<div style="display:flex;gap:16px;">'
+                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType === 'Consumer' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Consumer'
+                    + '</label>'
+                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType === 'Seller' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Seller'
+                    + '</label>'
+                + '</div></div>'
+                + '<div class="edit-foot">'
+                    + '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit(' + id + ')">Save</button>'
+                    + '<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
+                + '</div>';
         }
 
-        function saveEdit(id){
-            var q  = document.getElementById('eq-'+id).value.trim();
-            var a  = document.getElementById('ea-'+id).value.trim();
-            var c  = document.getElementById('ec-'+id).value;
-            var ut = document.querySelector('input[name="eut-'+id+'"]:checked').value;
-            if(!q||!a){ showToast('Both fields are required.'); return; }
-            var f=FAQS.find(function(x){ return x.id===id; });
-            f.q=q; f.a=a; f.cat=c; f.userType=ut;
-            fetch('/Admin/FaqUpdate',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ id:id, question:q, answer:a, category:c, userType:ut })
-            }).catch(function(){});
-            renderFaqs();
-            showToast('FAQ updated!');
-        }
+        function saveEdit(id) {
+            var qRaw = document.getElementById('eq-' + id).value.trim();
+            var a    = document.getElementById('ea-' + id).value.trim();
+            var c    = document.getElementById('ec-' + id).value;
+            var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
+            var q    = titleCase(qRaw);
+            if (!q || !a) { showToast('Both fields are required.'); return; }
 
-        function filterFaqs(v){ faqSearch=v.toLowerCase(); renderFaqs(); }
-
-                function setUtFilter(el, ut){
-                    document.querySelectorAll('#utFilterBar .ff').forEach(function(b){ b.classList.remove('on'); });
-                    el.classList.add('on');
-                    userTypeFilter=ut;
+            postJson('/Admin/FaqUpdate', { id: id, question: q, answer: a, category: c, userType: ut })
+            .then(function(data) {
+                if (data.success) {
+                    var f = FAQS.find(function(x){ return x.id === id; });
+                    if (f) { f.q = q; f.a = a; f.cat = c; f.userType = ut; }
                     renderFaqs();
+                    showToast('FAQ updated!');
+                } else {
+                    showToast(data.message || 'Update failed — please try again.');
                 }
-
-        function updateFaqCounts(){
-            document.getElementById('statFaqCount').textContent=FAQS.length;
-            document.getElementById('faqListCount').textContent=FAQS.length+' FAQs';
+            })
+            .catch(function() { showToast('Could not reach server.'); });
         }
 
-        function renderFaqs(){
-            var list=document.getElementById('faqList');
-            list.innerHTML='';
-            var filtered=FAQS.filter(function(f){
-                return (faqFilterActive==='all'||f.cat===faqFilterActive)
-                    && (userTypeFilter==='all'||(f.userType||'Consumer')===userTypeFilter)
-                    && (!faqSearch||f.q.toLowerCase().includes(faqSearch)||f.a.toLowerCase().includes(faqSearch));
+        function filterFaqs(v) { faqSearch = v.toLowerCase(); renderFaqs(); }
+
+        function updateFaqCounts() {
+            document.getElementById('statFaqCount').textContent = FAQS.length;
+            document.getElementById('faqListCount').textContent = FAQS.length + ' FAQs';
+        }
+
+        function renderFaqs() {
+            var list = document.getElementById('faqList');
+            list.innerHTML = '';
+            var filtered = FAQS.filter(function(f) {
+                return (faqFilterActive === 'all' || f.cat === faqFilterActive)
+                    && (!faqSearch || f.q.toLowerCase().includes(faqSearch) || f.a.toLowerCase().includes(faqSearch));
             });
-            if(!filtered.length){ list.innerHTML='<div class="faq-empty">No FAQs found.</div>'; return; }
-            filtered.forEach(function(f){
-                var d=document.createElement('div');
-                d.className='faq-item'; d.id='faq-'+f.id;
-                d.innerHTML=
+            if (!filtered.length) { list.innerHTML = '<div class="faq-empty">No FAQs found.</div>'; return; }
+            filtered.forEach(function(f) {
+                var d = document.createElement('div');
+                d.className = 'faq-item'; d.id = 'faq-' + f.id;
+                d.innerHTML =
                     '<div class="faq-item-hd">'
-                        +'<div class="faq-q">'+escH(f.q)+'</div>'
-                        +'<div class="faq-actions">'
-                            +'<button class="faq-act" onclick="editFaq('+f.id+')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                            +'<button class="faq-act del" onclick="deleteFaq('+f.id+')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
-                        +'</div>'
-                    +'</div>'
-                    +'<div class="faq-a">'+escH(f.a)+'</div>'
-                    +'<div class="faq-meta">'
-                        +'<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">'+escH(f.cat)+'</span>'
-                        +'<span class="faq-cat-badge '+(f.userType==='Seller'?'ut-seller':'ut-consumer')+'">'+escH(f.userType||'Consumer')+'</span>'
-                    +'</div>';
+                        + '<div class="faq-q">' + escH(titleCase(f.q)) + '</div>'
+                        + '<div class="faq-actions">'
+                            + '<button class="faq-act" onclick="editFaq(' + f.id + ')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                            + '<button class="faq-act del" onclick="deleteFaq(' + f.id + ')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="faq-a">' + escH(f.a) + '</div>'
+                    + '<div class="faq-meta">'
+                        + '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">' + escH(titleCase(f.cat)) + '</span>'
+                        + '<span class="faq-cat-badge ' + (f.userType === 'Seller' ? 'ut-seller' : 'ut-consumer') + '">' + escH(f.userType || 'Consumer') + '</span>'
+                    + '</div>';
                 list.appendChild(d);
             });
         }
 
         /* ── CONFIRM MODAL ── */
         var _modalCallback = null;
-        function showModal(title, msg, onConfirm){
+        function showModal(title, msg, onConfirm) {
             document.getElementById('nhModalTitle').textContent = title;
             document.getElementById('nhModalMsg').textContent   = msg;
             _modalCallback = onConfirm;
             document.getElementById('nhModalBg').classList.add('show');
         }
-        function closeModal(){
+        function closeModal() {
             document.getElementById('nhModalBg').classList.remove('show');
             _modalCallback = null;
         }
-        document.addEventListener('DOMContentLoaded', function(){
-            document.getElementById('nhModalConfirm').onclick = function(){
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('nhModalConfirm').onclick = function() {
+                var cb = _modalCallback;
                 closeModal();
-                if(_modalCallback) _modalCallback();
+                if (cb) cb();
             };
-            document.getElementById('nhModalBg').addEventListener('click', function(e){
-                if(e.target === this) closeModal();
+            document.getElementById('nhModalBg').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
             });
+
+            /* ── grab the antiforgery token after DOM is ready ── */
+            var afEl = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (afEl) AF_TOKEN = afEl.value;
         });
 
         /* ── QUEUE ── */
-        function autoAssignAll(){
-            SESSIONS.forEach(function(s){
-                if(s.agent==='Unassigned'||!s.agent){
-                    var avail=AGENTS.find(function(a){ return (a.status==='online'||a.status==='busy')&&a.sessions<a.max; });
-                    if(avail){ s.agent=avail.name; s.status='active'; avail.sessions++; }
+        function autoAssignAll() {
+            SESSIONS.forEach(function(s) {
+                if (s.agent === 'Unassigned' || !s.agent) {
+                    var avail = AGENTS.find(function(a){
+                        return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
+                    });
+                    if (avail) { s.agent = avail.name; s.status = 'active'; avail.sessions++; }
                 }
             });
         }
 
-        function renderQueue(){
-            var body=document.getElementById('qBody');
-            body.innerHTML='';
-            var over5=0;
-            SESSIONS.forEach(function(s,i){
-                if(s.waitSec>=300) over5++;
-                var tr=document.createElement('tr');
-                var wc=s.waitSec>=300?'q-wait over5':'q-wait';
-                var sb=s.status==='active'?'b-active':s.status==='idle'?'b-idle':'b-waiting';
-                var sl=s.status==='active'?'Active':s.status==='idle'?'Idle':'Waiting';
-                var pct=slaPct(s.waitSec); var sc=slaClass(s.waitSec);
-                var pc=i===0?'p1':i===1?'p2':i===2?'p3':'';
-                tr.innerHTML=
-                    '<td><div class="q-pos-badge '+pc+'">'+(i+1)+'</div></td>'
-                    +'<td><div class="q-cust"><div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
-                    +'<div><div class="q-name">'+s.name+'</div><div class="q-role">'+s.role+'</div></div></div></td>'
-                    +'<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
-                    +'<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill '+sc+'" style="width:'+pct+'%"></div></div><span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">'+fmt(s.waitSec)+'</span></div></td>'
-                    +'<td><span style="font-size:11px;color:#666;font-weight:500;">'+cap(s.cat)+'</span></td>'
-                    +'<td><span class="badge '+sb+'">'+sl+'</span></td>';
+        function renderQueue() {
+            var body = document.getElementById('qBody');
+            body.innerHTML = '';
+            var over5 = 0;
+            SESSIONS.forEach(function(s, i) {
+                if (s.waitSec >= 300) over5++;
+                var tr  = document.createElement('tr');
+                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
+                var sb  = s.status === 'active' ? 'b-active' : s.status === 'idle' ? 'b-idle' : 'b-waiting';
+                var sl  = s.status === 'active' ? 'Active' : s.status === 'idle' ? 'Idle' : 'Waiting';
+                var pct = slaPct(s.waitSec); var sc = slaClass(s.waitSec);
+                var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+                tr.innerHTML =
+                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
+                    + '<td><div class="q-cust"><div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
+                    + '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
+                    + '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div></div></td>'
+                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
+                    + '<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill ' + sc + '" style="width:' + pct + '%"></div></div>'
+                    + '<span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">' + fmt(s.waitSec) + '</span></div></td>'
+                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
+                    + '<td><span class="badge ' + sb + '">' + sl + '</span></td>';
                 body.appendChild(tr);
             });
-            var w=document.getElementById('waitWarn');
-            w.classList.toggle('show',over5>0);
-            if(over5>0) document.getElementById('warnTxt').textContent=over5+' customer(s) waiting over 5 minutes';
-            var longest=SESSIONS.length?Math.max.apply(null,SESSIONS.map(function(s){return s.waitSec;})):0;
-            document.getElementById('qMeta').textContent=SESSIONS.length+' in queue · longest: '+fmt(longest);
-            document.getElementById('qsInQueue').textContent=SESSIONS.length;
+            var w = document.getElementById('waitWarn');
+            w.classList.toggle('show', over5 > 0);
+            if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
+            var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
+            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
+            document.getElementById('qsInQueue').textContent = SESSIONS.length;
         }
 
         /* ── AGENTS ── */
-        function renderAgents(){
-            var grid=document.getElementById('agentGrid');
-            grid.innerHTML='';
-            for(var slot=0;slot<3;slot++){
-                var col=document.createElement('div'); col.className='agent-col';
-                var hd=document.createElement('div'); hd.className='agent-col-hd';
-                hd.innerHTML='<div class="slot-dot filled"></div>Chat Slot '+(slot+1);
+        function renderAgents() {
+            var grid = document.getElementById('agentGrid');
+            grid.innerHTML = '';
+            for (var slot = 0; slot < 3; slot++) {
+                var col  = document.createElement('div'); col.className = 'agent-col';
+                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
+                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot+1);
                 col.appendChild(hd);
-                var body=document.createElement('div'); body.className='agent-col-body';
-                AGENTS.forEach(function(a){
-                    var hasChat=slot<a.sessions;
-                    var dotCls=a.status==='online'?'d-on':a.status==='busy'?'d-busy':a.status==='away'?'d-away':'d-off';
-                    var statusCls='b-'+a.status;
-                    var avBg=(a.status==='offline'||a.status==='away')?'#ccc':'#1a1a1a';
-                    if(a.status==='offline'||a.status==='away'){
-                        var d=document.createElement('div'); d.className='agent-slot';
-                        d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
-                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+cap(a.status)+'</div></div>'
-                            +'<span class="badge '+statusCls+'" style="font-size:9px;padding:1px 6px;">'+a.status+'</span>';
-                        body.appendChild(d);
-                    } else if(hasChat){
-                        var isFull=a.sessions>=a.max&&slot===a.max-1;
-                        var chatSess=SESSIONS.filter(function(s){return s.agent===a.name&&s.status==='active';})[slot]||null;
-                        var chatTxt=chatSess?chatSess.name+' · '+fmt(chatSess.waitSec):'Slot '+(slot+1)+' occupied';
-                        var d=document.createElement('div'); d.className='agent-slot';
-                        d.innerHTML='<div class="ag-av" style="background:'+avBg+';"><span>'+a.initials+'</span><div class="ag-dot '+dotCls+'"></div></div>'
-                            +'<div class="ag-info"><div class="ag-name">'+a.name+'</div><div class="ag-chat">'+chatTxt+'</div></div>'
-                            +'<span class="badge '+(isFull?'b-full':statusCls)+'" style="font-size:9px;padding:1px 6px;">'+(isFull?'Full':a.status)+'</span>';
-                        body.appendChild(d);
+                var body = document.createElement('div'); body.className = 'agent-col-body';
+                AGENTS.forEach(function(a) {
+                    var hasChat   = slot < a.sessions;
+                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
+                    var statusCls = 'b-' + a.status;
+                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
+                    var d = document.createElement('div');
+                    if (a.status === 'offline' || a.status === 'away') {
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
+                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
+                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
+                    } else if (hasChat) {
+                        var isFull   = a.sessions >= a.max && slot === a.max - 1;
+                        var chatSess = SESSIONS.filter(function(s){ return s.agent === a.name && s.status === 'active'; })[slot] || null;
+                        var chatTxt  = chatSess ? titleCase(chatSess.name) + ' · ' + fmt(chatSess.waitSec) : 'Slot ' + (slot+1) + ' occupied';
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
+                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">' + escH(chatTxt) + '</div></div>'
+                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">' + (isFull ? 'Full' : a.status) + '</span>';
                     } else {
-                        var d=document.createElement('div'); d.className='empty-slot'; d.textContent='Available slot';
-                        body.appendChild(d);
+                        d.className   = 'empty-slot';
+                        d.textContent = 'Available slot';
                     }
+                    body.appendChild(d);
                 });
-                col.appendChild(body); grid.appendChild(col);
+                col.appendChild(body);
+                grid.appendChild(col);
             }
         }
 
