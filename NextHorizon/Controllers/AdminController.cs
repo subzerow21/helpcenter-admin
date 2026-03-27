@@ -1,4 +1,5 @@
 ﻿    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Http;  
     using NextHorizon.Models.Admin_Models;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Data.SqlClient;
@@ -92,483 +93,400 @@
             }
 
         // URL: /Admin/Dashboard - Accessible by all admin roles
-        public async Task<IActionResult> Dashboard()
+        [HttpGet]
+  public async Task<IActionResult> Dashboard()
+{
+    var redirect = RedirectToLoginIfNotAuthenticated();
+    if (redirect != null) return redirect;
+
+    var leaderboard   = new List<ConsumerLeaderboardViewModel>();
+    var auditLogs     = new List<DashboardAuditLog>();
+    var approvalItems = new List<DashboardApprovalItem>();
+    decimal revenue   = 0;
+    int pendingPayouts = 0, pendingSellers = 0, pendingTickets = 0;
+
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        using (var cmd = new SqlCommand("sp_GetDashboardStats", connection))
         {
-            var redirect = RedirectToLoginIfNotAuthenticated();
-            if (redirect != null) return redirect;
-
-            var leaderboard  = new List<ConsumerLeaderboardViewModel>();
-            var auditLogs    = new List<DashboardAuditLog>();
-            decimal revenue  = 0;
-            int pendingPayouts = 0, pendingSellers = 0, pendingTickets = 0;
-
-            using (var connection = new SqlConnection(_connectionString))
+            cmd.CommandType = CommandType.StoredProcedure;
+            await connection.OpenAsync();
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
-                await connection.OpenAsync();
+                // Result Set 1: Header Stats
+                if (await reader.ReadAsync())
+                {
+                    var rev        = reader["PlatformRevenue"];
+                    revenue        = rev != DBNull.Value ? Convert.ToDecimal(rev) : 0;
+                    pendingPayouts = reader.GetInt32(reader.GetOrdinal("PendingPayouts"));
+                    pendingSellers = reader.GetInt32(reader.GetOrdinal("PendingSellers"));
+                }
 
-                // Platform Revenue (5% commission)
-                using (var cmd = new SqlCommand("SELECT ISNULL(SUM(TotalAmount), 0) FROM Orders", connection))
-                    revenue = (decimal)await cmd.ExecuteScalarAsync();
-
-                // Pending Payouts
-                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Withdrawal_Requests WHERE status = 'Pending'", connection))
-                    pendingPayouts = (int)await cmd.ExecuteScalarAsync();
-
-                // Pending Sellers
-                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Sellers WHERE seller_status = 'Pending'", connection))
-                    pendingSellers = (int)await cmd.ExecuteScalarAsync();
-
-                // Leaderboard
-                var leaderSql = @"
-                    SELECT TOP 5
-                        ROW_NUMBER() OVER (ORDER BY DistanceKm DESC) AS Rank,
-                        AthleteName, DistanceKm, IsVerified
-                    FROM leaderboard_records
-                    WHERE IsActive = 1
-                    ORDER BY DistanceKm DESC";
-                using (var cmd = new SqlCommand(leaderSql, connection))
-                using (var reader = await cmd.ExecuteReaderAsync())
+                    // Result Set 2: Leaderboard
+                    await reader.NextResultAsync();
                     while (await reader.ReadAsync())
+                    {
                         leaderboard.Add(new ConsumerLeaderboardViewModel
                         {
-                            Rank       = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
-                            UserName   = reader["AthleteName"]?.ToString() ?? "",
-                            StravaKM   = reader.GetDecimal(reader.GetOrdinal("DistanceKm")),
-                            IsVerified = reader.GetBoolean(reader.GetOrdinal("IsVerified"))
+                            Rank       = reader.GetInt32(reader.GetOrdinal("Rank")),
+                            UserName   = reader["AthleteName"]?.ToString() ?? "Unknown User",
+                            StravaKM   = Convert.ToDecimal(reader["DistanceKm"] ?? 0),
+                            IsVerified = reader["IsVerified"] != DBNull.Value && Convert.ToBoolean(reader["IsVerified"])
                         });
+                    }
 
-                // Recent Audit Logs
-                var auditSql = @"
-                    SELECT TOP 3 timestamp, admin_name, action, target, status
-                    FROM audit_logs
-                    ORDER BY timestamp DESC";
-                using (var cmd = new SqlCommand(auditSql, connection))
-                using (var reader = await cmd.ExecuteReaderAsync())
-                    while (await reader.ReadAsync())
-                        auditLogs.Add(new DashboardAuditLog
-                        {
-                            Timestamp = reader.GetDateTime(reader.GetOrdinal("timestamp")),
-                            AdminName = reader["admin_name"]?.ToString() ?? "",
-                            Action    = reader["action"]?.ToString()     ?? "",
-                            Target    = reader["target"]?.ToString()     ?? "",
-                            Status    = reader["status"]?.ToString()     ?? ""
-                        });
+                // Result Set 3: Audit Logs
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    auditLogs.Add(new DashboardAuditLog
+                    {
+                        Timestamp = reader.GetDateTime(reader.GetOrdinal("timestamp")),
+                        AdminName = reader["admin_name"]?.ToString() ?? "",
+                        Action    = reader["action"]?.ToString()     ?? "",
+                        Target    = reader["target"]?.ToString()     ?? "",
+                        Status    = reader["status"]?.ToString()     ?? ""
+                    });
+
+                // Result Set 4: Approval Hub
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    approvalItems.Add(new DashboardApprovalItem
+                    {
+                        RequestType = reader["RequestType"]?.ToString() ?? "",
+                        EntityName  = reader["EntityName"]?.ToString()  ?? "",
+                        Details     = reader["Details"]?.ToString()     ?? "",
+                        Status      = reader["Status"]?.ToString()      ?? "",
+                        ActionLabel = reader["ActionLabel"]?.ToString() ?? "",
+                        RedirectUrl = reader["RedirectUrl"]?.ToString() ?? ""
+                    });
             }
-
-            var model = new SuperAdminDashboardViewModel
-            {
-                PlatformRevenue  = revenue,
-                PendingPayouts   = pendingPayouts,
-                PendingSellers   = pendingSellers,
-                PendingTickets   = pendingTickets,
-                ConsumerLeaderboard = leaderboard,
-                AuditLogs        = auditLogs,
-                Stats            = new PlatformStats(),
-                TopSellers       = new List<TopSellerViewModel>()
-            };
-
-            ViewBag.UserRole = GetCurrentUserRole();
-            return View(model);
         }
+    }
 
+    var model = new SuperAdminDashboardViewModel
+    {
+        PlatformRevenue     = revenue,
+        PendingPayouts      = pendingPayouts,
+        PendingSellers      = pendingSellers,
+        PendingTickets      = pendingTickets,
+        ConsumerLeaderboard = leaderboard,
+        AuditLogs           = auditLogs,
+        ApprovalHub         = approvalItems,
+        Stats               = new PlatformStats(),
+        TopSellers          = new List<TopSellerViewModel>()
+    };
+
+    ViewBag.UserRole = GetCurrentUserRole();
+    return View(model);
+}
+
+[HttpGet]
+public async Task<IActionResult> GetLeaderboard(string category = "All")
+{
+    var leaderboard = new List<object>();
+
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        using (var cmd = new SqlCommand("sp_GetLeaderboard", connection))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@Category", category);
+            await connection.OpenAsync();
+            using (var reader = await cmd.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
+                    leaderboard.Add(new
+                    {
+                        rank       = reader.GetInt32(reader.GetOrdinal("Rank")),
+                        userName   = reader["AthleteName"]?.ToString() ?? "",
+                        stravaKM   = reader.GetDecimal(reader.GetOrdinal("DistanceKm")),
+                        isVerified = reader.GetBoolean(reader.GetOrdinal("IsVerified"))
+                    });
+        }
+    }
+
+    return Json(leaderboard);
+}
 
             // URL: /Admin/Analytics - Accessible by SuperAdmin, Admin, and Finance Officer
-            public async Task<IActionResult> Analytics()
+public async Task<IActionResult> Analytics()
+{
+    var redirect = RedirectToLoginIfNotAuthenticated();
+    if (redirect != null) return redirect;
+    var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
+    if (unauthorized != null) return unauthorized;
+
+    var topSellers        = new List<SellerMetric>();
+    var topProducts       = new List<ProductMetric>();
+    var performanceTrends = new List<AnalyticsChartData>();
+    var peakEngagement    = new List<HourlyEngagementMetric>();
+
+    int totalConsumers = 0, totalSellers = 0, totalOrders = 0;
+    decimal totalRevenue = 0, avgOrderValue = 0;
+
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        using (var cmd = new SqlCommand("sp_GetAnalyticsSummary", connection))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            await connection.OpenAsync();
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
-                var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
-                if (unauthorized != null) return unauthorized;
-
-                var topSellers       = new List<SellerMetric>();
-                var topProducts      = new List<ProductMetric>();
-                var performanceTrends = new List<AnalyticsChartData>();
-                var peakEngagement   = new List<HourlyEngagementMetric>();
-
-                int totalConsumers = 0, totalSellers = 0, totalOrders = 0;
-                decimal totalRevenue = 0, avgOrderValue = 0;
-
-                using (var connection = new SqlConnection(_connectionString))
+                // Result Set 1: Header Stats
+                if (await reader.ReadAsync())
                 {
-                    await connection.OpenAsync();
-
-                    // Total Consumers
-                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Consumers", connection))
-                        totalConsumers = (int)await cmd.ExecuteScalarAsync();
-
-                    // Total Active Sellers
-                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Sellers WHERE seller_status = 'Active'", connection))
-                        totalSellers = (int)await cmd.ExecuteScalarAsync();
-
-                    // Total Orders & Revenue & Avg Order Value
-                    var orderStatsSql = @"
-                        SELECT 
-                            COUNT(*) AS TotalOrders,
-                            ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
-                            ISNULL(AVG(TotalAmount), 0) AS AvgOrderValue
-                        FROM Orders";
-                    using (var cmd = new SqlCommand(orderStatsSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        if (await reader.ReadAsync())
-                        {
-                            totalOrders   = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
-                            totalRevenue  = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
-                            avgOrderValue = reader.GetDecimal(reader.GetOrdinal("AvgOrderValue"));
-                        }
-
-                    // Performance Trends - Revenue per day (last 7 days)
-                    var trendSql = @"
-                        SELECT 
-                            CONVERT(VARCHAR, OrderDate, 107) AS DateLabel,
-                            ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
-                            COUNT(DISTINCT UserID) AS ChallengeParticipants
-                        FROM Orders
-                        WHERE OrderDate >= DATEADD(DAY, -7, GETDATE())
-                        GROUP BY CAST(OrderDate AS DATE), CONVERT(VARCHAR, OrderDate, 107)
-                        ORDER BY CAST(OrderDate AS DATE)";
-                    using (var cmd = new SqlCommand(trendSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            performanceTrends.Add(new AnalyticsChartData
-                            {
-                                DateLabel           = reader["DateLabel"]?.ToString() ?? "",
-                                TotalRevenue        = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
-                                ChallengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
-                            });
-
-                    // Top Sellers
-                    var sellerSql = @"
-                        SELECT TOP 5
-                            ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
-                            s.business_name AS ShopName,
-                            COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
-                            SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
-                        FROM OrderItems oi
-                        INNER JOIN Sellers s ON oi.SellerId = s.seller_id
-                        WHERE oi.SellerId IS NOT NULL
-                        GROUP BY oi.SellerId, s.business_name
-                        ORDER BY RevenueGenerated DESC";
-                    using (var cmd = new SqlCommand(sellerSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            topSellers.Add(new SellerMetric
-                            {
-                                Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
-                                SellerName       = reader["ShopName"]?.ToString() ?? "",
-                                ShopName         = reader["ShopName"]?.ToString() ?? "",
-                                OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
-                                RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
-                            });
-
-                    // Top Products
-                    var productSql = @"
-                        SELECT TOP 5
-                            p.ProductName,
-                            p.Category,
-                            SUM(oi.Quantity) AS UnitsSold,
-                            SUM(oi.Quantity * oi.UnitPrice) AS Revenue
-                        FROM OrderItems oi
-                        INNER JOIN Products p ON oi.ProductID = p.ProductId
-                        GROUP BY p.ProductId, p.ProductName, p.Category
-                        ORDER BY UnitsSold DESC";
-                    using (var cmd = new SqlCommand(productSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            topProducts.Add(new ProductMetric
-                            {
-                                ProductName = reader["ProductName"]?.ToString() ?? "",
-                                Category    = reader["Category"]?.ToString()    ?? "",
-                                UnitsSold   = reader.GetInt32(reader.GetOrdinal("UnitsSold")),
-                                Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
-                            });
-
-                    // Peak Engagement - purchases per hour
-                    var peakSql = @"
-                        SELECT 
-                            DATEPART(HOUR, OrderDate) AS Hour,
-                            COUNT(*) AS PurchaseCount,
-                            COUNT(*) * 10 AS ActivitySyncCount
-                        FROM Orders
-                        GROUP BY DATEPART(HOUR, OrderDate)
-                        ORDER BY Hour";
-                    using (var cmd = new SqlCommand(peakSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            peakEngagement.Add(new HourlyEngagementMetric
-                            {
-                                Hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
-                                PurchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
-                                ActivitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
-                            });
+                    totalConsumers = reader.GetInt32(reader.GetOrdinal("TotalConsumers"));
+                    totalSellers   = reader.GetInt32(reader.GetOrdinal("TotalSellers"));
+                    totalOrders    = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                    var rev        = await Task.FromResult(reader["TotalRevenue"]);
+                    totalRevenue   = rev != DBNull.Value ? Convert.ToDecimal(rev) : 0;
+                    var avg        = await Task.FromResult(reader["AvgOrderValue"]);
+                    avgOrderValue  = avg != DBNull.Value ? Convert.ToDecimal(avg) : 0;
                 }
 
-                // Fallback if no trend data
-                if (!performanceTrends.Any())
-                    performanceTrends.Add(new AnalyticsChartData { DateLabel = "No Data", TotalRevenue = 0, ChallengeParticipants = 0 });
-
-                var viewModel = new AnalyticsViewModel
-                {
-                    TotalConsumers               = totalConsumers,
-                    TotalSellers                 = totalSellers,
-                    TotalRevenue                 = totalRevenue,
-                    TotalOrders                  = totalOrders,
-                    AverageOrderValue            = (double)avgOrderValue,
-                    ChallengeToSaleConversionRate = totalOrders > 0 && totalConsumers > 0
-                        ? Math.Round((double)totalOrders / totalConsumers * 100, 1) : 0,
-                    PerformanceTrends    = performanceTrends,
-                    TopSellers           = topSellers,
-                    TopMovingProducts    = topProducts,
-                    PeakEngagementData   = peakEngagement.Any() ? peakEngagement : new List<HourlyEngagementMetric>
+                // Result Set 2: Performance Trends
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    performanceTrends.Add(new AnalyticsChartData
                     {
-                        new HourlyEngagementMetric { Hour = 0, ActivitySyncCount = 0, PurchaseCount = 0 }
-                    }
-                };
-
-                ViewBag.UserRole = GetCurrentUserRole();
-                return View(viewModel);
-            }
-
-            [HttpGet]
-            public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDate = null, string? endDate = null)
-            {
-                try
-                {
-                    DateTime start, end;
-                    end = DateTime.Now;
-
-                    if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
-                    {
-                        start = DateTime.Parse(startDate);
-                        end   = DateTime.Parse(endDate).AddDays(1);
-                    }
-                    else
-                    {
-                        start = days switch
-                        {
-                            7  => DateTime.Now.AddDays(-7),
-                            90 => DateTime.Now.AddDays(-90),
-                            _  => DateTime.Now.AddDays(-30)
-                        };
-                    }
-
-                    var trends     = new List<object>();
-                    var peakData   = new List<object>();
-                    int totalOrders = 0;
-                    decimal totalRevenue = 0, avgOrder = 0;
-
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        await connection.OpenAsync();
-
-                        // Trends
-                        var trendSql = @"
-                            SELECT 
-                                CONVERT(VARCHAR, OrderDate, 107) AS DateLabel,
-                                ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
-                                COUNT(DISTINCT UserID) AS ChallengeParticipants
-                            FROM Orders
-                            WHERE OrderDate >= @Start AND OrderDate < @End
-                            GROUP BY CAST(OrderDate AS DATE), CONVERT(VARCHAR, OrderDate, 107)
-                            ORDER BY CAST(OrderDate AS DATE)";
-                        using (var cmd = new SqlCommand(trendSql, connection))
-                        {
-                            cmd.Parameters.AddWithValue("@Start", start);
-                            cmd.Parameters.AddWithValue("@End",   end);
-                            using (var reader = await cmd.ExecuteReaderAsync())
-                                while (await reader.ReadAsync())
-                                    trends.Add(new
-                                    {
-                                        dateLabel             = reader["DateLabel"]?.ToString() ?? "",
-                                        totalRevenue          = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
-                                        challengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
-                                    });
-                        }
-
-                        // Stats
-                        var statsSql = @"
-                            SELECT COUNT(*) AS TotalOrders,
-                                ISNULL(SUM(TotalAmount), 0) AS TotalRevenue,
-                                ISNULL(AVG(TotalAmount), 0) AS AvgOrder
-                            FROM Orders
-                            WHERE OrderDate >= @Start AND OrderDate < @End";
-                        using (var cmd = new SqlCommand(statsSql, connection))
-                        {
-                            cmd.Parameters.AddWithValue("@Start", start);
-                            cmd.Parameters.AddWithValue("@End",   end);
-                            using (var reader = await cmd.ExecuteReaderAsync())
-                                if (await reader.ReadAsync())
-                                {
-                                    totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
-                                    totalRevenue = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
-                                    avgOrder     = reader.GetDecimal(reader.GetOrdinal("AvgOrder"));
-                                }
-                        }
-
-                        // Peak hours
-                        var peakSql = @"
-                            SELECT DATEPART(HOUR, OrderDate) AS Hour,
-                                COUNT(*) AS PurchaseCount,
-                                COUNT(*) * 10 AS ActivitySyncCount
-                            FROM Orders
-                            WHERE OrderDate >= @Start AND OrderDate < @End
-                            GROUP BY DATEPART(HOUR, OrderDate)
-                            ORDER BY Hour";
-                        using (var cmd = new SqlCommand(peakSql, connection))
-                        {
-                            cmd.Parameters.AddWithValue("@Start", start);
-                            cmd.Parameters.AddWithValue("@End",   end);
-                            using (var reader = await cmd.ExecuteReaderAsync())
-                                while (await reader.ReadAsync())
-                                    peakData.Add(new
-                                    {
-                                        hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
-                                        purchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
-                                        activitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
-                                    });
-                        }
-                    }
-
-                    return Json(new
-                    {
-                        trends,
-                        peakData,
-                        totalOrders,
-                        totalRevenue,
-                        avgOrderValue = avgOrder
+                        DateLabel             = reader["DateLabel"]?.ToString() ?? "",
+                        TotalRevenue          = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
+                        ChallengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
                     });
-                }
-                catch (Exception ex) { return Json(new { error = ex.Message }); }
+
+                // Result Set 3: Top Sellers
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    topSellers.Add(new SellerMetric
+                    {
+                        Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                        SellerName       = reader["ShopName"]?.ToString() ?? "",
+                        ShopName         = reader["ShopName"]?.ToString() ?? "",
+                        OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                        RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                    });
+
+                // Result Set 4: Top Products
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    topProducts.Add(new ProductMetric
+                    {
+                        ProductName = reader["ProductName"]?.ToString() ?? "",
+                        Category    = reader["Category"]?.ToString()    ?? "",
+                        UnitsSold   = reader.GetInt32(reader.GetOrdinal("UnitsSold")),
+                        Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
+                    });
+
+                // Result Set 5: Peak Engagement
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    peakEngagement.Add(new HourlyEngagementMetric
+                    {
+                        Hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
+                        PurchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
+                        ActivitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
+                    });
             }
+        }
+    }
+
+    if (!performanceTrends.Any())
+        performanceTrends.Add(new AnalyticsChartData { DateLabel = "No Data", TotalRevenue = 0, ChallengeParticipants = 0 });
+
+    var viewModel = new AnalyticsViewModel
+    {
+        TotalConsumers                = totalConsumers,
+        TotalSellers                  = totalSellers,
+        TotalRevenue                  = totalRevenue,
+        TotalOrders                   = totalOrders,
+        AverageOrderValue             = (double)avgOrderValue,
+        ChallengeToSaleConversionRate = totalOrders > 0 && totalConsumers > 0
+            ? Math.Round((double)totalOrders / totalConsumers * 100, 1) : 0,
+        PerformanceTrends  = performanceTrends,
+        TopSellers         = topSellers,
+        TopMovingProducts  = topProducts,
+        PeakEngagementData = peakEngagement.Any() ? peakEngagement : new List<HourlyEngagementMetric>
+        {
+            new HourlyEngagementMetric { Hour = 0, ActivitySyncCount = 0, PurchaseCount = 0 }
+        }
+    };
+
+    ViewBag.UserRole = GetCurrentUserRole();
+    return View(viewModel);
+}
+
+[HttpGet]
+public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDate = null, string? endDate = null)
+{
+    try
+    {
+        DateTime start, end;
+        end = DateTime.Now;
+
+        if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+        {
+            start = DateTime.Parse(startDate);
+            end   = DateTime.Parse(endDate).AddDays(1);
+        }
+        else
+        {
+            start = days switch
+            {
+                7  => DateTime.Now.AddDays(-7),
+                90 => DateTime.Now.AddDays(-90),
+                _  => DateTime.Now.AddDays(-30)
+            };
+        }
+
+        var trends   = new List<object>();
+        var peakData = new List<object>();
+        int totalOrders = 0;
+        decimal totalRevenue = 0, avgOrder = 0;
+
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            using (var cmd = new SqlCommand("sp_GetAnalyticsData", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Start", start);
+                cmd.Parameters.AddWithValue("@End",   end);
+                await connection.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    // Result Set 1: Trends
+                    while (await reader.ReadAsync())
+                        trends.Add(new
+                        {
+                            dateLabel             = reader["DateLabel"]?.ToString() ?? "",
+                            totalRevenue          = reader.GetDecimal(reader.GetOrdinal("TotalRevenue")),
+                            challengeParticipants = reader.GetInt32(reader.GetOrdinal("ChallengeParticipants"))
+                        });
+
+                    // Result Set 2: Stats
+                    await reader.NextResultAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                        var rev      = reader["TotalRevenue"];
+                        totalRevenue = rev != DBNull.Value ? Convert.ToDecimal(rev) : 0;
+                        var avg      = reader["AvgOrder"];
+                        avgOrder     = avg != DBNull.Value ? Convert.ToDecimal(avg) : 0;
+                    }
+
+                    // Result Set 3: Peak Hours
+                    await reader.NextResultAsync();
+                    while (await reader.ReadAsync())
+                        peakData.Add(new
+                        {
+                            hour              = reader.GetInt32(reader.GetOrdinal("Hour")),
+                            purchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
+                            activitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
+                        });
+                }
+            }
+        }
+
+        return Json(new { trends, peakData, totalOrders, totalRevenue, avgOrderValue = avgOrder });
+    }
+    catch (Exception ex) { return Json(new { error = ex.Message }); }
+}
 
 
             // URL: /Admin/SellerPerformance - Accessible by SuperAdmin, Admin, and Finance Officer
-            public async Task<IActionResult> SellerPerformance()
+ public async Task<IActionResult> SellerPerformance()
+{
+    var redirect = RedirectToLoginIfNotAuthenticated();
+    if (redirect != null) return redirect;
+    var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
+    if (unauthorized != null) return unauthorized;
+
+    var topSellers  = new List<SellerMetric>();
+    var topProducts = new List<ProductMetric>();
+    decimal totalRevenue = 0;
+    int totalOrders = 0;
+
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        using (var cmd = new SqlCommand("sp_GetSellerPerformance", connection))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            await connection.OpenAsync();
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
-                var unauthorized = RedirectIfUnauthorized(new[] { "SuperAdmin", "Admin", "Finance Officer" });
-                if (unauthorized != null) return unauthorized;
-
-                var topSellers  = new List<SellerMetric>();
-                var topProducts = new List<ProductMetric>();
-                decimal totalRevenue = 0;
-                int totalOrders = 0;
-
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    // Top Sellers by Revenue
-                    var sellerSql = @"
-                        SELECT 
-                            ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
-                            s.business_name AS ShopName,
-                            COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
-                            SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
-                        FROM OrderItems oi
-                        INNER JOIN Sellers s ON oi.SellerId = s.seller_id
-                        WHERE oi.SellerId IS NOT NULL
-                        GROUP BY oi.SellerId, s.business_name
-                        ORDER BY RevenueGenerated DESC";
-
-                    using (var cmd = new SqlCommand(sellerSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            topSellers.Add(new SellerMetric
-                            {
-                                Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
-                                SellerName       = reader["ShopName"]?.ToString() ?? "",
-                                ShopName         = reader["ShopName"]?.ToString() ?? "",
-                                OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
-                                RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
-                            });
-
-                    // Top Moving Products
-                    var productSql = @"
-                        SELECT TOP 10
-                            p.ProductName,
-                            p.Category,
-                            SUM(oi.Quantity) AS SalesCount,
-                            SUM(oi.Quantity * oi.UnitPrice) AS Revenue
-                        FROM OrderItems oi
-                        INNER JOIN Products p ON oi.ProductID = p.ProductId
-                        GROUP BY p.ProductId, p.ProductName, p.Category
-                        ORDER BY SalesCount DESC";
-
-                    using (var cmd = new SqlCommand(productSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        while (await reader.ReadAsync())
-                            topProducts.Add(new ProductMetric
-                            {
-                                ProductName = reader["ProductName"]?.ToString() ?? "",
-                                Category    = reader["Category"]?.ToString()    ?? "",
-                                SalesCount  = reader.GetInt32(reader.GetOrdinal("SalesCount")),
-                                Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
-                            });
-
-                    // Platform totals
-                    var statsSql = "SELECT COUNT(*) AS TotalOrders, ISNULL(SUM(TotalAmount), 0) AS TotalRevenue FROM Orders";
-                    using (var cmd = new SqlCommand(statsSql, connection))
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                        if (await reader.ReadAsync())
-                        {
-                            totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
-                            totalRevenue = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
-                        }
-                }
-
-                var viewModel = new AnalyticsViewModel
-                {
-                    TotalRevenue = totalRevenue,
-                    TotalOrders  = totalOrders,
-                    TotalSellers = topSellers.Count,
-                    TopSellers   = topSellers,
-                    TopProducts  = topProducts.OrderByDescending(p => p.Revenue).ToList()
-                };
-
-                ViewBag.UserRole = GetCurrentUserRole();
-                return View(viewModel);
-            }
-
-            [HttpGet]
-            public async Task<IActionResult> GetSellerPerformance()
-            {
-                try
-                {
-                    var topSellers = new List<object>();
-
-                    using (var connection = new SqlConnection(_connectionString))
+                // Result set 1 - Top Sellers
+                while (await reader.ReadAsync())
+                    topSellers.Add(new SellerMetric
                     {
-                        await connection.OpenAsync();
+                        Rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                        SellerName       = reader["ShopName"]?.ToString() ?? "",
+                        ShopName         = reader["ShopName"]?.ToString() ?? "",
+                        OrdersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                        RevenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                    });
 
-                        var sql = @"
-                            SELECT 
-                                ROW_NUMBER() OVER (ORDER BY SUM(oi.Quantity * oi.UnitPrice) DESC) AS Rank,
-                                s.business_name AS ShopName,
-                                COUNT(DISTINCT oi.OrderID) AS OrdersFulfilled,
-                                SUM(oi.Quantity * oi.UnitPrice) AS RevenueGenerated
-                            FROM OrderItems oi
-                            INNER JOIN Sellers s ON oi.SellerId = s.seller_id
-                            WHERE oi.SellerId IS NOT NULL
-                            GROUP BY oi.SellerId, s.business_name
-                            ORDER BY RevenueGenerated DESC";
+                // Result set 2 - Top Products
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                    topProducts.Add(new ProductMetric
+                    {
+                        ProductName = reader["ProductName"]?.ToString() ?? "",
+                        Category    = reader["Category"]?.ToString()    ?? "",
+                        SalesCount  = reader.GetInt32(reader.GetOrdinal("SalesCount")),
+                        Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
+                    });
 
-                        using (var cmd = new SqlCommand(sql, connection))
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                            while (await reader.ReadAsync())
-                                topSellers.Add(new
-                                {
-                                    rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
-                                    shopName         = reader["ShopName"]?.ToString() ?? "",
-                                    ordersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
-                                    revenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
-                                });
-                    }
-
-                    return Json(new { topSellers });
+                // Result set 3 - Platform Totals
+                await reader.NextResultAsync();
+                if (await reader.ReadAsync())
+                {
+                    totalOrders  = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
+                    totalRevenue = reader.GetDecimal(reader.GetOrdinal("TotalRevenue"));
                 }
-                catch (Exception ex) { return Json(new { error = ex.Message }); }
             }
+        }
+    }
+
+    var viewModel = new AnalyticsViewModel
+    {
+        TotalRevenue = totalRevenue,
+        TotalOrders  = totalOrders,
+        TotalSellers = topSellers.Count,
+        TopSellers   = topSellers,
+        TopProducts  = topProducts.OrderByDescending(p => p.Revenue).ToList()
+    };
+
+    ViewBag.UserRole = GetCurrentUserRole();
+    return View(viewModel);
+}
+
+[HttpGet]
+public async Task<IActionResult> GetSellerPerformance()
+{
+    try
+    {
+        var topSellers = new List<object>();
+
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            using (var cmd = new SqlCommand("sp_GetSellerPerformance", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        topSellers.Add(new
+                        {
+                            rank             = (int)reader.GetInt64(reader.GetOrdinal("Rank")),
+                            shopName         = reader["ShopName"]?.ToString() ?? "",
+                            ordersFulfilled  = reader.GetInt32(reader.GetOrdinal("OrdersFulfilled")),
+                            revenueGenerated = reader.GetDecimal(reader.GetOrdinal("RevenueGenerated"))
+                        });
+            }
+        }
+        return Json(new { topSellers });
+    }
+    catch (Exception ex) { return Json(new { error = ex.Message }); }
+}
 
 
             // Consumers - Accessible by SuperAdmin, Admin, and Support Agent
@@ -731,55 +649,185 @@
                 return View();
             }
 
-            [HttpGet]
-            public async Task<IActionResult> GetSellers(string status = "Pending")
+[HttpGet]
+public async Task<IActionResult> GetSellers(string status = "Pending")
+{
+    try
+    {
+        var sellers = new List<SellerViewModel>();
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            using (var cmd = new SqlCommand("sp_GetSellers", connection))
             {
-                try
-                {
-                    var sellers = new List<SellerViewModel>();
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        await connection.OpenAsync();
-                        var sql = @"
-                                    SELECT s.seller_id, s.user_id, s.business_name, s.business_email,
-                                        s.business_phone, s.business_type, s.business_address,
-                                        s.logo_path, s.document_path, s.seller_status, s.created_at,
-                                        ISNULL(c.first_name + ' ' + c.last_name, u.email) AS owner_name,
-                                        (SELECT COUNT(*) FROM Products p WHERE p.seller_id = s.seller_id) AS total_products,
-                                        ISNULL((SELECT SUM(oi.Quantity * oi.UnitPrice) 
-                                                FROM OrderItems oi WHERE oi.SellerId = s.seller_id), 0) AS total_sales
-                                    FROM Sellers s
-                                    INNER JOIN Users u ON s.user_id = u.user_id
-                                    LEFT JOIN Consumers c ON c.user_id = u.user_id
-                                    WHERE s.seller_status = @Status";
-                        using (var cmd = new SqlCommand(sql, connection))
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Status", status);
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
+                        sellers.Add(new SellerViewModel
                         {
-                            cmd.Parameters.AddWithValue("@Status", status);
-                            using (var reader = await cmd.ExecuteReaderAsync())
-                                while (await reader.ReadAsync())
-                                    sellers.Add(new SellerViewModel
-                                    {
-                                        SellerId        = reader.GetInt32(reader.GetOrdinal("seller_id")),
-                                        UserId          = reader.GetInt32(reader.GetOrdinal("user_id")),
-                                        BusinessName    = reader["business_name"]?.ToString()    ?? "",
-                                        BusinessEmail   = reader["business_email"]?.ToString()   ?? "",
-                                        BusinessPhone   = reader["business_phone"]?.ToString()   ?? "",
-                                        BusinessType    = reader["business_type"]?.ToString()    ?? "",
-                                        BusinessAddress = reader["business_address"]?.ToString() ?? "",
-                                        LogoPath        = reader["logo_path"]?.ToString(),
-                                        DocumentPath    = reader["document_path"]?.ToString(),
-                                        SellerStatus    = reader["seller_status"]?.ToString()    ?? "",
-                                        OwnerName       = reader["owner_name"]?.ToString()       ?? "",
-                                        CreatedAt       = reader["created_at"] as DateTime?,
-                                        TotalProducts   = reader.GetInt32(reader.GetOrdinal("total_products")),
-                                        TotalSales      = reader.GetDecimal(reader.GetOrdinal("total_sales"))  
-                                    });
+                            SellerId        = reader.GetInt32(reader.GetOrdinal("seller_id")),
+                            UserId          = reader.GetInt32(reader.GetOrdinal("user_id")),
+                            BusinessName    = reader["business_name"]?.ToString()    ?? "",
+                            BusinessEmail   = reader["business_email"]?.ToString()   ?? "",
+                            BusinessPhone   = reader["business_phone"]?.ToString()   ?? "",
+                            BusinessType    = reader["business_type"]?.ToString()    ?? "",
+                            BusinessAddress = reader["business_address"]?.ToString() ?? "",
+                            LogoPath        = reader["logo_path"]?.ToString(),
+                            DocumentPath    = reader["document_path"]?.ToString(),
+                            // ADD THIS — reads the has_document flag from SP
+                            HasDocument     = reader.GetInt32(reader.GetOrdinal("has_document")) == 1,
+                            SellerStatus    = reader["seller_status"]?.ToString()    ?? "",
+                            OwnerName       = reader["owner_name"]?.ToString()       ?? "",
+                            CreatedAt       = reader["created_at"] as DateTime?,
+                            TotalProducts   = reader.GetInt32(reader.GetOrdinal("total_products")),
+                            TotalSales      = reader.GetDecimal(reader.GetOrdinal("total_sales"))
+                        });
+            }
+        }
+        return Json(sellers);
+    }
+    catch (Exception ex) { return Json(new { error = ex.Message }); }
+}
+
+
+[HttpGet]
+public async Task<IActionResult> GetSellerDocument(int sellerId, string docType = "DTI")
+{
+    try
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            var sql = @"
+                SELECT 
+                    document_path, document_data, document_content_type,
+                    dti_data, dti_content_type,
+                    bir_data, bir_content_type,
+                    permit_data, permit_content_type,
+                    additional_doc_data, additional_doc_content_type
+                FROM Sellers WHERE seller_id = @SellerId";
+
+            using (var cmd = new SqlCommand(sql, connection))
+            {
+                cmd.Parameters.AddWithValue("@SellerId", sellerId);
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        // Format 1: New 4-doc binary format
+                        byte[] data = null;
+                        string contentType = "application/pdf";
+
+                        if (docType == "DTI" && !reader.IsDBNull(reader.GetOrdinal("dti_data")))
+                        {
+                            data = (byte[])reader["dti_data"];
+                            contentType = reader["dti_content_type"]?.ToString() ?? "application/pdf";
+                        }
+                        else if (docType == "BIR" && !reader.IsDBNull(reader.GetOrdinal("bir_data")))
+                        {
+                            data = (byte[])reader["bir_data"];
+                            contentType = reader["bir_content_type"]?.ToString() ?? "application/pdf";
+                        }
+                        else if (docType == "Permit" && !reader.IsDBNull(reader.GetOrdinal("permit_data")))
+                        {
+                            data = (byte[])reader["permit_data"];
+                            contentType = reader["permit_content_type"]?.ToString() ?? "application/pdf";
+                        }
+                        else if (docType == "Additional" && !reader.IsDBNull(reader.GetOrdinal("additional_doc_data")))
+                        {
+                            data = (byte[])reader["additional_doc_data"];
+                            contentType = reader["additional_doc_content_type"]?.ToString() ?? "application/pdf";
+                        }
+                        // Format 2: Single document_data binary
+                        else if (!reader.IsDBNull(reader.GetOrdinal("document_data")))
+                        {
+                            data = (byte[])reader["document_data"];
+                            contentType = reader["document_content_type"]?.ToString() ?? "application/pdf";
+                        }
+
+                        if (data != null)
+                            return File(data, contentType);
+
+                        // Format 3: Old file path format
+                        var docPath = reader["document_path"]?.ToString();
+                        if (!string.IsNullOrEmpty(docPath))
+                        {
+                            var paths = docPath.Split(';').Where(p => !string.IsNullOrEmpty(p.Trim())).ToList();
+                            return Json(new { paths, format = "path" });
                         }
                     }
-                    return Json(sellers);
                 }
-                catch (Exception ex) { return Json(new { error = ex.Message }); }
             }
+        }
+        return NotFound("No documents found.");
+    }
+    catch (Exception ex) { return BadRequest(ex.Message); }
+}
+
+[HttpGet]
+public async Task<IActionResult> GetSellerDocumentInfo(int sellerId)
+{
+    try
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            var sql = @"
+                SELECT 
+                    document_path,
+                    CASE WHEN document_data IS NOT NULL THEN 1 ELSE 0 END as has_doc_data,
+                    CASE WHEN dti_data IS NOT NULL THEN 1 ELSE 0 END as has_dti,
+                    CASE WHEN bir_data IS NOT NULL THEN 1 ELSE 0 END as has_bir,
+                    CASE WHEN permit_data IS NOT NULL THEN 1 ELSE 0 END as has_permit,
+                    CASE WHEN additional_doc_data IS NOT NULL THEN 1 ELSE 0 END as has_additional
+                FROM Sellers WHERE seller_id = @SellerId";
+
+            using (var cmd = new SqlCommand(sql, connection))
+            {
+                cmd.Parameters.AddWithValue("@SellerId", sellerId);
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        var hasDti        = reader.GetInt32(reader.GetOrdinal("has_dti")) == 1;
+                        var hasBir        = reader.GetInt32(reader.GetOrdinal("has_bir")) == 1;
+                        var hasPermit     = reader.GetInt32(reader.GetOrdinal("has_permit")) == 1;
+                        var hasAdditional = reader.GetInt32(reader.GetOrdinal("has_additional")) == 1;
+                        var hasDocData    = reader.GetInt32(reader.GetOrdinal("has_doc_data")) == 1;
+                        var docPath       = reader["document_path"]?.ToString();
+
+                        // New format
+                        if (hasDti || hasBir || hasPermit)
+                        {
+                            var docs = new List<object>();
+                            if (hasDti)        docs.Add(new { label = "DTI Certificate",    type = "DTI" });
+                            if (hasBir)        docs.Add(new { label = "BIR Certificate",    type = "BIR" });
+                            if (hasPermit)     docs.Add(new { label = "Business Permit",    type = "Permit" });
+                            if (hasAdditional) docs.Add(new { label = "Additional Document", type = "Additional" });
+                            return Json(new { format = "binary_multi", docs });
+                        }
+
+                        // Middle format
+                        if (hasDocData)
+                            return Json(new { format = "binary_single" });
+
+                        // Old format
+                        if (!string.IsNullOrEmpty(docPath))
+                        {
+                            var paths = docPath.Split(';').Where(p => !string.IsNullOrEmpty(p.Trim())).ToList();
+                            return Json(new { format = "path", paths });
+                        }
+                    }
+                }
+            }
+        }
+        return Json(new { format = "none" });
+    }
+    catch (Exception ex) { return Json(new { error = ex.Message }); }
+}
+
+
 
             [HttpPost]
             public async Task<IActionResult> UpdateSellerStatus([FromBody] UpdateSellerStatusRequest request)
@@ -801,27 +849,32 @@
                 catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
             }
 
-            [HttpPost]
-            public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoRequest request)
+[HttpPost]
+public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoRequest request)
+{
+    try
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            using (var cmd = new SqlCommand("sp_UpdateSellerInfo", connection))
             {
-                try
-                {
-                    using (var connection = new SqlConnection(_connectionString))
-                    {
-                        await connection.OpenAsync();
-                        var sql = "UPDATE Sellers SET business_name = @BusinessName, business_email = @BusinessEmail WHERE seller_id = @SellerId";
-                        using (var cmd = new SqlCommand(sql, connection))
-                        {
-                            cmd.Parameters.AddWithValue("@BusinessName",  request.BusinessName);
-                            cmd.Parameters.AddWithValue("@BusinessEmail", request.BusinessEmail);
-                            cmd.Parameters.AddWithValue("@SellerId",      request.SellerId);
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-                    return Json(new { success = true, message = "Seller updated successfully." });
-                }
-                catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@SellerId",      request.SellerId);
+                cmd.Parameters.AddWithValue("@BusinessName",  request.BusinessName);
+                cmd.Parameters.AddWithValue("@BusinessEmail", request.BusinessEmail);
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                    if (await reader.ReadAsync())
+                        return Json(new { 
+                            success = reader["Status"].ToString() == "Success", 
+                            message = reader["Message"].ToString() 
+                        });
             }
+        }
+        return Json(new { success = false, message = "Update failed" });
+    }
+    catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+}
 
 
             // FinanceRequest - Accessible ONLY by SuperAdmin and Finance Officer

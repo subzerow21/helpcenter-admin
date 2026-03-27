@@ -75,12 +75,14 @@ async function loadSellers(status, viewName) {
 }
 
 function renderPending(sellers) {
-     document.getElementById('pending-count').textContent = sellers.length;
+    document.getElementById('pending-count').textContent = sellers.length;
     const tbody = document.querySelector('#view-pending tbody');
+    
     if (!sellers.length) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No pending sellers.</td></tr>`;
         return;
     }
+
     tbody.innerHTML = sellers.map(s => `
         <tr>
             <td class="fw-bold">${s.businessName}</td>
@@ -88,9 +90,9 @@ function renderPending(sellers) {
             <td>${s.businessEmail}</td>
             <td>${s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : 'N/A'}</td>
             <td>
-                ${s.documentPath
+                ${s.hasDocument 
                     ? `<button class="btn btn-link btn-sm text-decoration-none"
-                               onclick="viewSellerDocuments('${s.businessName}', '${s.documentPath}')">
+                               onclick="viewNewDocumentViewer(${s.sellerId})">
                            <i class="bi bi-file-earmark-pdf me-1"></i>View KYC
                        </button>`
                     : '<span class="text-muted small">No docs</span>'}
@@ -435,4 +437,78 @@ function triggerSellerToast(msg, isError = false) {
         const toastEl = document.getElementById('sellerToast');
         if (toastEl) new bootstrap.Toast(toastEl, { delay: 3000 }).show();
     }
+}
+
+
+async function viewNewDocumentViewer(sellerId) {
+    const container = document.getElementById('docContainer');
+    const baseUrl   = window.location.origin;
+
+    container.innerHTML = `<div class="text-center p-4"><div class="spinner-border" role="status"></div><p class="mt-2 text-muted">Loading documents...</p></div>`;
+    new bootstrap.Modal(document.getElementById('documentViewerModal')).show();
+
+    try {
+        const res  = await fetch(`/Admin/GetSellerDocumentInfo?sellerId=${sellerId}`);
+        const info = await res.json();
+
+        if (info.format === 'binary_multi') {
+            // New format — DTI, BIR, Permit, Additional tabs
+            const tabs = info.docs.map((d, i) =>
+                `<button onclick="switchBinaryDoc(${sellerId}, '${d.type}', ${i})" id="doc-tab-${i}"
+                    style="padding:6px 14px; border:1px solid #ccc;
+                    background:${i===0?'#111':'white'}; color:${i===0?'white':'#111'};
+                    cursor:pointer; font-size:12px; border-radius:4px; margin-right:4px;">
+                    ${d.label}
+                </button>`).join('');
+
+            container.innerHTML = `
+                <div style="padding:8px; background:#f5f5f5; border-bottom:1px solid #ddd;">${tabs}</div>
+                <iframe id="binary-doc-frame" src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${info.docs[0].type}"
+                    style="width:100%; height:440px; border:none;"></iframe>`;
+
+        } else if (info.format === 'binary_single') {
+            // Middle format — single binary document
+            container.innerHTML = `<iframe src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=single"
+                style="width:100%; height:500px; border:none;"></iframe>`;
+
+        } else if (info.format === 'path') {
+            // Old format — file paths via Google Docs viewer
+            if (info.paths.length === 1) {
+                const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl + info.paths[0])}&embedded=true`;
+                container.innerHTML = `<iframe src="${viewerUrl}" style="width:100%; height:500px; border:none;"></iframe>`;
+            } else {
+                const tabs = info.paths.map((p, i) =>
+                    `<button onclick="switchDoc(${i})" id="doc-tab-${i}"
+                        style="padding:6px 14px; border:1px solid #ccc;
+                        background:${i===0?'#111':'white'}; color:${i===0?'white':'#111'};
+                        cursor:pointer; font-size:12px; border-radius:4px; margin-right:4px;">
+                        Doc ${i + 1}
+                    </button>`).join('');
+
+                const iframes = info.paths.map((p, i) => {
+                    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl + p)}&embedded=true`;
+                    return `<iframe id="doc-frame-${i}"
+                        src="${i===0 ? viewerUrl : ''}" data-src="${viewerUrl}"
+                        style="width:100%; height:440px; border:none; display:${i===0?'block':'none'};"></iframe>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <div style="padding:8px; background:#f5f5f5; border-bottom:1px solid #ddd;">${tabs}</div>
+                    ${iframes}`;
+            }
+        } else {
+            container.innerHTML = `<p class="text-center text-muted p-4">No documents found.</p>`;
+        }
+
+    } catch (e) {
+        container.innerHTML = `<p class="text-center text-danger p-4">Failed to load documents.</p>`;
+    }
+}
+
+function switchBinaryDoc(sellerId, docType, index) {
+    document.getElementById('binary-doc-frame').src = `/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${docType}`;
+    document.querySelectorAll('[id^="doc-tab-"]').forEach((tab, i) => {
+        tab.style.background = i === index ? '#111' : 'white';
+        tab.style.color      = i === index ? 'white' : '#111';
+    });
 }
