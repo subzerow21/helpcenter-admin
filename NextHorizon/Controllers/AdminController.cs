@@ -1229,70 +1229,91 @@
 
 
 
-            private async Task<FinanceRequestsViewModel> GetFinanceRequestsAsync()
+        private async Task<FinanceRequestsViewModel> GetFinanceRequestsAsync()
+        {
+            var viewModel = new FinanceRequestsViewModel();
+
+            using (var connection = new SqlConnection(_connectionString))
             {
-                var viewModel = new FinanceRequestsViewModel();
-                
-                using (var connection = new SqlConnection(_connectionString))
+                await connection.OpenAsync();
+
+                // 1. Get pending payouts
+                using (var cmd = new SqlCommand("sp_GetPendingPayouts", connection))
                 {
-                    await connection.OpenAsync();
-                    
-                    // Get pending payouts
-                    using (var cmd = new SqlCommand("sp_GetPendingPayouts", connection))
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        using (var reader = await cmd.ExecuteReaderAsync())
+                        while (await reader.ReadAsync())
                         {
-                            while (await reader.ReadAsync())
+                            var payout = new PayoutRequest
                             {
-                                viewModel.PendingPayouts.Add(new PayoutRequest
-                                {
-                                    WithdrawalId = reader.GetInt64(reader.GetOrdinal("withdrawal_id")),
-                                    SellerId = reader.GetInt32(reader.GetOrdinal("seller_id")),
-                                    Amount = reader.GetDecimal(reader.GetOrdinal("amount")),
-                                    RequestedAt = reader.GetDateTime(reader.GetOrdinal("requested_at")),
-                                    SellerName = reader.GetString(reader.GetOrdinal("seller_name")),
-                                    ShopName = reader.GetString(reader.GetOrdinal("shop_name")),
-                                    SellerEmail = reader.GetString(reader.GetOrdinal("seller_email")),
-                                    BankName = reader.GetString(reader.GetOrdinal("bank_name")),
-                                });
-                                
-                                viewModel.TotalPendingPayoutAmount += viewModel.PendingPayouts.Last().Amount;
-                            }
+                                // Fix: Using GetInt64 for long, or Convert.ToInt32 if your model uses int
+                                WithdrawalId = reader.GetInt64(reader.GetOrdinal("withdrawal_id")),
+                                SellerId = reader.GetInt32(reader.GetOrdinal("seller_id")),
+                                Amount = reader.GetDecimal(reader.GetOrdinal("amount")),
+                                RequestedAt = reader.GetDateTime(reader.GetOrdinal("requested_at")),
+                                SellerName = reader.IsDBNull(reader.GetOrdinal("seller_name")) ? "" : reader.GetString(reader.GetOrdinal("seller_name")),
+                                ShopName = reader.IsDBNull(reader.GetOrdinal("shop_name")) ? "" : reader.GetString(reader.GetOrdinal("shop_name")),
+                                SellerEmail = reader.IsDBNull(reader.GetOrdinal("seller_email")) ? "" : reader.GetString(reader.GetOrdinal("seller_email")),
+                                BankName = reader.IsDBNull(reader.GetOrdinal("bank_name")) ? "" : reader.GetString(reader.GetOrdinal("bank_name")),
+                                // Fix: Added SellerNote to resolve "does not contain a definition" error
+                                SellerNote = reader.IsDBNull(reader.GetOrdinal("seller_note")) ? "" : reader.GetString(reader.GetOrdinal("seller_note"))
+                            };
+
+                            viewModel.PendingPayouts.Add(payout);
+                            viewModel.TotalPendingPayoutAmount += payout.Amount;
                         }
-                    }
-                    
-                    // Get pending discounts
-                    using (var cmd = new SqlCommand("sp_GetPendingDiscounts", connection))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                viewModel.PendingDiscounts.Add(new DiscountRequest
-                                {
-                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                    Name = reader.GetString(reader.GetOrdinal("Name")),
-                                    TotalDiscountPercent = reader.GetDecimal(reader.GetOrdinal("TotalDiscountPercent")),
-                                    TotalDiscountFix = reader.GetDecimal(reader.GetOrdinal("TotalDiscountFix")),
-                                    Status = reader.GetString(reader.GetOrdinal("status")),
-                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                                    ShopName = reader.GetString(reader.GetOrdinal("ShopName")),
-                                    ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
-                                    OriginalPrice = reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
-                                    ProductImage = reader.IsDBNull(reader.GetOrdinal("ProductImage")) ? null : reader.GetString(reader.GetOrdinal("ProductImage"))
-                                });
-                            }
-                        }
-                        viewModel.TotalPendingDiscountsCount = viewModel.PendingDiscounts.Count;
                     }
                 }
-                
-                return viewModel;
+
+                // 2. Get pending discounts
+                using (var cmd = new SqlCommand("sp_GetPendingDiscounts", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            viewModel.PendingDiscounts.Add(new DiscountRequest
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.IsDBNull(reader.GetOrdinal("Name")) ? "" : reader.GetString(reader.GetOrdinal("Name")),
+                                TotalDiscountPercent = reader.GetDecimal(reader.GetOrdinal("TotalDiscountPercent")),
+                                TotalDiscountFix = reader.GetDecimal(reader.GetOrdinal("TotalDiscountFix")),
+                                Status = reader.IsDBNull(reader.GetOrdinal("status")) ? "Pending" : reader.GetString(reader.GetOrdinal("status")),
+                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                                ShopName = reader.IsDBNull(reader.GetOrdinal("ShopName")) ? "" : reader.GetString(reader.GetOrdinal("ShopName")),
+                                ProductName = reader.IsDBNull(reader.GetOrdinal("ProductName")) ? "" : reader.GetString(reader.GetOrdinal("ProductName")),
+                                OriginalPrice = reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
+                                ProductImage = reader.IsDBNull(reader.GetOrdinal("ProductImage")) ? null : reader.GetString(reader.GetOrdinal("ProductImage"))
+                            });
+                        }
+                    }
+                    viewModel.TotalPendingDiscountsCount = viewModel.PendingDiscounts.Count;
+                }
+
+                // 3. Fix: Added PendingProducts logic (Fixes the "does not contain a definition" error)
+                using (var cmd = new SqlCommand("SELECT * FROM Products WHERE Status = 'Pending'", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            viewModel.PendingProducts.Add(new ProductViewModel
+                            {
+                                ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                                ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
+                                SellerName = reader.IsDBNull(reader.GetOrdinal("SellerName")) ? "Unknown" : reader.GetString(reader.GetOrdinal("SellerName"))
+                            });
+                        }
+                    }
+                }
             }
 
-            private async Task LogAdminAction(int staffId, string adminName, string action, string target, string status, string details = null)
+            return viewModel;
+        }
+
+        private async Task LogAdminAction(int staffId, string adminName, string action, string target, string status, string details = null)
             {
                 try
                 {
