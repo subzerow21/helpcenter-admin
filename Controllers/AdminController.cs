@@ -94,6 +94,7 @@ namespace NextHorizon.Controllers
 
         public IActionResult HelpCenter()
         {
+            // ── FAQs from DB ──────────────────────────────────────────────
             var faqs = _context.FAQs
                 .Where(f => f.Status == "active" || f.Status == "Active")
                 .OrderByDescending(f => f.DateAdded)
@@ -114,25 +115,64 @@ namespace NextHorizon.Controllers
                 .OrderBy(c => c)
                 .ToList();
 
+            // ── Live Queue from DB ────────────────────────────────────────
+            // Sessions where Resolution is null or "No" are still open/in-queue
+            var dbSessions = _context.HelpSessions
+                .Where(s => s.Resolution == null || s.Resolution == "No")
+                .OrderBy(s => s.CreatedAt)
+                .ToList();
+
+            var avatarColors = new[] { "#1a1a1a", "#777", "#888", "#999", "#666", "#555", "#333" };
+
+            var sessions = dbSessions.Select((s, i) =>
+            {
+                // Build a display name from UserType + Id until you have a Users join
+                var name = s.UserType == "Seller" ? "Seller #" + s.Id : "Customer #" + s.Id;
+                var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var initials = parts.Length >= 2
+                    ? $"{parts[0][0]}{parts[^1][0]}"
+                    : name.Length >= 2 ? name[..2] : "??";
+
+                return new QueueSession
+                {
+                    Id = s.Id,
+                    SessionNo = "NH-" + s.Id.ToString("D5"),
+                    CustomerName = name,
+                    CustomerEmail = string.Empty,
+                    Role = s.UserType ?? "Consumer",
+                    Initials = initials.ToUpper(),
+                    AvatarColor = avatarColors[i % avatarColors.Length],
+                    // WaitSeconds counts up from when the session was created
+                    WaitSeconds = (int)(DateTime.Now - s.CreatedAt).TotalSeconds,
+                    QueuePosition = i + 1,
+                    Status = s.AgentId.HasValue ? "active" : "waiting",
+                    Category = s.Category ?? "General",
+                    AssignedTo = s.AgentId.HasValue ? "Agent #" + s.AgentId : null,
+                    Messages = new List<QueueMessage>()
+                };
+            }).ToList();
+
+            // ── Stats ─────────────────────────────────────────────────────
+            var resolvedToday = _context.HelpSessions
+                .Count(s => (s.Resolution == "Yes")
+                         && s.CreatedAt.Date == DateTime.Today);
+
+            var avgWaitTime = sessions.Any()
+                ? TimeSpan.FromSeconds(sessions.Average(s => s.WaitSeconds)).ToString(@"m\:ss")
+                : "0:00";
+
             var viewModel = new HelpCenterV2ViewModel
             {
                 Stats = new QueueDashboardStatsViewModel
                 {
-                    InQueue = 5,
-                    ActiveSessions = 8,
-                    AvgWaitTime = "2:14",
-                    ResolvedToday = 34,
+                    InQueue = sessions.Count,
+                    ActiveSessions = sessions.Count(s => s.Status == "active"),
+                    AvgWaitTime = avgWaitTime,
+                    ResolvedToday = resolvedToday,
                     AbandonRate = 4.2,
-                    AgentsOnline = 3
+                    AgentsOnline = 3   // keep hardcoded until you have an Agents table
                 },
-                Sessions = new List<QueueSession>
-                {
-                    new QueueSession { Id=1, SessionNo="NH-00421", CustomerName="Maria Reyes",    Role="Consumer", Initials="MR", AvatarColor="#1a1a1a", WaitSeconds=1275, QueuePosition=1, Status="active",  Category="Orders",   AssignedTo="J. Chen", Messages = new List<QueueMessage> { new QueueMessage { Sender="cust", Body="Hi, I placed an order 5 days ago and still haven't received it.", TimeLabel="9:42 AM" }, new QueueMessage { Sender="agt", Body="Hi Maria! Let me check with logistics now.", TimeLabel="9:44 AM" } } },
-                    new QueueSession { Id=2, SessionNo="NH-00418", CustomerName="Juan Dela Cruz", Role="Consumer", Initials="JD", AvatarColor="#777",    WaitSeconds=1231, QueuePosition=2, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() },
-                    new QueueSession { Id=3, SessionNo="NH-00415", CustomerName="Ana Santos",     Role="Seller",   Initials="AS", AvatarColor="#888",    WaitSeconds=1040, QueuePosition=3, Status="waiting", Category="Payments", AssignedTo=null,      Messages = new List<QueueMessage>() },
-                    new QueueSession { Id=4, SessionNo="NH-00410", CustomerName="Kevin Tan",      Role="Consumer", Initials="KT", AvatarColor="#999",    WaitSeconds=998,  QueuePosition=4, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() },
-                    new QueueSession { Id=5, SessionNo="NH-00405", CustomerName="Rodel Garcia",   Role="Seller",   Initials="RG", AvatarColor="#666",    WaitSeconds=1123, QueuePosition=5, Status="waiting", Category="Returns",  AssignedTo=null,      Messages = new List<QueueMessage>() }
-                },
+                Sessions = sessions,
                 Agents = new List<AgentStatusViewModel>
                 {
                     new AgentStatusViewModel { Name="J. Chen",     Initials="JC", Status="busy",    ActiveSessions=3, MaxSessions=3 },
@@ -279,7 +319,6 @@ namespace NextHorizon.Controllers
 
             var name = model.Name.Trim();
 
-            // Set all FAQs in this category to Inactive
             var sql = "UPDATE FAQs SET Status = 'Inactive', LastUpdated = GETDATE() WHERE Category = @Category AND (Status = 'active' OR Status = 'Active')";
 
             var rows = _context.Database.ExecuteSqlRaw(sql,
