@@ -828,6 +828,64 @@ public async Task<IActionResult> GetSellerDocumentInfo(int sellerId)
 }
 
 
+[HttpGet]
+public async Task<IActionResult> GetSellerLogo(int sellerId)
+{
+    try
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            using (var cmd = new SqlCommand(
+                @"SELECT logo_data, logo_content_type, logo_path, 
+                         CASE WHEN logo_data IS NOT NULL THEN 'binary' 
+                              WHEN logo_path IS NOT NULL THEN 'path'
+                              ELSE 'none' END as logo_type
+                  FROM Sellers WHERE seller_id = @SellerId", connection))
+            {
+                cmd.Parameters.AddWithValue("@SellerId", sellerId);
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        // DEBUG: Log what we're getting
+                        var logoType = reader["logo_type"]?.ToString() ?? "unknown";
+                        Console.WriteLine($"Seller {sellerId}: logo_type={logoType}");
+
+                        // New binary logo
+                        if (!reader.IsDBNull(reader.GetOrdinal("logo_data")))
+                        {
+                            var data = (byte[])reader["logo_data"];
+                            var contentType = reader["logo_content_type"]?.ToString() ?? "image/png";
+                            Console.WriteLine($"Binary logo found: {data.Length} bytes, type: {contentType}");
+                            return File(data, contentType);
+                        }
+                        
+                        // Old file path logo
+                        var logoPath = reader["logo_path"]?.ToString();
+                        if (!string.IsNullOrEmpty(logoPath))
+                        {
+                            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", logoPath.TrimStart('/'));
+                            Console.WriteLine($"File path logo: {fullPath}, exists: {System.IO.File.Exists(fullPath)}");
+                            
+                            if (System.IO.File.Exists(fullPath))
+                                return PhysicalFile(fullPath, "image/jpeg");
+                        }
+                    }
+                }
+            }
+        }
+        Console.WriteLine($"No logo found for seller {sellerId}");
+        return NotFound();
+    }
+    catch (Exception ex) 
+    { 
+        Console.WriteLine($"GetSellerLogo error: {ex.Message}");
+        return BadRequest(ex.Message); 
+    }
+}
+
+
 
             [HttpPost]
             public async Task<IActionResult> UpdateSellerStatus([FromBody] UpdateSellerStatusRequest request)

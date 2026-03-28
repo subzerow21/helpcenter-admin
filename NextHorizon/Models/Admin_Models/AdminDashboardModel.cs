@@ -64,6 +64,7 @@ public class DashboardAuditLog
     public string BusinessType { get; set; }
     public string BusinessAddress { get; set; }
     public string LogoPath { get; set; }
+    
     public string DocumentPath { get; set; }
     public bool HasDocument { get; set; }   // ADD THIS
     public string SellerStatus { get; set; }
