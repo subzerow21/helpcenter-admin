@@ -218,7 +218,7 @@ namespace NextHorizon.Controllers
                     AgentsOnline = agentsOnline
                 },
                 Sessions = sessions,
-                Agents = agentViewModels,   // ← now from DB, not hardcoded
+                Agents = agentViewModels,
                 Faqs = faqs,
                 Categories = categories
             };
@@ -235,13 +235,16 @@ namespace NextHorizon.Controllers
             if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
                 return BadRequest(new { success = false, message = "Invalid request." });
 
-            // 1. Mark the HelpSession as Active
-            var sessionRows = _context.Database.ExecuteSqlRaw(
-                "UPDATE dbo.SupportFAQs SET Status = 'Active', StartTime = GETDATE() WHERE Id = @Id",
-                new SqlParameter("@Id", model.SessionId));
+            // 1. Look up the agent's UserID from dbo.Agents using their name
+            //    Take the first matching row — UserID is the same for all rows of the same agent
+            var agentRow = _context.Agents
+                .Where(a => a.AgentName == model.AgentName)
+                .FirstOrDefault();
 
-            if (sessionRows == 0)
-                return Json(new { success = false, message = "Session not found." });
+            if (agentRow == null)
+                return Json(new { success = false, message = "Agent not found." });
+
+            var agentUserId = agentRow.UserID;   // this is what goes into SupportFAQs.AgentId
 
             // 2. Determine next available ChatSlot for this agent (1-3)
             var usedSlots = _context.Agents
@@ -264,23 +267,38 @@ namespace NextHorizon.Controllers
             var category = session?.Category ?? "N/A";
             var previewQuestion = session?.Question ?? "N/A";
 
-            // 4. Insert new row into dbo.Agents for this chat slot
+            // 4. Mark the HelpSession as Active AND write the agent's UserID into AgentId
+            var sessionRows = _context.Database.ExecuteSqlRaw(
+                @"UPDATE dbo.SupportFAQs
+                  SET Status    = 'Active',
+                      StartTime = GETDATE(),
+                      AgentId   = @AgentId
+                  WHERE Id = @Id",
+                new SqlParameter("@AgentId", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value),
+                new SqlParameter("@Id", model.SessionId));
+
+            if (sessionRows == 0)
+                return Json(new { success = false, message = "Session not found." });
+
+            // 5. Insert new row into dbo.Agents for this chat slot
             _context.Database.ExecuteSqlRaw(
                 @"INSERT INTO dbo.Agents
-                    (AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, StartTime, AgentStatus)
+                    (AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, StartTime, AgentStatus, UserID)
                   VALUES
-                    (@AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', GETDATE(), 'available')",
+                    (@AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', GETDATE(), 'available', @UserID)",
                 new SqlParameter("@AgentName", model.AgentName),
                 new SqlParameter("@ClientName", clientName),
                 new SqlParameter("@Category", category),
                 new SqlParameter("@PreviewQuestion", previewQuestion),
-                new SqlParameter("@ChatSlot", Convert.ToByte(nextSlot)));
+                new SqlParameter("@ChatSlot", Convert.ToByte(nextSlot)),
+                new SqlParameter("@UserID", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value));
 
             return Json(new
             {
                 success = true,
                 sessionId = model.SessionId,
                 agent = model.AgentName,
+                agentId = agentUserId,
                 slot = nextSlot
             });
         }
@@ -447,6 +465,7 @@ namespace NextHorizon.Controllers
                         (a.ChatStatus == "Active" || a.ChatStatus == "active"));
 
                     var rawStatus = (g.First().AgentStatus ?? "available").ToLower().Trim();
+                    var userId = g.First().UserID;
 
                     return new
                     {
@@ -454,6 +473,7 @@ namespace NextHorizon.Controllers
                         activeSessions = activeCount,
                         maxSessions = 3,
                         status = rawStatus,
+                        userId = userId,
                         hasSlot = activeCount < 3 && rawStatus != "offline"
                     };
                 })

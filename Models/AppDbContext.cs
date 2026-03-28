@@ -60,6 +60,8 @@ namespace NextHorizon.Data
                 entity.Property(e => e.StartTime).HasColumnName("StartTime");
                 entity.Property(e => e.EndTime).HasColumnName("EndTime");
                 entity.Property(e => e.AgentStatus).HasColumnName("AgentStatus");
+                entity.Property(e => e.AgentID).HasColumnName("AgentID");  // ← new
+                entity.Property(e => e.UserID).HasColumnName("UserID");    // ← new
             });
         }
     }
