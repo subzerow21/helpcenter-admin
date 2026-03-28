@@ -38,7 +38,6 @@ namespace NextHorizon.Controllers
                 new ProductMetric { ProductName = "Pro GPS Watch",     UnitsSold = 185, Revenue = 675000m,  Category = "Electronics", Stock = 12  },
                 new ProductMetric { ProductName = "Compression Socks", UnitsSold = 210, Revenue = 42000m,   Category = "Apparel",     Stock = 150 }
             };
-
             var viewModel = new AnalyticsViewModel
             {
                 TotalConsumers = 12450,
@@ -50,7 +49,6 @@ namespace NextHorizon.Controllers
                 TotalOrders = 1240,
                 TopMovingProducts = productData.OrderByDescending(p => p.UnitsSold).Take(5).ToList()
             };
-
             return View(viewModel);
         }
 
@@ -85,13 +83,14 @@ namespace NextHorizon.Controllers
                 },
                 PendingDiscounts = new List<DiscountRequest>
                 {
-                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub",    ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now,            EndDate=DateTime.Now.AddDays(7) },
+                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub",    ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now,            EndDate=DateTime.Now.AddDays(7)  },
                     new DiscountRequest { Id="D-56", ShopName="Home Essentials", ProductName="Ergonomic Chair",      OriginalPrice=8999, DiscountPercent=50, StartDate=DateTime.Now.AddDays(2), EndDate=DateTime.Now.AddDays(5) }
                 }
             };
             return View("FinanceRequest", viewModel);
         }
 
+        // ─────────────────────────────────────────────────────────────────
         public IActionResult HelpCenter()
         {
             // ── FAQs from DB ──────────────────────────────────────────────
@@ -115,36 +114,26 @@ namespace NextHorizon.Controllers
                 .OrderBy(c => c)
                 .ToList();
 
-            // ── ✅ FIXED: SHOW BOTH SELLER + CONSUMER ──────────────────────
+            // ── Live Queue: ONLY Waiting sessions ─────────────────────────
             var dbSessions = _context.HelpSessions
-                .Where(s =>
-                    s.UserType != null &&
-                    (
-                        s.UserType.ToLower().Contains("consumer") ||
-                        s.UserType.ToLower().Contains("seller")
-                    ) &&
-                    (
-                        s.Status == null ||
-                        s.Status.ToLower() == "no" ||
-                        s.Status.ToLower() == "waiting" ||
-                        s.Status.ToLower() == "active"
-                    )
-                )
+                .Where(s => s.Status == "Waiting" || s.Status == "No" || s.Status == null)
                 .OrderBy(s => s.CreatedAt)
+                .ToList()
+                .Where(s =>
+                {
+                    var ut = (s.UserType ?? "").Trim().ToLower();
+                    return ut == "consumer" || ut == "seller";
+                })
                 .ToList();
 
             var avatarColors = new[] { "#1a1a1a", "#777", "#888", "#999", "#666", "#555", "#333" };
 
             var sessions = dbSessions.Select((s, i) =>
             {
-                var utNorm = (s.UserType ?? "").Trim().ToLower();
-
-                // ✅ FIX: Proper Seller detection
-                var isSeller = utNorm.Contains("seller");
-
+                var utNorm = (s.UserType ?? "Consumer").Trim();
+                var isSeller = utNorm.Equals("Seller", StringComparison.OrdinalIgnoreCase);
                 var roleLabel = isSeller ? "Seller" : "Consumer";
-                var prefix = isSeller ? "Seller" : "Customer";
-                var name = prefix + " #" + s.Id;
+                var name = (isSeller ? "Seller" : "Customer") + " #" + s.Id;
                 var initials = isSeller ? "SE" : "CU";
 
                 return new QueueSession
@@ -158,12 +147,52 @@ namespace NextHorizon.Controllers
                     AvatarColor = avatarColors[i % avatarColors.Length],
                     WaitSeconds = (int)(DateTime.Now - s.CreatedAt).TotalSeconds,
                     QueuePosition = i + 1,
-                    Status = s.AgentId.HasValue ? "active" : "waiting",
+                    Status = "waiting",
                     Category = string.IsNullOrWhiteSpace(s.Category) ? "General" : s.Category,
-                    AssignedTo = s.AgentId.HasValue ? "Agent #" + s.AgentId : null,
+                    AssignedTo = null,
                     Messages = new List<QueueMessage>()
                 };
             }).ToList();
+
+            // ── Agents from dbo.Agents ─────────────────────────────────────
+            var agentRows = _context.Agents.ToList();
+
+            var agentViewModels = agentRows
+                .GroupBy(a => a.AgentName ?? "Unknown")
+                .Select(g =>
+                {
+                    var activeSessions = g.Count(a =>
+                        !string.IsNullOrEmpty(a.ChatStatus) &&
+                        (a.ChatStatus == "Active" || a.ChatStatus == "active"));
+
+                    var rawStatus = (g.First().AgentStatus ?? "available").ToLower().Trim();
+                    var status = rawStatus switch
+                    {
+                        "available" => "online",
+                        "busy" => "busy",
+                        "away" => "away",
+                        "offline" => "offline",
+                        _ => "online"
+                    };
+
+                    var name = g.Key ?? "Unknown";
+                    var initials = string.Concat(
+                        name.Split(' ')
+                            .Where(w => w.Length > 0)
+                            .Take(2)
+                            .Select(w => w[0].ToString().ToUpper()));
+
+                    return new AgentStatusViewModel
+                    {
+                        Name = name,
+                        Initials = initials,
+                        Status = status,
+                        ActiveSessions = activeSessions,
+                        MaxSessions = 3
+                    };
+                })
+                .OrderBy(a => a.Name)
+                .ToList();
 
             // ── Stats ─────────────────────────────────────────────────────
             var resolvedToday = _context.HelpSessions
@@ -173,65 +202,133 @@ namespace NextHorizon.Controllers
                 ? TimeSpan.FromSeconds(sessions.Average(s => s.WaitSeconds)).ToString(@"m\:ss")
                 : "0:00";
 
+            var agentsOnline = agentViewModels.Count(a => a.Status == "online" || a.Status == "busy");
+            var activeSessionsCount = _context.HelpSessions
+                .Count(s => s.Status == "Active" || s.Status == "active");
+
             var viewModel = new HelpCenterV2ViewModel
             {
                 Stats = new QueueDashboardStatsViewModel
                 {
                     InQueue = sessions.Count,
-                    ActiveSessions = sessions.Count(s => s.Status == "active"),
+                    ActiveSessions = activeSessionsCount,
                     AvgWaitTime = avgWaitTime,
                     ResolvedToday = resolvedToday,
                     AbandonRate = 4.2,
-                    AgentsOnline = 3
+                    AgentsOnline = agentsOnline
                 },
                 Sessions = sessions,
-                Agents = new List<AgentStatusViewModel>
-        {
-            new AgentStatusViewModel { Name="J. Chen",     Initials="JC", Status="busy",    ActiveSessions=3, MaxSessions=3 },
-            new AgentStatusViewModel { Name="R. Santos",   Initials="RS", Status="busy",    ActiveSessions=2, MaxSessions=3 },
-            new AgentStatusViewModel { Name="M. Lim",      Initials="ML", Status="online",  ActiveSessions=1, MaxSessions=3 },
-            new AgentStatusViewModel { Name="K. Bautista", Initials="KB", Status="away",    ActiveSessions=0, MaxSessions=3 },
-            new AgentStatusViewModel { Name="L. Torres",   Initials="LT", Status="offline", ActiveSessions=0, MaxSessions=3 }
-        },
+                Agents = agentViewModels,   // ← now from DB, not hardcoded
                 Faqs = faqs,
                 Categories = categories
             };
 
             return View(viewModel);
         }
+
+        // ── QUEUE ENDPOINTS ───────────────────────────────────────────────
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
         {
-            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
-            return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName });
+            if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
+                return BadRequest(new { success = false, message = "Invalid request." });
+
+            // 1. Mark the HelpSession as Active
+            var sessionRows = _context.Database.ExecuteSqlRaw(
+                "UPDATE dbo.SupportFAQs SET Status = 'Active', StartTime = GETDATE() WHERE Id = @Id",
+                new SqlParameter("@Id", model.SessionId));
+
+            if (sessionRows == 0)
+                return Json(new { success = false, message = "Session not found." });
+
+            // 2. Determine next available ChatSlot for this agent (1-3)
+            var usedSlots = _context.Agents
+                .Where(a => a.AgentName == model.AgentName &&
+                            (a.ChatStatus == "Active" || a.ChatStatus == "active"))
+                .Select(a => (int)(a.ChatSlot ?? 0))
+                .ToList();
+
+            int nextSlot = Enumerable.Range(1, 3).FirstOrDefault(s => !usedSlots.Contains(s));
+            if (nextSlot == 0)
+                return Json(new { success = false, message = "Agent has no available slots." });
+
+            // 3. Fetch session details
+            var session = _context.HelpSessions.Find(model.SessionId);
+            var clientName = session != null
+                ? ((session.UserType ?? "").Equals("Seller", StringComparison.OrdinalIgnoreCase)
+                    ? "Seller #" + session.Id
+                    : "Customer #" + session.Id)
+                : "Unknown";
+            var category = session?.Category ?? "N/A";
+            var previewQuestion = session?.Question ?? "N/A";
+
+            // 4. Insert new row into dbo.Agents for this chat slot
+            _context.Database.ExecuteSqlRaw(
+                @"INSERT INTO dbo.Agents
+                    (AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, StartTime, AgentStatus)
+                  VALUES
+                    (@AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', GETDATE(), 'available')",
+                new SqlParameter("@AgentName", model.AgentName),
+                new SqlParameter("@ClientName", clientName),
+                new SqlParameter("@Category", category),
+                new SqlParameter("@PreviewQuestion", previewQuestion),
+                new SqlParameter("@ChatSlot", Convert.ToByte(nextSlot)));
+
+            return Json(new
+            {
+                success = true,
+                sessionId = model.SessionId,
+                agent = model.AgentName,
+                slot = nextSlot
+            });
         }
 
         [HttpPost]
         public IActionResult QueueSend([FromBody] QueueSendRequest model)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.Message)) return BadRequest(new { success = false });
-            return Json(new { success = true, message = model.Message, isNote = model.IsNote, timestamp = DateTime.Now.ToString("h:mm tt") });
+            if (model == null || string.IsNullOrWhiteSpace(model.Message))
+                return BadRequest(new { success = false });
+            return Json(new
+            {
+                success = true,
+                message = model.Message,
+                isNote = model.IsNote,
+                timestamp = DateTime.Now.ToString("h:mm tt")
+            });
         }
 
         [HttpPost]
         public IActionResult QueueEndSession([FromBody] QueueSessionActionRequest model)
         {
-            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            _context.Database.ExecuteSqlRaw(
+                "UPDATE dbo.SupportFAQs SET Status = 'Resolved', EndTime = GETDATE() WHERE Id = @Id",
+                new SqlParameter("@Id", model.SessionId));
+
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
         [HttpPost]
         public IActionResult QueueResolve([FromBody] QueueSessionActionRequest model)
         {
-            if (model == null || model.SessionId <= 0) return BadRequest(new { success = false });
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            _context.Database.ExecuteSqlRaw(
+                "UPDATE dbo.SupportFAQs SET Status = 'Resolved', EndTime = GETDATE() WHERE Id = @Id",
+                new SqlParameter("@Id", model.SessionId));
+
             return Json(new { success = true, sessionId = model.SessionId, timestamp = DateTime.Now.ToString("h:mm tt") });
         }
 
         [HttpPost]
-        public IActionResult QueueAutoAssign()
-        {
-            return Json(new { success = true });
-        }
+        public IActionResult QueueAutoAssign() => Json(new { success = true });
+
+        // ── FAQ ENDPOINTS ─────────────────────────────────────────────────
 
         [HttpPost]
         public IActionResult FaqAdd([FromBody] AddFaqRequest model)
@@ -239,12 +336,9 @@ namespace NextHorizon.Controllers
             if (model == null || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Question and answer are required." });
 
-            var sql = @"
-                INSERT INTO FAQs (Question, Answer, Category, UserType, Status, user_id, DateAdded, LastUpdated)
-                VALUES (@Question, @Answer, @Category, @UserType, 'Active', @UserId, @DateAdded, GETDATE());
-                SELECT SCOPE_IDENTITY();";
-
-            _context.Database.ExecuteSqlRaw(sql,
+            _context.Database.ExecuteSqlRaw(
+                @"INSERT INTO FAQs (Question, Answer, Category, UserType, Status, user_id, DateAdded, LastUpdated)
+                  VALUES (@Question, @Answer, @Category, @UserType, 'Active', @UserId, @DateAdded, GETDATE())",
                 new SqlParameter("@Question", model.Question),
                 new SqlParameter("@Answer", model.Answer),
                 new SqlParameter("@Category", model.Category ?? ""),
@@ -267,15 +361,12 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0 || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
                 return BadRequest(new { success = false, message = "Invalid request." });
 
-            var faqExists = _context.FAQs.Any(f => f.FaqID == model.Id);
-            if (!faqExists) return NotFound(new { success = false, message = "FAQ not found." });
+            if (!_context.FAQs.Any(f => f.FaqID == model.Id))
+                return NotFound(new { success = false, message = "FAQ not found." });
 
-            var sql = @"
-                UPDATE FAQs
-                SET Question = @Question, Answer = @Answer, Category = @Category, UserType = @UserType, LastUpdated = GETDATE()
-                WHERE FaqID = @FaqId";
-
-            var rows = _context.Database.ExecuteSqlRaw(sql,
+            var rows = _context.Database.ExecuteSqlRaw(
+                @"UPDATE FAQs SET Question=@Question, Answer=@Answer, Category=@Category,
+                  UserType=@UserType, LastUpdated=GETDATE() WHERE FaqID=@FaqId",
                 new SqlParameter("@Question", model.Question),
                 new SqlParameter("@Answer", model.Answer),
                 new SqlParameter("@Category", model.Category ?? ""),
@@ -293,12 +384,11 @@ namespace NextHorizon.Controllers
             if (model == null || model.Id <= 0)
                 return BadRequest(new { success = false });
 
-            var faqExists = _context.FAQs.Any(f => f.FaqID == model.Id);
-            if (!faqExists) return NotFound(new { success = false, message = "FAQ not found." });
+            if (!_context.FAQs.Any(f => f.FaqID == model.Id))
+                return NotFound(new { success = false, message = "FAQ not found." });
 
-            var sql = "UPDATE FAQs SET Status = 'Inactive', LastUpdated = GETDATE() WHERE FaqID = @FaqId";
-
-            var rows = _context.Database.ExecuteSqlRaw(sql,
+            var rows = _context.Database.ExecuteSqlRaw(
+                "UPDATE FAQs SET Status='Inactive', LastUpdated=GETDATE() WHERE FaqID=@FaqId",
                 new SqlParameter("@FaqId", model.Id));
 
             return rows > 0
@@ -329,18 +419,51 @@ namespace NextHorizon.Controllers
                 return BadRequest(new { success = false });
 
             var name = model.Name.Trim();
-
-            var sql = "UPDATE FAQs SET Status = 'Inactive', LastUpdated = GETDATE() WHERE Category = @Category AND (Status = 'active' OR Status = 'Active')";
-
-            var rows = _context.Database.ExecuteSqlRaw(sql,
+            var rows = _context.Database.ExecuteSqlRaw(
+                "UPDATE FAQs SET Status='Inactive', LastUpdated=GETDATE() WHERE Category=@Category AND (Status='active' OR Status='Active')",
                 new SqlParameter("@Category", name));
 
-            return Json(new { success = true, name = name, deletedCount = rows, message = rows > 0 ? $"{rows} FAQ(s) set to inactive." : "Category removed." });
+            return Json(new
+            {
+                success = true,
+                name = name,
+                deletedCount = rows,
+                message = rows > 0 ? $"{rows} FAQ(s) set to inactive." : "Category removed."
+            });
         }
 
-        public IActionResult Logout()
+        // ── GET available agents for assign dropdown ───────────────────────
+        [HttpGet]
+        public IActionResult GetAvailableAgents()
         {
-            return RedirectToAction("Dashboard");
+            var agentRows = _context.Agents.ToList();
+
+            var result = agentRows
+                .GroupBy(a => a.AgentName ?? "Unknown")
+                .Select(g =>
+                {
+                    var activeCount = g.Count(a =>
+                        !string.IsNullOrEmpty(a.ChatStatus) &&
+                        (a.ChatStatus == "Active" || a.ChatStatus == "active"));
+
+                    var rawStatus = (g.First().AgentStatus ?? "available").ToLower().Trim();
+
+                    return new
+                    {
+                        name = g.Key,
+                        activeSessions = activeCount,
+                        maxSessions = 3,
+                        status = rawStatus,
+                        hasSlot = activeCount < 3 && rawStatus != "offline"
+                    };
+                })
+                .Where(a => a.hasSlot)
+                .OrderBy(a => a.activeSessions)
+                .ToList();
+
+            return Json(result);
         }
+
+        public IActionResult Logout() => RedirectToAction("Dashboard");
     }
 }

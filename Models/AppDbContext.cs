@@ -5,15 +5,15 @@ namespace NextHorizon.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-        {
-        }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<Faq> FAQs { get; set; }
         public DbSet<HelpSession> HelpSessions { get; set; }
+        public DbSet<Agent> Agents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // ── FAQs ──────────────────────────────────────────────────────
             modelBuilder.Entity<Faq>(entity =>
             {
                 entity.ToTable("FAQs", "dbo");
@@ -29,6 +29,7 @@ namespace NextHorizon.Data
                 entity.Property(e => e.LastUpdated).HasColumnName("LastUpdated");
             });
 
+            // ── HelpSessions (SupportFAQs) ────────────────────────────────
             modelBuilder.Entity<HelpSession>(entity =>
             {
                 entity.ToTable("SupportFAQs", "dbo");
@@ -39,7 +40,26 @@ namespace NextHorizon.Data
                 entity.Property(e => e.DurationMinutes).HasColumnName("DurationMinutes");
                 entity.Property(e => e.UserType).HasColumnName("UserType");
                 entity.Property(e => e.AgentId).HasColumnName("AgentId");
+                entity.Property(e => e.Status).HasColumnName("Status");
                 entity.Property(e => e.CreatedAt).HasColumnName("CreatedAt");
+            });
+
+            // ── Agents ────────────────────────────────────────────────────
+            modelBuilder.Entity<Agent>(entity =>
+            {
+                entity.ToTable("Agents", "dbo");
+                entity.HasKey(e => e.ChatID);
+                entity.Property(e => e.ChatID).HasColumnName("ChatID");
+                entity.Property(e => e.ConversationID).HasColumnName("ConversationID");
+                entity.Property(e => e.AgentName).HasColumnName("AgentName");
+                entity.Property(e => e.ClientName).HasColumnName("ClientName");
+                entity.Property(e => e.Category).HasColumnName("Category");
+                entity.Property(e => e.PreviewQuestion).HasColumnName("PreviewQuestion");
+                entity.Property(e => e.ChatSlot).HasColumnName("ChatSlot");
+                entity.Property(e => e.ChatStatus).HasColumnName("ChatStatus");
+                entity.Property(e => e.StartTime).HasColumnName("StartTime");
+                entity.Property(e => e.EndTime).HasColumnName("EndTime");
+                entity.Property(e => e.AgentStatus).HasColumnName("AgentStatus");
             });
         }
     }

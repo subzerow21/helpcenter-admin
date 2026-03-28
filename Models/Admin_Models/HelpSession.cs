@@ -1,20 +1,20 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NextHorizon.Models
 {
+    [Table("SupportFAQs", Schema = "dbo")]
     public class HelpSession
     {
         [Key]
         public int Id { get; set; }
-        public string Category { get; set; } = string.Empty;
-        public string Question { get; set; } = string.Empty;
-        public string? Status { get; set; }
-        public int DurationMinutes { get; set; }
-        public string UserType { get; set; }
+        public string? Category { get; set; }
+        public string? Question { get; set; }
+        public int? DurationMinutes { get; set; }
+        public string? UserType { get; set; }
         public int? AgentId { get; set; }
+        public string? Status { get; set; }
         public DateTime CreatedAt { get; set; }
-        public DateTime? EndTime { get; set; }
-        public DateTime? StartTime { get; set; }
     }
 }

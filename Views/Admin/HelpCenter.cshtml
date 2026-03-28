@@ -282,32 +282,6 @@
                 color: #791F1F;
             }
 
-        .sla-bar {
-            width: 44px;
-            height: 5px;
-            background: #f0f0f0;
-            border-radius: 2px;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .sla-fill {
-            height: 5px;
-            border-radius: 2px;
-        }
-
-        .sl-ok {
-            background: #4ade80;
-        }
-
-        .sl-warn {
-            background: #f59e0b;
-        }
-
-        .sl-red {
-            background: #e24b4a;
-        }
-
         .q-pos-badge {
             width: 22px;
             height: 22px;
@@ -423,6 +397,120 @@
                 stroke-linejoin: round;
                 flex-shrink: 0;
             }
+
+        /* ── AGENT ASSIGN DROPDOWN ── */
+        .assign-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .assign-dd {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 16px rgba(0,0,0,.12);
+            min-width: 210px;
+            z-index: 500;
+            display: none;
+        }
+
+            .assign-dd.open {
+                display: block;
+            }
+
+        .assign-dd-hd {
+            padding: 8px 12px 6px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #aaa;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .assign-agent-opt {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 12px;
+            cursor: pointer;
+            transition: background .12s;
+            border-bottom: 1px solid #f8f8f8;
+        }
+
+            .assign-agent-opt:last-child {
+                border-bottom: none;
+            }
+
+            .assign-agent-opt:hover {
+                background: #f5f5f5;
+            }
+
+        .aao-av {
+            width: 26px;
+            height: 26px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .aao-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+        }
+
+            .aao-dot.on {
+                background: #4ade80;
+            }
+
+            .aao-dot.busy {
+                background: #378ADD;
+            }
+
+            .aao-dot.away {
+                background: #f59e0b;
+            }
+
+        .aao-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .aao-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .aao-slots {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 1px;
+        }
+
+        .assign-dd-empty {
+            padding: 14px;
+            font-size: 11px;
+            color: #bbb;
+            text-align: center;
+        }
 
         /* AGENT 3-COL */
         .agent-grid {
@@ -586,7 +674,6 @@
             margin-bottom: 4px;
         }
 
-        /* CATEGORY INPUT + CHIPS */
         .cat-add-row {
             display: flex;
             align-items: center;
@@ -703,7 +790,6 @@
             line-height: 1.5;
         }
 
-        /* RADIO */
         .radio-row {
             display: flex;
             align-items: center;
@@ -958,7 +1044,7 @@
             font-size: 12px;
         }
 
-        /* CONFIRM MODAL */
+        /* MODAL */
         .nh-modal-bg {
             position: fixed;
             inset: 0;
@@ -1132,7 +1218,7 @@
                 <div><div class="ph-title">Live Queue</div><div class="ph-sub" id="qMeta">@Model.Stats.InQueue in queue</div></div>
                 <span style="font-size:10.5px;color:#4ade80;font-weight:600;display:flex;align-items:center;gap:5px;">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    Auto-queue active
+                    Live queue
                 </span>
             </div>
             <div class="wait-warn" id="waitWarn">
@@ -1144,7 +1230,7 @@
             <div class="q-scroll">
                 <table class="qtbl">
                     <thead>
-                        <tr><th>#</th><th>Customer</th><th>Wait Time</th><th>SLA</th><th>Category</th><th>Status</th></tr>
+                        <tr><th>#</th><th>Customer</th><th>Wait Time</th><th>Category</th><th>Status</th><th>Action</th></tr>
                     </thead>
                     <tbody id="qBody"></tbody>
                 </table>
@@ -1163,15 +1249,11 @@
 
     <!-- RIGHT: FAQ MANAGER -->
     <div class="hc-right">
-
-        <!-- ADD FORM -->
         <div class="faq-form">
             <div class="ph">
                 <div><div class="ph-title">FAQ Manager</div><div class="ph-sub">Add, edit, or delete FAQs in real time</div></div>
             </div>
             <div class="form-body">
-
-                <!-- CATEGORY -->
                 <div>
                     <div class="field-lbl">Category</div>
                     <div class="cat-add-row">
@@ -1181,34 +1263,21 @@
                     </div>
                     <div class="cat-chips" id="catChips"></div>
                 </div>
-
-                <!-- QUESTION -->
                 <div>
                     <div class="field-lbl">Question</div>
                     <input class="faq-inp" id="faqQ" type="text" placeholder="e.g. How do I track my order?" maxlength="500" />
                 </div>
-
-                <!-- ANSWER — no maxlength matches nvarchar(max) -->
                 <div>
                     <div class="field-lbl">Answer</div>
                     <textarea class="faq-inp" id="faqA" placeholder="Type the full response here..."></textarea>
                 </div>
-
-                <!-- VISIBLE TO -->
                 <div>
                     <div class="field-lbl">Visible to</div>
                     <div class="radio-row">
-                        <label class="radio-opt">
-                            <input type="radio" name="userType" value="Consumer" checked />
-                            <span>Consumer</span>
-                        </label>
-                        <label class="radio-opt">
-                            <input type="radio" name="userType" value="Seller" />
-                            <span>Seller</span>
-                        </label>
+                        <label class="radio-opt"><input type="radio" name="userType" value="Consumer" checked /><span>Consumer</span></label>
+                        <label class="radio-opt"><input type="radio" name="userType" value="Seller" /><span>Seller</span></label>
                     </div>
                 </div>
-
             </div>
             <div class="form-foot">
                 <button class="pbtn" onclick="addFaq()">
@@ -1218,7 +1287,6 @@
             </div>
         </div>
 
-        <!-- FAQ LIST -->
         <div class="faq-list-panel">
             <div class="ph">
                 <div class="ph-title">Published FAQs</div>
@@ -1228,7 +1296,6 @@
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                 <input type="text" placeholder="Search FAQs..." oninput="filterFaqs(this.value)" />
             </div>
-            <!-- Consumer / Seller toggle -->
             <div style="display:flex;gap:5px;padding:8px 16px;border-bottom:1px solid #f5f5f5;flex-shrink:0;flex-wrap:wrap;" id="utFilterBar">
                 <button class="ff on" onclick="setUtFilter(this,'all')">All</button>
                 <button class="ff" onclick="setUtFilter(this,'Consumer')">Consumer</button>
@@ -1237,7 +1304,6 @@
             <div class="faq-filter" id="faqFilterBar"></div>
             <div class="faq-scroll" id="faqList"></div>
         </div>
-
     </div>
 </div>
 
@@ -1247,9 +1313,7 @@
             <div class="nh-modal-icon">
                 <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
             </div>
-            <div>
-                <div class="nh-modal-title" id="nhModalTitle">Delete FAQ?</div>
-            </div>
+            <div><div class="nh-modal-title" id="nhModalTitle">Delete FAQ?</div></div>
         </div>
         <div class="nh-modal-body">
             <div class="nh-modal-msg" id="nhModalMsg">This action cannot be undone.</div>
@@ -1277,11 +1341,11 @@
 
         var selCat          = CATEGORIES.length ? CATEGORIES[0] : 'General';
         var faqFilterActive = 'all';
+        var utFilterActive  = 'all';
         var faqSearch       = '';
         var nextId          = @(Model.Faqs.Count > 0 ? Model.Faqs.Max(f => f.Id) + 1 : 1);
 
-        /* ── Antiforgery token — sent with every POST so ASP.NET accepts it ── */
-        var __af = document.querySelector('input[name="__RequestVerificationToken"]');
+        var __af     = document.querySelector('input[name="__RequestVerificationToken"]');
         var AF_TOKEN = __af ? __af.value : '';
 
         function postJson(url, data) {
@@ -1302,9 +1366,10 @@
             return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
         }
 
-        function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        function slaClass(s) { return s<120?'sl-ok':s<300?'sl-warn':'sl-red'; }
-        function slaPct(s)   { return Math.min(100,Math.round(s/360*100)); }
+        function escH(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
         function getUserType() { return document.querySelector('input[name="userType"]:checked').value; }
 
         function showToast(msg) {
@@ -1313,6 +1378,200 @@
             setTimeout(function(){ t.classList.remove('show'); }, 2400);
         }
 
+        /* ══════════════════════════════════════════════════════════════════════
+           AGENT ASSIGN DROPDOWN
+           — clicking "Assign ▾" fetches /Admin/GetAvailableAgents and shows
+             a floating picker. Clicking an agent calls confirmAssign().
+        ══════════════════════════════════════════════════════════════════════ */
+
+        // Close any open dropdown when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.assign-wrap')) {
+                document.querySelectorAll('.assign-dd.open').forEach(function(el) {
+                    el.classList.remove('open');
+                });
+            }
+        });
+
+        function openAssignDropdown(sessionId, btnEl) {
+            // Close others first
+            document.querySelectorAll('.assign-dd.open').forEach(function(el) {
+                el.classList.remove('open');
+            });
+
+            var wrap = btnEl.closest('.assign-wrap');
+            var dd   = wrap.querySelector('.assign-dd');
+
+            // Show loading state immediately
+            dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                         + '<div class="assign-agent-opt" style="justify-content:center;color:#aaa;font-size:11px;pointer-events:none;">Loading…</div>';
+            dd.classList.add('open');
+
+            // Fetch fresh available-agents list from server (reads dbo.Agents live)
+            fetch('/Admin/GetAvailableAgents')
+                .then(function(r) { return r.json(); })
+                .then(function(agents) {
+                    if (!agents || !agents.length) {
+                        dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                                     + '<div class="assign-dd-empty">No agents available right now</div>';
+                        return;
+                    }
+                    var html = '<div class="assign-dd-hd">Select Agent</div>';
+                    agents.forEach(function(a) {
+                        var dotCls   = a.status === 'available' ? 'on' : a.status === 'busy' ? 'busy' : 'away';
+                        var initials = (a.name || '').split(' ').filter(Boolean).slice(0, 2)
+                                        .map(function(w) { return w[0].toUpperCase(); }).join('');
+                        // encode agent name for safe inline onclick
+                        var safeName = escH(a.name).replace(/'/g, '&#39;');
+                        html += '<div class="assign-agent-opt" onclick="confirmAssign(' + sessionId + ',\'' + safeName + '\')">'
+                              +   '<div class="aao-av">' + initials + '<div class="aao-dot ' + dotCls + '"></div></div>'
+                              +   '<div class="aao-info">'
+                              +     '<div class="aao-name">' + escH(titleCase(a.name)) + '</div>'
+                              +     '<div class="aao-slots">' + a.activeSessions + ' / ' + a.maxSessions + ' slots used</div>'
+                              +   '</div>'
+                              + '</div>';
+                    });
+                    dd.innerHTML = html;
+                })
+                .catch(function() {
+                    dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                                 + '<div class="assign-dd-empty">Could not load agents</div>';
+                });
+        }
+
+        function confirmAssign(sessionId, agentName) {
+            // Close dropdown immediately
+            document.querySelectorAll('.assign-dd.open').forEach(function(el) {
+                el.classList.remove('open');
+            });
+
+            var s = SESSIONS.find(function(x) { return x.id === sessionId; });
+            if (!s) return;
+
+            postJson('/Admin/QueueAssign', { sessionId: sessionId, agentName: agentName })
+                .then(function(data) {
+                    if (data.success) {
+                        // Remove from local queue — session is now Active in DB
+                        SESSIONS = SESSIONS.filter(function(x) { return x.id !== sessionId; });
+                        // Optimistically bump local agent count
+                        var ag = AGENTS.find(function(a) { return a.name === agentName; });
+                        if (ag) ag.sessions = Math.min(ag.sessions + 1, ag.max);
+                        renderQueue();
+                        renderAgents();
+                        showToast(titleCase(s.name) + ' assigned to ' + titleCase(agentName) + '.');
+                    } else {
+                        showToast(data.message || 'Assignment failed.');
+                    }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           QUEUE
+        ══════════════════════════════════════════════════════════════════════ */
+        function renderQueue() {
+            var body = document.getElementById('qBody');
+            body.innerHTML = '';
+            var over5 = 0;
+
+            SESSIONS.forEach(function(s, i) {
+                if (s.waitSec >= 300) over5++;
+                var tr = document.createElement('tr');
+                var wc = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
+                var pc = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+
+                // Show Assign ▾ button if any agent has a free slot; else greyed text
+                var hasAvailable = AGENTS.some(function(a) {
+                    return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
+                });
+
+                var actionCell = hasAvailable
+                    ? '<div class="assign-wrap">'
+                    +   '<button class="pbtn" style="font-size:10px;padding:4px 10px;" '
+                    +           'onclick="event.stopPropagation();openAssignDropdown(' + s.id + ',this)">'
+                    +     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:3px;vertical-align:-1px;">'
+                    +       '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+                    +     '</svg>Assign &#9660;</button>'
+                    +   '<div class="assign-dd"></div>'
+                    + '</div>'
+                    : '<span style="font-size:11px;color:#aaa;">No agents</span>';
+
+                tr.innerHTML =
+                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
+                    + '<td><div class="q-cust">'
+                    +   '<div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
+                    +   '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
+                    +       '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div>'
+                    + '</div></td>'
+                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
+                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
+                    + '<td><span class="badge b-waiting">Waiting</span></td>'
+                    + '<td>' + actionCell + '</td>';
+                body.appendChild(tr);
+            });
+
+            var w = document.getElementById('waitWarn');
+            w.classList.toggle('show', over5 > 0);
+            if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
+            var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
+            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
+            document.getElementById('qsInQueue').textContent = SESSIONS.length;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           AGENTS
+        ══════════════════════════════════════════════════════════════════════ */
+        function renderAgents() {
+            var grid = document.getElementById('agentGrid');
+            grid.innerHTML = '';
+            for (var slot = 0; slot < 3; slot++) {
+                var col  = document.createElement('div'); col.className = 'agent-col';
+                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
+                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot + 1);
+                col.appendChild(hd);
+                var colBody = document.createElement('div'); colBody.className = 'agent-col-body';
+                AGENTS.forEach(function(a) {
+                    var hasChat   = slot < a.sessions;
+                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
+                    var statusCls = 'b-' + a.status;
+                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
+                    var d = document.createElement('div');
+                    if (a.status === 'offline' || a.status === 'away') {
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';">'
+                            + '<span>' + a.initials + '</span>'
+                            + '<div class="ag-dot ' + dotCls + '"></div></div>'
+                            + '<div class="ag-info">'
+                            + '<div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
+                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
+                    } else if (hasChat) {
+                        var isFull  = a.sessions >= a.max && slot === a.max - 1;
+                        d.className = 'agent-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:' + avBg + ';">'
+                            + '<span>' + a.initials + '</span>'
+                            + '<div class="ag-dot ' + dotCls + '"></div></div>'
+                            + '<div class="ag-info">'
+                            + '<div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
+                            + '<div class="ag-chat">Slot ' + (slot + 1) + ' occupied</div></div>'
+                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">'
+                            + (isFull ? 'Full' : a.status) + '</span>';
+                    } else {
+                        d.className   = 'empty-slot';
+                        d.textContent = 'Available slot';
+                    }
+                    colBody.appendChild(d);
+                });
+                col.appendChild(colBody);
+                grid.appendChild(col);
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           FAQ
+        ══════════════════════════════════════════════════════════════════════ */
         function renderCatChips() {
             var wrap = document.getElementById('catChips');
             wrap.innerHTML = '';
@@ -1339,48 +1598,34 @@
             postJson('/Admin/FaqCategoryAdd', { name: vTitle })
             .then(function(data) {
                 if (data.success) {
-                    CATEGORIES.push(vTitle);
-                    selCat = vTitle;
-                    inp.value = '';
+                    CATEGORIES.push(vTitle); selCat = vTitle; inp.value = '';
                     renderCatChips();
                     showToast('"' + vTitle + '" category added!');
-                } else {
-                    showToast('Failed to add category.');
-                }
+                } else { showToast('Failed to add category.'); }
             })
             .catch(function() { showToast('Could not reach server.'); });
         }
 
         function deleteCategory(cat) {
             var faqsInCat = FAQS.filter(function(f){ return f.cat === cat; });
-            var warnMsg   = faqsInCat.length > 0
+            var warnMsg = faqsInCat.length > 0
                 ? 'This will also delete ' + faqsInCat.length + ' FAQ(s) under "' + titleCase(cat) + '".'
                 : 'Category "' + titleCase(cat) + '" will be permanently removed.';
-
-            showModal(
-                'Delete Category "' + titleCase(cat) + '"?',
-                warnMsg,
-                function() {
-                    postJson('/Admin/FaqCategoryDelete', { name: cat })
-                    .then(function(data) {
-                        if (data.success) {
-                            FAQS = FAQS.filter(function(f){ return f.cat !== cat; });
-                            CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
-                            if (selCat === cat) selCat = CATEGORIES[0] || '';
-                            updateFaqCounts();
-                            renderCatChips();
-                            renderFaqs();
-                            var msg = data.deletedCount > 0
-                                ? '"' + titleCase(cat) + '" and ' + data.deletedCount + ' FAQ(s) deleted.'
-                                : '"' + titleCase(cat) + '" deleted.';
-                            showToast(msg);
-                        } else {
-                            showToast('Delete failed — please try again.');
-                        }
-                    })
-                    .catch(function() { showToast('Could not reach server.'); });
-                }
-            );
+            showModal('Delete Category "' + titleCase(cat) + '"?', warnMsg, function() {
+                postJson('/Admin/FaqCategoryDelete', { name: cat })
+                .then(function(data) {
+                    if (data.success) {
+                        FAQS       = FAQS.filter(function(f){ return f.cat !== cat; });
+                        CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
+                        if (selCat === cat) selCat = CATEGORIES[0] || '';
+                        updateFaqCounts(); renderCatChips(); renderFaqs();
+                        showToast(data.deletedCount > 0
+                            ? '"' + titleCase(cat) + '" and ' + data.deletedCount + ' FAQ(s) deleted.'
+                            : '"' + titleCase(cat) + '" deleted.');
+                    } else { showToast('Delete failed — please try again.'); }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
+            });
         }
 
         function renderFaqFilterBar() {
@@ -1400,6 +1645,13 @@
             });
         }
 
+        function setUtFilter(el, val) {
+            utFilterActive = val;
+            document.querySelectorAll('#utFilterBar .ff').forEach(function(b) { b.classList.remove('on'); });
+            el.classList.add('on');
+            renderFaqs();
+        }
+
         function addFaq() {
             var qRaw = document.getElementById('faqQ').value.trim();
             var a    = document.getElementById('faqA').value.trim();
@@ -1407,7 +1659,6 @@
             var q    = titleCase(qRaw);
             if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
             if (!selCat)  { showToast('Please select a category.'); return; }
-
             postJson('/Admin/FaqAdd', { question: q, answer: a, category: selCat, userType: ut })
             .then(function(data) {
                 if (data.success) {
@@ -1416,9 +1667,7 @@
                     document.getElementById('faqA').value = '';
                     updateFaqCounts(); renderFaqs();
                     showToast('FAQ added successfully!');
-                } else {
-                    showToast(data.message || 'Failed to add FAQ.');
-                }
+                } else { showToast(data.message || 'Failed to add FAQ.'); }
             })
             .catch(function() { showToast('Could not reach server.'); });
         }
@@ -1426,23 +1675,17 @@
         function deleteFaq(id) {
             var f = FAQS.find(function(x){ return x.id === id; });
             if (!f) return;
-            showModal(
-                'Delete FAQ?',
-                'You are about to permanently delete: "' + escH(f.q) + '"',
-                function() {
-                    postJson('/Admin/FaqDelete', { id: id })
-                    .then(function(data) {
-                        if (data.success) {
-                            FAQS = FAQS.filter(function(x){ return x.id !== id; });
-                            updateFaqCounts(); renderFaqs();
-                            showToast('FAQ deleted.');
-                        } else {
-                            showToast(data.message || 'Delete failed — please try again.');
-                        }
-                    })
-                    .catch(function() { showToast('Could not reach server.'); });
-                }
-            );
+            showModal('Delete FAQ?', 'You are about to permanently delete: "' + escH(f.q) + '"', function() {
+                postJson('/Admin/FaqDelete', { id: id })
+                .then(function(data) {
+                    if (data.success) {
+                        FAQS = FAQS.filter(function(x){ return x.id !== id; });
+                        updateFaqCounts(); renderFaqs();
+                        showToast('FAQ deleted.');
+                    } else { showToast(data.message || 'Delete failed — please try again.'); }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
+            });
         }
 
         function editFaq(id) {
@@ -1463,11 +1706,9 @@
                 + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
                 + '<div style="display:flex;gap:16px;">'
                     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType === 'Consumer' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Consumer'
-                    + '</label>'
+                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType==='Consumer'?' checked':'') + ' style="accent-color:#1a1a1a;"/> Consumer</label>'
                     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType === 'Seller' ? ' checked' : '') + ' style="accent-color:#1a1a1a;"/> Seller'
-                    + '</label>'
+                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType==='Seller'?' checked':'') + ' style="accent-color:#1a1a1a;"/> Seller</label>'
                 + '</div></div>'
                 + '<div class="edit-foot">'
                     + '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit(' + id + ')">Save</button>'
@@ -1482,7 +1723,6 @@
             var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
             var q    = titleCase(qRaw);
             if (!q || !a) { showToast('Both fields are required.'); return; }
-
             postJson('/Admin/FaqUpdate', { id: id, question: q, answer: a, category: c, userType: ut })
             .then(function(data) {
                 if (data.success) {
@@ -1490,9 +1730,7 @@
                     if (f) { f.q = q; f.a = a; f.cat = c; f.userType = ut; }
                     renderFaqs();
                     showToast('FAQ updated!');
-                } else {
-                    showToast(data.message || 'Update failed — please try again.');
-                }
+                } else { showToast(data.message || 'Update failed — please try again.'); }
             })
             .catch(function() { showToast('Could not reach server.'); });
         }
@@ -1509,6 +1747,7 @@
             list.innerHTML = '';
             var filtered = FAQS.filter(function(f) {
                 return (faqFilterActive === 'all' || f.cat === faqFilterActive)
+                    && (utFilterActive  === 'all' || f.userType === utFilterActive)
                     && (!faqSearch || f.q.toLowerCase().includes(faqSearch) || f.a.toLowerCase().includes(faqSearch));
             });
             if (!filtered.length) { list.innerHTML = '<div class="faq-empty">No FAQs found.</div>'; return; }
@@ -1544,112 +1783,21 @@
             document.getElementById('nhModalBg').classList.remove('show');
             _modalCallback = null;
         }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('nhModalConfirm').onclick = function() {
-                var cb = _modalCallback;
-                closeModal();
-                if (cb) cb();
+                var cb = _modalCallback; closeModal(); if (cb) cb();
             };
             document.getElementById('nhModalBg').addEventListener('click', function(e) {
                 if (e.target === this) closeModal();
             });
-
-            /* ── grab the antiforgery token after DOM is ready ── */
             var afEl = document.querySelector('input[name="__RequestVerificationToken"]');
             if (afEl) AF_TOKEN = afEl.value;
         });
 
-        /* ── QUEUE ── */
-        function autoAssignAll() {
-            SESSIONS.forEach(function(s) {
-                if (s.agent === 'Unassigned' || !s.agent) {
-                    var avail = AGENTS.find(function(a){
-                        return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
-                    });
-                    if (avail) { s.agent = avail.name; s.status = 'active'; avail.sessions++; }
-                }
-            });
-        }
-
-        function renderQueue() {
-            var body = document.getElementById('qBody');
-            body.innerHTML = '';
-            var over5 = 0;
-            SESSIONS.forEach(function(s, i) {
-                if (s.waitSec >= 300) over5++;
-                var tr  = document.createElement('tr');
-                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
-                var sb  = s.status === 'active' ? 'b-active' : s.status === 'idle' ? 'b-idle' : 'b-waiting';
-                var sl  = s.status === 'active' ? 'Active' : s.status === 'idle' ? 'Idle' : 'Waiting';
-                var pct = slaPct(s.waitSec); var sc = slaClass(s.waitSec);
-                var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
-                tr.innerHTML =
-                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
-                    + '<td><div class="q-cust"><div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
-                    + '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
-                    + '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div></div></td>'
-                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
-                    + '<td><div style="display:flex;align-items:center;gap:5px;"><div class="sla-bar"><div class="sla-fill ' + sc + '" style="width:' + pct + '%"></div></div>'
-                    + '<span style="font-size:10px;color:#aaa;font-variant-numeric:tabular-nums;">' + fmt(s.waitSec) + '</span></div></td>'
-                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
-                    + '<td><span class="badge ' + sb + '">' + sl + '</span></td>';
-                body.appendChild(tr);
-            });
-            var w = document.getElementById('waitWarn');
-            w.classList.toggle('show', over5 > 0);
-            if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
-            var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
-            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
-            document.getElementById('qsInQueue').textContent = SESSIONS.length;
-        }
-
-        /* ── AGENTS ── */
-        function renderAgents() {
-            var grid = document.getElementById('agentGrid');
-            grid.innerHTML = '';
-            for (var slot = 0; slot < 3; slot++) {
-                var col  = document.createElement('div'); col.className = 'agent-col';
-                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
-                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot+1);
-                col.appendChild(hd);
-                var body = document.createElement('div'); body.className = 'agent-col-body';
-                AGENTS.forEach(function(a) {
-                    var hasChat   = slot < a.sessions;
-                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
-                    var statusCls = 'b-' + a.status;
-                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
-                    var d = document.createElement('div');
-                    if (a.status === 'offline' || a.status === 'away') {
-                        d.className = 'agent-slot';
-                        d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
-                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
-                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
-                    } else if (hasChat) {
-                        var isFull   = a.sessions >= a.max && slot === a.max - 1;
-                        var chatSess = SESSIONS.filter(function(s){ return s.agent === a.name && s.status === 'active'; })[slot] || null;
-                        var chatTxt  = chatSess ? titleCase(chatSess.name) + ' · ' + fmt(chatSess.waitSec) : 'Slot ' + (slot+1) + ' occupied';
-                        d.className = 'agent-slot';
-                        d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';"><span>' + a.initials + '</span><div class="ag-dot ' + dotCls + '"></div></div>'
-                            + '<div class="ag-info"><div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">' + escH(chatTxt) + '</div></div>'
-                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">' + (isFull ? 'Full' : a.status) + '</span>';
-                    } else {
-                        d.className   = 'empty-slot';
-                        d.textContent = 'Available slot';
-                    }
-                    body.appendChild(d);
-                });
-                col.appendChild(body);
-                grid.appendChild(col);
-            }
-        }
-
+        /* ── TICK ── */
         setInterval(function(){ SESSIONS.forEach(function(s){ s.waitSec++; }); renderQueue(); }, 1000);
 
-        autoAssignAll();
         renderQueue();
         renderAgents();
         renderCatChips();
