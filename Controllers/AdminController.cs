@@ -115,10 +115,21 @@ namespace NextHorizon.Controllers
                 .OrderBy(c => c)
                 .ToList();
 
-            // ── Live Queue from DB ────────────────────────────────────────
-            // Sessions where Resolution is null or "No" are still open/in-queue
+            // ── ✅ FIXED: SHOW BOTH SELLER + CONSUMER ──────────────────────
             var dbSessions = _context.HelpSessions
-                .Where(s => s.Resolution == null || s.Resolution == "No")
+                .Where(s =>
+                    s.UserType != null &&
+                    (
+                        s.UserType.ToLower().Contains("consumer") ||
+                        s.UserType.ToLower().Contains("seller")
+                    ) &&
+                    (
+                        s.Status == null ||
+                        s.Status.ToLower() == "no" ||
+                        s.Status.ToLower() == "waiting" ||
+                        s.Status.ToLower() == "active"
+                    )
+                )
                 .OrderBy(s => s.CreatedAt)
                 .ToList();
 
@@ -126,12 +137,15 @@ namespace NextHorizon.Controllers
 
             var sessions = dbSessions.Select((s, i) =>
             {
-                // Build a display name from UserType + Id until you have a Users join
-                var name = s.UserType == "Seller" ? "Seller #" + s.Id : "Customer #" + s.Id;
-                var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var initials = parts.Length >= 2
-                    ? $"{parts[0][0]}{parts[^1][0]}"
-                    : name.Length >= 2 ? name[..2] : "??";
+                var utNorm = (s.UserType ?? "").Trim().ToLower();
+
+                // ✅ FIX: Proper Seller detection
+                var isSeller = utNorm.Contains("seller");
+
+                var roleLabel = isSeller ? "Seller" : "Consumer";
+                var prefix = isSeller ? "Seller" : "Customer";
+                var name = prefix + " #" + s.Id;
+                var initials = isSeller ? "SE" : "CU";
 
                 return new QueueSession
                 {
@@ -139,14 +153,13 @@ namespace NextHorizon.Controllers
                     SessionNo = "NH-" + s.Id.ToString("D5"),
                     CustomerName = name,
                     CustomerEmail = string.Empty,
-                    Role = s.UserType ?? "Consumer",
-                    Initials = initials.ToUpper(),
+                    Role = roleLabel,
+                    Initials = initials,
                     AvatarColor = avatarColors[i % avatarColors.Length],
-                    // WaitSeconds counts up from when the session was created
                     WaitSeconds = (int)(DateTime.Now - s.CreatedAt).TotalSeconds,
                     QueuePosition = i + 1,
                     Status = s.AgentId.HasValue ? "active" : "waiting",
-                    Category = s.Category ?? "General",
+                    Category = string.IsNullOrWhiteSpace(s.Category) ? "General" : s.Category,
                     AssignedTo = s.AgentId.HasValue ? "Agent #" + s.AgentId : null,
                     Messages = new List<QueueMessage>()
                 };
@@ -154,8 +167,7 @@ namespace NextHorizon.Controllers
 
             // ── Stats ─────────────────────────────────────────────────────
             var resolvedToday = _context.HelpSessions
-                .Count(s => (s.Resolution == "Yes")
-                         && s.CreatedAt.Date == DateTime.Today);
+                .Count(s => s.Status == "Resolved" && s.CreatedAt.Date == DateTime.Today);
 
             var avgWaitTime = sessions.Any()
                 ? TimeSpan.FromSeconds(sessions.Average(s => s.WaitSeconds)).ToString(@"m\:ss")
@@ -170,24 +182,23 @@ namespace NextHorizon.Controllers
                     AvgWaitTime = avgWaitTime,
                     ResolvedToday = resolvedToday,
                     AbandonRate = 4.2,
-                    AgentsOnline = 3   // keep hardcoded until you have an Agents table
+                    AgentsOnline = 3
                 },
                 Sessions = sessions,
                 Agents = new List<AgentStatusViewModel>
-                {
-                    new AgentStatusViewModel { Name="J. Chen",     Initials="JC", Status="busy",    ActiveSessions=3, MaxSessions=3 },
-                    new AgentStatusViewModel { Name="R. Santos",   Initials="RS", Status="busy",    ActiveSessions=2, MaxSessions=3 },
-                    new AgentStatusViewModel { Name="M. Lim",      Initials="ML", Status="online",  ActiveSessions=1, MaxSessions=3 },
-                    new AgentStatusViewModel { Name="K. Bautista", Initials="KB", Status="away",    ActiveSessions=0, MaxSessions=3 },
-                    new AgentStatusViewModel { Name="L. Torres",   Initials="LT", Status="offline", ActiveSessions=0, MaxSessions=3 }
-                },
+        {
+            new AgentStatusViewModel { Name="J. Chen",     Initials="JC", Status="busy",    ActiveSessions=3, MaxSessions=3 },
+            new AgentStatusViewModel { Name="R. Santos",   Initials="RS", Status="busy",    ActiveSessions=2, MaxSessions=3 },
+            new AgentStatusViewModel { Name="M. Lim",      Initials="ML", Status="online",  ActiveSessions=1, MaxSessions=3 },
+            new AgentStatusViewModel { Name="K. Bautista", Initials="KB", Status="away",    ActiveSessions=0, MaxSessions=3 },
+            new AgentStatusViewModel { Name="L. Torres",   Initials="LT", Status="offline", ActiveSessions=0, MaxSessions=3 }
+        },
                 Faqs = faqs,
                 Categories = categories
             };
 
             return View(viewModel);
         }
-
         [HttpPost]
         public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
         {
