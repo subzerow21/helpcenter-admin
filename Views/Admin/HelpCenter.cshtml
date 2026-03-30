@@ -25,7 +25,14 @@
         initials = a.Initials,
         status = a.Status,
         sessions = a.ActiveSessions,
-        max = a.MaxSessions
+        max = a.MaxSessions,
+        slots = a.Slots.Select(sl => new
+        {
+            convId = sl.ConversationId,
+            client = sl.ClientName,
+            cat = sl.Category,
+            slotNum = sl.SlotNumber
+        })
     }));
 
     var faqsJson = System.Text.Json.JsonSerializer.Serialize(Model.Faqs.Select(f => new
@@ -52,6 +59,7 @@
             height: calc(100vh - 62px) !important;
         }
 
+        /* ── STATS ── */
         .q-stats {
             display: grid;
             grid-template-columns: repeat(5,1fr);
@@ -105,6 +113,7 @@
             font-weight: 600;
         }
 
+        /* ── LAYOUT ── */
         .hc-shell {
             display: grid;
             grid-template-columns: 1fr 380px;
@@ -164,7 +173,7 @@
             font-size: 10.5px;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             letter-spacing: 0.3px;
             transition: background .15s;
             display: inline-flex;
@@ -196,7 +205,7 @@
                 stroke-linejoin: round;
             }
 
-        /* QUEUE */
+        /* ── QUEUE ── */
         .q-scroll {
             overflow-y: auto;
             flex: 1;
@@ -365,6 +374,11 @@
             color: #791F1F;
         }
 
+        .b-occupied {
+            background: #e8f0fe;
+            color: #0c447c;
+        }
+
         .wait-warn {
             background: #FCEBEB;
             border-left: 3px solid #e24b4a;
@@ -398,26 +412,34 @@
                 flex-shrink: 0;
             }
 
-        /* ── AGENT ASSIGN DROPDOWN ── */
-        .assign-wrap {
-            position: relative;
-            display: inline-block;
-        }
-
-        .assign-dd {
-            position: absolute;
-            top: calc(100% + 4px);
-            right: 0;
+        /* ── ASSIGN DROPDOWN PORTAL ── */
+        /*
+             * The portal is a single <div id="dd-portal"> placed at the very end of
+             * the page, outside all scroll containers. JS positions it using
+             * getBoundingClientRect() so it never gets clipped by overflow:hidden.
+             */
+        #dd-portal {
+            position: fixed;
+            z-index: 9000;
+            display: none;
             background: #fff;
             border: 1px solid #e0e0e0;
-            box-shadow: 0 4px 16px rgba(0,0,0,.12);
-            min-width: 210px;
-            z-index: 500;
-            display: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,.14);
+            min-width: 220px;
+            max-height: 320px;
+            overflow-y: auto;
         }
 
-            .assign-dd.open {
+            #dd-portal.open {
                 display: block;
+            }
+
+            #dd-portal::-webkit-scrollbar {
+                width: 3px;
+            }
+
+            #dd-portal::-webkit-scrollbar-thumb {
+                background: #e8e8e8;
             }
 
         .assign-dd-hd {
@@ -512,7 +534,7 @@
             text-align: center;
         }
 
-        /* AGENT 3-COL */
+        /* ── AGENT 3-COL ── */
         .agent-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -639,19 +661,36 @@
             text-overflow: ellipsis;
         }
 
+        .ag-conv {
+            font-size: 10px;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
         .empty-slot {
             padding: 9px 12px;
             font-size: 11px;
-            color: #ddd;
+            color: #ccc;
             font-style: italic;
             border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
             .empty-slot:last-child {
                 border-bottom: none;
             }
 
-        /* FAQ FORM */
+        .empty-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        /* ── FAQ FORM ── */
         .faq-form {
             background: #fff;
             border: 1px solid #e8e8e8;
@@ -687,7 +726,7 @@
             border: 1.5px solid #e8e8e8;
             padding: 7px 11px;
             font-size: 12px;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             color: #1a1a1a;
             outline: none;
             transition: border-color .2s;
@@ -709,7 +748,7 @@
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             white-space: nowrap;
             transition: background .15s;
         }
@@ -732,7 +771,7 @@
             font-weight: 600;
             padding: 4px 10px;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             transition: all .15s;
             display: inline-flex;
             align-items: center;
@@ -751,7 +790,7 @@
             cursor: pointer;
             fill: none;
             stroke: currentColor;
-            stroke-width: 2.5;
+            stroke-width: 2;
             stroke-linecap: round;
             display: none;
         }
@@ -770,7 +809,7 @@
             border: 1.5px solid #e8e8e8;
             padding: 8px 12px;
             font-size: 12.5px;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             color: #1a1a1a;
             outline: none;
             transition: border-color .2s;
@@ -824,7 +863,7 @@
             justify-content: flex-end;
         }
 
-        /* FAQ LIST */
+        /* ── FAQ LIST ── */
         .faq-list-panel {
             background: #fff;
             border: 1px solid #e8e8e8;
@@ -860,7 +899,7 @@
                 border: none;
                 outline: none;
                 font-size: 12px;
-                font-family: 'Poppins', sans-serif;
+                font-family: 'Poppins',sans-serif;
                 color: #1a1a1a;
                 flex: 1;
             }
@@ -886,7 +925,7 @@
             font-weight: 600;
             padding: 4px 10px;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             transition: all .15s;
         }
 
@@ -1015,7 +1054,7 @@
             border: 1px solid #e8e8e8;
             padding: 6px 10px;
             font-size: 12px;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             color: #1a1a1a;
             outline: none;
             margin-bottom: 6px;
@@ -1044,7 +1083,7 @@
             font-size: 12px;
         }
 
-        /* MODAL */
+        /* ── MODAL ── */
         .nh-modal-bg {
             position: fixed;
             inset: 0;
@@ -1110,7 +1149,7 @@
         }
 
         .nh-modal-body {
-            padding: 12px 20px 16px 20px;
+            padding: 12px 20px 16px;
         }
 
         .nh-modal-warn {
@@ -1154,7 +1193,7 @@
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             transition: background .15s;
         }
 
@@ -1170,7 +1209,7 @@
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             transition: background .15s;
         }
 
@@ -1187,7 +1226,7 @@
             padding: 10px 18px;
             font-size: 12px;
             font-weight: 500;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins',sans-serif;
             z-index: 9999;
             opacity: 0;
             transition: opacity .3s;
@@ -1200,24 +1239,57 @@
     </style>
 }
 
-<!-- STATS -->
+<!-- STATS ROW -->
 <div class="q-stats">
-    <div class="qs"><div class="qs-lbl">In Queue</div><div class="qs-val" id="qsInQueue">@Model.Stats.InQueue</div><div class="qs-sub"><span class="dn">+2</span> vs 30min ago</div></div>
-    <div class="qs"><div class="qs-lbl">Active Sessions</div><div class="qs-val">@Model.Stats.ActiveSessions</div><div class="qs-sub"><span class="up">@Model.Stats.AgentsOnline agents</span> online</div></div>
-    <div class="qs"><div class="qs-lbl">Avg. Wait Time</div><div class="qs-val">@Model.Stats.AvgWaitTime</div><div class="qs-sub warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>Target: 2:00</div></div>
-    <div class="qs"><div class="qs-lbl">Resolved Today</div><div class="qs-val">@Model.Stats.ResolvedToday</div><div class="qs-sub"><span class="up">+5</span> vs yesterday</div></div>
-    <div class="qs"><div class="qs-lbl">Total FAQs</div><div class="qs-val" id="statFaqCount">@Model.Faqs.Count</div><div class="qs-sub">across @Model.Categories.Count categories</div></div>
+    <div class="qs">
+        <div class="qs-lbl">In Queue</div>
+        <div class="qs-val" id="qsInQueue">@Model.Stats.InQueue</div>
+        <div class="qs-sub"><span class="dn">Live</span> waiting customers</div>
+    </div>
+    <div class="qs">
+        <div class="qs-lbl">Active Sessions</div>
+        <div class="qs-val">@Model.Stats.ActiveSessions</div>
+        <div class="qs-sub"><span class="up">@Model.Stats.AgentsOnline agents</span> online</div>
+    </div>
+    <div class="qs">
+        <div class="qs-lbl">Avg. Wait Time</div>
+        <div class="qs-val">@Model.Stats.AvgWaitTime</div>
+        <div class="qs-sub warn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Target: 2:00
+        </div>
+    </div>
+    <div class="qs">
+        <div class="qs-lbl">Resolved Today</div>
+        <div class="qs-val">@Model.Stats.ResolvedToday</div>
+        <div class="qs-sub"><span class="up">Sessions</span> closed</div>
+    </div>
+    <div class="qs">
+        <div class="qs-lbl">Total FAQs</div>
+        <div class="qs-val" id="statFaqCount">@Model.Faqs.Count</div>
+        <div class="qs-sub">across @Model.Categories.Count categories</div>
+    </div>
 </div>
 
 <div class="hc-shell">
-    <!-- LEFT -->
+    <!-- LEFT COLUMN -->
     <div class="hc-left">
-        <!-- QUEUE -->
+
+        <!-- LIVE QUEUE -->
         <div class="panel" style="height:420px;">
             <div class="ph">
-                <div><div class="ph-title">Live Queue</div><div class="ph-sub" id="qMeta">@Model.Stats.InQueue in queue</div></div>
+                <div>
+                    <div class="ph-title">Live Queue</div>
+                    <div class="ph-sub" id="qMeta">@Model.Stats.InQueue in queue</div>
+                </div>
                 <span style="font-size:10.5px;color:#4ade80;font-weight:600;display:flex;align-items:center;gap:5px;">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
                     Live queue
                 </span>
             </div>
@@ -1230,28 +1302,43 @@
             <div class="q-scroll">
                 <table class="qtbl">
                     <thead>
-                        <tr><th>#</th><th>Customer</th><th>Wait Time</th><th>Category</th><th>Status</th><th>Action</th></tr>
+                        <tr>
+                            <th>#</th>
+                            <th>Customer</th>
+                            <th>Wait Time</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
                     </thead>
                     <tbody id="qBody"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- AGENTS -->
+        <!-- AGENT STATUS 3-COL -->
         <div class="panel" style="height:280px;">
             <div class="ph">
-                <div><div class="ph-title">Agent Status</div><div class="ph-sub" id="agentMeta">@Model.Stats.AgentsOnline online &middot; max 3 chats each</div></div>
+                <div>
+                    <div class="ph-title">Agent Status</div>
+                    <div class="ph-sub" id="agentMeta">@Model.Stats.AgentsOnline online &middot; max 3 chats each</div>
+                </div>
                 <div style="font-size:10px;color:#aaa;">Total capacity: <strong style="color:#1a1a1a;">9 sessions</strong></div>
             </div>
             <div class="agent-grid" id="agentGrid"></div>
         </div>
     </div>
 
-    <!-- RIGHT: FAQ MANAGER -->
+    <!-- RIGHT COLUMN: FAQ MANAGER -->
     <div class="hc-right">
+
+        <!-- ADD FAQ FORM -->
         <div class="faq-form">
             <div class="ph">
-                <div><div class="ph-title">FAQ Manager</div><div class="ph-sub">Add, edit, or delete FAQs in real time</div></div>
+                <div>
+                    <div class="ph-title">FAQ Manager</div>
+                    <div class="ph-sub">Add, edit, or remove FAQs in real time</div>
+                </div>
             </div>
             <div class="form-body">
                 <div>
@@ -1287,6 +1374,7 @@
             </div>
         </div>
 
+        <!-- PUBLISHED FAQS -->
         <div class="faq-list-panel">
             <div class="ph">
                 <div class="ph-title">Published FAQs</div>
@@ -1307,24 +1395,34 @@
     </div>
 </div>
 
+<!--
+    PORTAL for assign dropdown.
+    Placed outside ALL scroll containers so it is NEVER clipped by overflow:hidden.
+    JS positions it using getBoundingClientRect() on the button that was clicked.
+-->
+<div id="dd-portal"></div>
+
+<!-- DELETE CONFIRMATION MODAL -->
 <div class="nh-modal-bg" id="nhModalBg">
     <div class="nh-modal">
         <div class="nh-modal-hd">
             <div class="nh-modal-icon">
                 <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
             </div>
-            <div><div class="nh-modal-title" id="nhModalTitle">Delete FAQ?</div></div>
+            <div>
+                <div class="nh-modal-title" id="nhModalTitle">Deactivate?</div>
+            </div>
         </div>
         <div class="nh-modal-body">
             <div class="nh-modal-msg" id="nhModalMsg">This action cannot be undone.</div>
             <div class="nh-modal-warn">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                This will be permanently deleted from the system and cannot be recovered.
+                This will be set to <strong>Inactive</strong> in the database.
             </div>
         </div>
         <div class="nh-modal-foot">
             <button class="nh-modal-cancel" onclick="closeModal()">Cancel</button>
-            <button class="nh-modal-confirm" id="nhModalConfirm">Yes, Delete</button>
+            <button class="nh-modal-confirm" id="nhModalConfirm">Yes, Deactivate</button>
         </div>
     </div>
 </div>
@@ -1339,7 +1437,7 @@
         var FAQS       = @Html.Raw(faqsJson);
         var CATEGORIES = @Html.Raw(categoriesJson);
 
-        var selCat          = CATEGORIES.length ? CATEGORIES[0] : 'General';
+        var selCat          = CATEGORIES.length ? CATEGORIES[0] : '';
         var faqFilterActive = 'all';
         var utFilterActive  = 'all';
         var faqSearch       = '';
@@ -1348,113 +1446,141 @@
         var __af     = document.querySelector('input[name="__RequestVerificationToken"]');
         var AF_TOKEN = __af ? __af.value : '';
 
+        // ── helpers ──────────────────────────────────────────────────────────
         function postJson(url, data) {
             return fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': AF_TOKEN
-                },
-                body: JSON.stringify(data)
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': AF_TOKEN },
+                body:    JSON.stringify(data)
             }).then(function(r) { return r.json(); });
         }
-
-        function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-
-        function titleCase(str) {
-            if (!str) return str;
-            return String(str).replace(/\b\w/g, function(c) { return c.toUpperCase(); });
-        }
-
-        function escH(s) {
-            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
-
+        function fmt(s)  { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+        function titleCase(str) { return String(str||'').replace(/\b\w/g,function(c){ return c.toUpperCase(); }); }
+        function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         function getUserType() { return document.querySelector('input[name="userType"]:checked').value; }
-
         function showToast(msg) {
             var t = document.getElementById('nhToast');
             t.textContent = msg; t.classList.add('show');
             setTimeout(function(){ t.classList.remove('show'); }, 2400);
         }
 
-        /* ══════════════════════════════════════════════════════════════════════
-           AGENT ASSIGN DROPDOWN
-           — clicking "Assign ▾" fetches /Admin/GetAvailableAgents and shows
-             a floating picker. Clicking an agent calls confirmAssign().
-        ══════════════════════════════════════════════════════════════════════ */
+        // ════════════════════════════════════════════════════════════════════
+        // PORTAL-BASED DROPDOWN
+        // ────────────────────────────────────────────────────────────────────
+        // A single shared <div id="dd-portal"> is positioned via JS using
+        // getBoundingClientRect so it's never clipped by overflow:hidden parents.
+        //
+        // FIX 1 — dropdown closes instantly:
+        //   The _ddJustOpened flag prevents the document click listener from
+        //   firing in the SAME event cycle as the button click that opened it.
+        //
+        // FIX 2 — dropdown cut off at bottom:
+        //   After rendering we measure available space and flip the dropdown
+        //   upward if there isn't enough room below the button.
+        // ════════════════════════════════════════════════════════════════════
+        var _ddPortal     = null;
+        var _ddSessionId  = null;
+        var _ddJustOpened = false;   // FIX 1
 
-        // Close any open dropdown when clicking elsewhere
+        function initPortal() {
+            _ddPortal = document.getElementById('dd-portal');
+        }
+
+        function closeDropdown() {
+            if (_ddPortal) { _ddPortal.classList.remove('open'); _ddPortal.innerHTML = ''; }
+            _ddSessionId = null;
+        }
+
+        // Outside-click handler — skips the tick that opened the dropdown
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('.assign-wrap')) {
-                document.querySelectorAll('.assign-dd.open').forEach(function(el) {
-                    el.classList.remove('open');
-                });
-            }
+            if (_ddJustOpened) { _ddJustOpened = false; return; }   // FIX 1
+            if (_ddPortal && !_ddPortal.contains(e.target)) closeDropdown();
         });
 
+        // Close on any scroll so the portal doesn't float away from its button
+        document.addEventListener('scroll', function() { closeDropdown(); }, true);
+
         function openAssignDropdown(sessionId, btnEl) {
-            // Close others first
-            document.querySelectorAll('.assign-dd.open').forEach(function(el) {
-                el.classList.remove('open');
-            });
+            // Toggle closed if same button clicked again
+            if (_ddSessionId === sessionId && _ddPortal && _ddPortal.classList.contains('open')) {
+                closeDropdown(); return;
+            }
 
-            var wrap = btnEl.closest('.assign-wrap');
-            var dd   = wrap.querySelector('.assign-dd');
+            _ddJustOpened = true;   // FIX 1 — block the immediately-following document click
+            _ddSessionId  = sessionId;
 
-            // Show loading state immediately
-            dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
-                         + '<div class="assign-agent-opt" style="justify-content:center;color:#aaa;font-size:11px;pointer-events:none;">Loading…</div>';
-            dd.classList.add('open');
+            // FIX 2 — Position portal using viewport coords of the button
+            var rect       = btnEl.getBoundingClientRect();
+            var ddWidth    = 220;
+            var spaceBelow = window.innerHeight - rect.bottom - 8;
+            var spaceAbove = rect.top - 8;
 
-            // Fetch fresh available-agents list from server (reads dbo.Agents live)
+            _ddPortal.style.width = ddWidth + 'px';
+            var left = rect.right - ddWidth;
+            if (left < 8) left = 8;
+            _ddPortal.style.left = left + 'px';
+
+            // Default: open downward
+            _ddPortal.style.bottom = '';
+            _ddPortal.style.top    = (rect.bottom + 4) + 'px';
+
+            _ddPortal.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                + '<div class="assign-agent-opt" style="justify-content:center;color:#aaa;font-size:11px;pointer-events:none;">Loading&hellip;</div>';
+            _ddPortal.classList.add('open');
+
             fetch('/Admin/GetAvailableAgents')
                 .then(function(r) { return r.json(); })
                 .then(function(agents) {
+                    if (_ddSessionId !== sessionId) return; // stale response
                     if (!agents || !agents.length) {
-                        dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
-                                     + '<div class="assign-dd-empty">No agents available right now</div>';
+                        _ddPortal.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                            + '<div class="assign-dd-empty">No agents available right now</div>';
                         return;
                     }
                     var html = '<div class="assign-dd-hd">Select Agent</div>';
                     agents.forEach(function(a) {
                         var dotCls   = a.status === 'available' ? 'on' : a.status === 'busy' ? 'busy' : 'away';
-                        var initials = (a.name || '').split(' ').filter(Boolean).slice(0, 2)
-                                        .map(function(w) { return w[0].toUpperCase(); }).join('');
-                        // encode agent name for safe inline onclick
-                        var safeName = escH(a.name).replace(/'/g, '&#39;');
-                        html += '<div class="assign-agent-opt" onclick="confirmAssign(' + sessionId + ',\'' + safeName + '\')">'
-                              +   '<div class="aao-av">' + initials + '<div class="aao-dot ' + dotCls + '"></div></div>'
-                              +   '<div class="aao-info">'
-                              +     '<div class="aao-name">' + escH(titleCase(a.name)) + '</div>'
-                              +     '<div class="aao-slots">' + a.activeSessions + ' / ' + a.maxSessions + ' slots used</div>'
-                              +   '</div>'
-                              + '</div>';
+                        var initials = (a.name||'').split(' ').filter(Boolean).slice(0,2)
+                                        .map(function(w){ return w[0].toUpperCase(); }).join('');
+                        var safeName = escH(a.name).replace(/'/g,"&#39;");
+                        html += '<div class="assign-agent-opt" onclick="confirmAssign('+sessionId+',\''+safeName+'\')">'
+                              + '<div class="aao-av">'+initials+'<div class="aao-dot '+dotCls+'"></div></div>'
+                              + '<div class="aao-info">'
+                              +   '<div class="aao-name">'+escH(titleCase(a.name))+'</div>'
+                              +   '<div class="aao-slots">'+a.activeSessions+' / '+a.maxSessions+' slots used</div>'
+                              + '</div></div>';
                     });
-                    dd.innerHTML = html;
+                    _ddPortal.innerHTML = html;
+
+                    // FIX 2b — flip upward if not enough space below after content renders
+                    var portalH   = _ddPortal.offsetHeight;
+                    var needsFlip = (rect.bottom + 4 + portalH > window.innerHeight - 8) && (spaceAbove >= portalH);
+                    if (needsFlip) {
+                        _ddPortal.style.top    = '';
+                        _ddPortal.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                    } else {
+                        _ddPortal.style.bottom = '';
+                        _ddPortal.style.top    = (rect.bottom + 4) + 'px';
+                    }
                 })
                 .catch(function() {
-                    dd.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
-                                 + '<div class="assign-dd-empty">Could not load agents</div>';
+                    _ddPortal.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
+                        + '<div class="assign-dd-empty">Could not load agents</div>';
                 });
         }
 
         function confirmAssign(sessionId, agentName) {
-            // Close dropdown immediately
-            document.querySelectorAll('.assign-dd.open').forEach(function(el) {
-                el.classList.remove('open');
-            });
-
-            var s = SESSIONS.find(function(x) { return x.id === sessionId; });
+            closeDropdown();
+            var s = SESSIONS.find(function(x){ return x.id === sessionId; });
             if (!s) return;
 
             postJson('/Admin/QueueAssign', { sessionId: sessionId, agentName: agentName })
                 .then(function(data) {
                     if (data.success) {
-                        // Remove from local queue — session is now Active in DB
-                        SESSIONS = SESSIONS.filter(function(x) { return x.id !== sessionId; });
-                        // Optimistically bump local agent count
-                        var ag = AGENTS.find(function(a) { return a.name === agentName; });
+                        // Remove from local queue — now Active in DB
+                        SESSIONS = SESSIONS.filter(function(x){ return x.id !== sessionId; });
+                        // Optimistically bump agent slot count
+                        var ag = AGENTS.find(function(a){ return a.name === agentName; });
                         if (ag) ag.sessions = Math.min(ag.sessions + 1, ag.max);
                         renderQueue();
                         renderAgents();
@@ -1466,9 +1592,9 @@
                 .catch(function() { showToast('Could not reach server.'); });
         }
 
-        /* ══════════════════════════════════════════════════════════════════════
-           QUEUE
-        ══════════════════════════════════════════════════════════════════════ */
+        // ════════════════════════════════════════════════════════════════════
+        // QUEUE
+        // ════════════════════════════════════════════════════════════════════
         function renderQueue() {
             var body = document.getElementById('qBody');
             body.innerHTML = '';
@@ -1476,37 +1602,33 @@
 
             SESSIONS.forEach(function(s, i) {
                 if (s.waitSec >= 300) over5++;
-                var tr = document.createElement('tr');
-                var wc = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
-                var pc = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+                var tr  = document.createElement('tr');
+                var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
+                var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
 
-                // Show Assign ▾ button if any agent has a free slot; else greyed text
-                var hasAvailable = AGENTS.some(function(a) {
+                var hasAvail = AGENTS.some(function(a) {
                     return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
                 });
 
-                var actionCell = hasAvailable
-                    ? '<div class="assign-wrap">'
-                    +   '<button class="pbtn" style="font-size:10px;padding:4px 10px;" '
-                    +           'onclick="event.stopPropagation();openAssignDropdown(' + s.id + ',this)">'
-                    +     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:3px;vertical-align:-1px;">'
-                    +       '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
-                    +     '</svg>Assign &#9660;</button>'
-                    +   '<div class="assign-dd"></div>'
-                    + '</div>'
+                var actionCell = hasAvail
+                    ? '<button class="pbtn" style="font-size:10px;padding:4px 10px;" '
+                    +   'onclick="event.stopPropagation();openAssignDropdown('+s.id+',this)">'
+                    +   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:3px;vertical-align:-1px;">'
+                    +     '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+                    +   '</svg>Assign &#9660;</button>'
                     : '<span style="font-size:11px;color:#aaa;">No agents</span>';
 
                 tr.innerHTML =
-                    '<td><div class="q-pos-badge ' + pc + '">' + (i+1) + '</div></td>'
+                    '<td><div class="q-pos-badge '+pc+'">'+(i+1)+'</div></td>'
                     + '<td><div class="q-cust">'
-                    +   '<div class="q-av" style="background:' + s.bg + '">' + s.av + '</div>'
-                    +   '<div><div class="q-name">' + escH(titleCase(s.name)) + '</div>'
-                    +       '<div class="q-role">' + escH(titleCase(s.role)) + '</div></div>'
+                    +   '<div class="q-av" style="background:'+s.bg+'">'+s.av+'</div>'
+                    +   '<div><div class="q-name">'+escH(titleCase(s.name))+'</div>'
+                    +       '<div class="q-role">'+escH(titleCase(s.role))+'</div></div>'
                     + '</div></td>'
-                    + '<td><div class="' + wc + '">' + fmt(s.waitSec) + '</div></td>'
-                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">' + escH(titleCase(s.cat)) + '</span></td>'
+                    + '<td><div class="'+wc+'">'+fmt(s.waitSec)+'</div></td>'
+                    + '<td><span style="font-size:11px;color:#666;font-weight:500;">'+escH(titleCase(s.cat))+'</span></td>'
                     + '<td><span class="badge b-waiting">Waiting</span></td>'
-                    + '<td>' + actionCell + '</td>';
+                    + '<td>'+actionCell+'</td>';
                 body.appendChild(tr);
             });
 
@@ -1514,73 +1636,109 @@
             w.classList.toggle('show', over5 > 0);
             if (over5 > 0) document.getElementById('warnTxt').textContent = over5 + ' customer(s) waiting over 5 minutes';
             var longest = SESSIONS.length ? Math.max.apply(null, SESSIONS.map(function(s){ return s.waitSec; })) : 0;
-            document.getElementById('qMeta').textContent = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
+            document.getElementById('qMeta').textContent     = SESSIONS.length + ' in queue · longest: ' + fmt(longest);
             document.getElementById('qsInQueue').textContent = SESSIONS.length;
         }
 
-        /* ══════════════════════════════════════════════════════════════════════
-           AGENTS
-        ══════════════════════════════════════════════════════════════════════ */
+        // ════════════════════════════════════════════════════════════════════
+        // AGENT STATUS — 3-column grid showing real slot data
+        //
+        // Each column = Chat Slot 1 / 2 / 3.
+        // If a.slots contains an entry for that slot number → show client + ConvID.
+        // If not → show "Available" (slot is free / was resolved).
+        // Resolved slots have EndTime set in DB so they are excluded from
+        // activeAgentRows in the controller — the JS just shows Available.
+        // ════════════════════════════════════════════════════════════════════
         function renderAgents() {
             var grid = document.getElementById('agentGrid');
             grid.innerHTML = '';
-            for (var slot = 0; slot < 3; slot++) {
-                var col  = document.createElement('div'); col.className = 'agent-col';
-                var hd   = document.createElement('div'); hd.className  = 'agent-col-hd';
-                hd.innerHTML = '<div class="slot-dot filled"></div>Chat Slot ' + (slot + 1);
+
+            for (var slotNum = 1; slotNum <= 3; slotNum++) {
+                var col     = document.createElement('div'); col.className = 'agent-col';
+                var hd      = document.createElement('div'); hd.className  = 'agent-col-hd';
+
+                // Dot is filled (dark) if at least one agent has this slot occupied
+                var anyFilled = AGENTS.some(function(a) {
+                    return (a.slots||[]).some(function(sl){ return sl.slotNum === slotNum; });
+                });
+                hd.innerHTML = '<div class="slot-dot'+(anyFilled?' filled':'')+'"></div>Chat Slot ' + slotNum;
                 col.appendChild(hd);
+
                 var colBody = document.createElement('div'); colBody.className = 'agent-col-body';
+
                 AGENTS.forEach(function(a) {
-                    var hasChat   = slot < a.sessions;
+                    var slots    = a.slots || [];
+                    var slotData = slots.find(function(sl){ return sl.slotNum === slotNum; });
+
                     var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
                     var statusCls = 'b-' + a.status;
-                    var avBg      = (a.status === 'offline' || a.status === 'away') ? '#ccc' : '#1a1a1a';
-                    var d = document.createElement('div');
-                    if (a.status === 'offline' || a.status === 'away') {
+                    var avBg      = (a.status === 'offline') ? '#ccc' : '#1a1a1a';
+                    var d         = document.createElement('div');
+
+                    if (a.status === 'offline') {
+                        // Offline agents: show only once (slot 1), greyed out
+                        if (slotNum !== 1) return;
                         d.className = 'agent-slot';
                         d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';">'
-                            + '<span>' + a.initials + '</span>'
-                            + '<div class="ag-dot ' + dotCls + '"></div></div>'
+                            '<div class="ag-av" style="background:#ccc;">'
+                            + '<span>'+a.initials+'</span>'
+                            + '<div class="ag-dot d-off"></div></div>'
                             + '<div class="ag-info">'
-                            + '<div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">' + titleCase(a.status) + '</div></div>'
-                            + '<span class="badge ' + statusCls + '" style="font-size:9px;padding:1px 6px;">' + a.status + '</span>';
-                    } else if (hasChat) {
-                        var isFull  = a.sessions >= a.max && slot === a.max - 1;
+                            +   '<div class="ag-name">'+escH(titleCase(a.name))+'</div>'
+                            +   '<div class="ag-chat">Offline</div>'
+                            + '</div>'
+                            + '<span class="badge b-offline" style="font-size:9px;padding:1px 6px;">offline</span>';
+
+                    } else if (slotData && slotData.convId && slotData.convId > 0) {
+                        // ── OCCUPIED SLOT — show client + ConversationID ──
                         d.className = 'agent-slot';
                         d.innerHTML =
-                            '<div class="ag-av" style="background:' + avBg + ';">'
-                            + '<span>' + a.initials + '</span>'
-                            + '<div class="ag-dot ' + dotCls + '"></div></div>'
+                            '<div class="ag-av" style="background:'+avBg+';">'
+                            + '<span>'+a.initials+'</span>'
+                            + '<div class="ag-dot '+dotCls+'"></div></div>'
                             + '<div class="ag-info">'
-                            + '<div class="ag-name">' + escH(titleCase(a.name)) + '</div>'
-                            + '<div class="ag-chat">Slot ' + (slot + 1) + ' occupied</div></div>'
-                            + '<span class="badge ' + (isFull ? 'b-full' : statusCls) + '" style="font-size:9px;padding:1px 6px;">'
-                            + (isFull ? 'Full' : a.status) + '</span>';
+                            +   '<div class="ag-name">'+escH(titleCase(a.name))+'</div>'
+                            +   '<div class="ag-chat">'
+                            +     escH(slotData.client||'Customer')
+                            +     ' &middot; <span class="ag-conv">Conv #'+slotData.convId+'</span>'
+                            +   '</div>'
+                            + '</div>'
+                            + '<span class="badge b-occupied" style="font-size:9px;padding:1px 6px;">active</span>';
+
                     } else {
-                        d.className   = 'empty-slot';
-                        d.textContent = 'Available slot';
+                        // ── AVAILABLE SLOT (free or previously resolved) ──
+                        d.className = 'empty-slot';
+                        d.innerHTML =
+                            '<div class="ag-av" style="background:'+avBg+';width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0;position:relative;">'
+                            + '<span>'+a.initials+'</span>'
+                            + '<div class="ag-dot '+dotCls+'" style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;border:2px solid #fff;"></div>'
+                            + '</div>'
+                            + '<div style="flex:1;min-width:0;">'
+                            +   '<div style="font-size:11px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escH(titleCase(a.name))+'</div>'
+                            +   '<div style="font-size:10px;color:#ccc;font-style:italic;margin-top:1px;">Available</div>'
+                            + '</div>'
+                            + '<span class="badge '+statusCls+'" style="font-size:9px;padding:1px 6px;">'+a.status+'</span>';
                     }
                     colBody.appendChild(d);
                 });
+
                 col.appendChild(colBody);
                 grid.appendChild(col);
             }
         }
 
-        /* ══════════════════════════════════════════════════════════════════════
-           FAQ
-        ══════════════════════════════════════════════════════════════════════ */
+        // ════════════════════════════════════════════════════════════════════
+        // FAQ CATEGORIES
+        // ════════════════════════════════════════════════════════════════════
         function renderCatChips() {
             var wrap = document.getElementById('catChips');
             wrap.innerHTML = '';
             CATEGORIES.forEach(function(c) {
                 var d = document.createElement('div');
-                d.className = 'cat-chip' + (c === selCat ? ' on' : '');
-                d.onclick = function() { selCat = c; renderCatChips(); };
+                d.className = 'cat-chip'+(c === selCat ? ' on' : '');
+                d.onclick   = function(){ selCat = c; renderCatChips(); };
                 d.innerHTML = escH(titleCase(c))
-                    + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\'' + escH(c) + '\')">'
+                    + '<svg class="cat-del" viewBox="0 0 24 24" onclick="event.stopPropagation();deleteCategory(\''+escH(c).replace(/'/g,"&#39;")+'\')">'
                     + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
                 wrap.appendChild(d);
             });
@@ -1589,42 +1747,40 @@
 
         function addCategory() {
             var inp = document.getElementById('newCatInp');
-            var v = inp.value.trim();
+            var v   = inp.value.trim();
             if (!v) { showToast('Enter a category name.'); return; }
             var vTitle = titleCase(v);
             if (CATEGORIES.find(function(c){ return c.toLowerCase() === vTitle.toLowerCase(); })) {
                 showToast('Category already exists.'); return;
             }
             postJson('/Admin/FaqCategoryAdd', { name: vTitle })
-            .then(function(data) {
-                if (data.success) {
-                    CATEGORIES.push(vTitle); selCat = vTitle; inp.value = '';
-                    renderCatChips();
-                    showToast('"' + vTitle + '" category added!');
-                } else { showToast('Failed to add category.'); }
-            })
-            .catch(function() { showToast('Could not reach server.'); });
+                .then(function(data) {
+                    if (data.success) {
+                        CATEGORIES.push(vTitle); selCat = vTitle; inp.value = '';
+                        renderCatChips();
+                        showToast('"'+vTitle+'" category added!');
+                    } else { showToast(data.message || 'Failed to add category.'); }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
         }
 
         function deleteCategory(cat) {
-            var faqsInCat = FAQS.filter(function(f){ return f.cat === cat; });
-            var warnMsg = faqsInCat.length > 0
-                ? 'This will also delete ' + faqsInCat.length + ' FAQ(s) under "' + titleCase(cat) + '".'
-                : 'Category "' + titleCase(cat) + '" will be permanently removed.';
-            showModal('Delete Category "' + titleCase(cat) + '"?', warnMsg, function() {
+            var count = FAQS.filter(function(f){ return f.cat === cat; }).length;
+            var msg   = count > 0
+                ? count + ' FAQ(s) under "'+titleCase(cat)+'" will also be set to Inactive.'
+                : '"'+titleCase(cat)+'" will be removed (no FAQs attached).';
+            showModal('Deactivate Category "'+titleCase(cat)+'"?', msg, function() {
                 postJson('/Admin/FaqCategoryDelete', { name: cat })
-                .then(function(data) {
-                    if (data.success) {
-                        FAQS       = FAQS.filter(function(f){ return f.cat !== cat; });
-                        CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
-                        if (selCat === cat) selCat = CATEGORIES[0] || '';
-                        updateFaqCounts(); renderCatChips(); renderFaqs();
-                        showToast(data.deletedCount > 0
-                            ? '"' + titleCase(cat) + '" and ' + data.deletedCount + ' FAQ(s) deleted.'
-                            : '"' + titleCase(cat) + '" deleted.');
-                    } else { showToast('Delete failed — please try again.'); }
-                })
-                .catch(function() { showToast('Could not reach server.'); });
+                    .then(function(data) {
+                        if (data.success) {
+                            FAQS       = FAQS.filter(function(f){ return f.cat !== cat; });
+                            CATEGORIES = CATEGORIES.filter(function(c){ return c !== cat; });
+                            if (selCat === cat) selCat = CATEGORIES[0] || '';
+                            updateFaqCounts(); renderCatChips(); renderFaqs();
+                            showToast(data.message || 'Category deactivated.');
+                        } else { showToast(data.message || 'Delete failed.'); }
+                    })
+                    .catch(function() { showToast('Could not reach server.'); });
             });
         }
 
@@ -1632,107 +1788,110 @@
             var bar = document.getElementById('faqFilterBar');
             bar.innerHTML = '';
             var allBtn = document.createElement('button');
-            allBtn.className = 'ff' + (faqFilterActive === 'all' ? ' on' : '');
+            allBtn.className   = 'ff'+(faqFilterActive === 'all' ? ' on' : '');
             allBtn.textContent = 'All';
-            allBtn.onclick = function() { faqFilterActive = 'all'; renderFaqFilterBar(); renderFaqs(); };
+            allBtn.onclick = function(){ faqFilterActive = 'all'; renderFaqFilterBar(); renderFaqs(); };
             bar.appendChild(allBtn);
             CATEGORIES.forEach(function(c) {
                 var b = document.createElement('button');
-                b.className = 'ff' + (faqFilterActive === c ? ' on' : '');
+                b.className   = 'ff'+(faqFilterActive === c ? ' on' : '');
                 b.textContent = titleCase(c);
-                b.onclick = function() { faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
+                b.onclick     = function(){ faqFilterActive = c; renderFaqFilterBar(); renderFaqs(); };
                 bar.appendChild(b);
             });
         }
 
         function setUtFilter(el, val) {
             utFilterActive = val;
-            document.querySelectorAll('#utFilterBar .ff').forEach(function(b) { b.classList.remove('on'); });
+            document.querySelectorAll('#utFilterBar .ff').forEach(function(b){ b.classList.remove('on'); });
             el.classList.add('on');
             renderFaqs();
         }
 
+        // ════════════════════════════════════════════════════════════════════
+        // FAQ CRUD
+        // ════════════════════════════════════════════════════════════════════
         function addFaq() {
             var qRaw = document.getElementById('faqQ').value.trim();
             var a    = document.getElementById('faqA').value.trim();
             var ut   = getUserType();
             var q    = titleCase(qRaw);
             if (!q || !a) { showToast('Please fill in both question and answer.'); return; }
-            if (!selCat)  { showToast('Please select a category.'); return; }
+            if (!selCat)  { showToast('Please select a category first.'); return; }
             postJson('/Admin/FaqAdd', { question: q, answer: a, category: selCat, userType: ut })
-            .then(function(data) {
-                if (data.success) {
-                    FAQS.push({ id: data.id || nextId++, q: q, a: a, cat: selCat, userType: ut });
-                    document.getElementById('faqQ').value = '';
-                    document.getElementById('faqA').value = '';
-                    updateFaqCounts(); renderFaqs();
-                    showToast('FAQ added successfully!');
-                } else { showToast(data.message || 'Failed to add FAQ.'); }
-            })
-            .catch(function() { showToast('Could not reach server.'); });
+                .then(function(data) {
+                    if (data.success) {
+                        FAQS.push({ id: data.id || nextId++, q: q, a: a, cat: selCat, userType: ut });
+                        document.getElementById('faqQ').value = '';
+                        document.getElementById('faqA').value = '';
+                        updateFaqCounts(); renderFaqs();
+                        showToast('FAQ added!');
+                    } else { showToast(data.message || 'Failed to add FAQ.'); }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
         }
 
         function deleteFaq(id) {
             var f = FAQS.find(function(x){ return x.id === id; });
             if (!f) return;
-            showModal('Delete FAQ?', 'You are about to permanently delete: "' + escH(f.q) + '"', function() {
+            showModal('Deactivate FAQ?', '"'+escH(f.q)+'" will be set to Inactive.', function() {
                 postJson('/Admin/FaqDelete', { id: id })
-                .then(function(data) {
-                    if (data.success) {
-                        FAQS = FAQS.filter(function(x){ return x.id !== id; });
-                        updateFaqCounts(); renderFaqs();
-                        showToast('FAQ deleted.');
-                    } else { showToast(data.message || 'Delete failed — please try again.'); }
-                })
-                .catch(function() { showToast('Could not reach server.'); });
+                    .then(function(data) {
+                        if (data.success) {
+                            FAQS = FAQS.filter(function(x){ return x.id !== id; });
+                            updateFaqCounts(); renderFaqs();
+                            showToast('FAQ set to inactive.');
+                        } else { showToast(data.message || 'Delete failed.'); }
+                    })
+                    .catch(function() { showToast('Could not reach server.'); });
             });
         }
 
         function editFaq(id) {
             var f = FAQS.find(function(x){ return x.id === id; });
             if (!f) return;
-            var item = document.getElementById('faq-' + id);
+            var item = document.getElementById('faq-'+id);
             item.classList.add('editing');
             var catOpts = CATEGORIES.map(function(c) {
-                return '<option value="' + escH(c) + '"' + (c === f.cat ? ' selected' : '') + '>' + escH(titleCase(c)) + '</option>';
+                return '<option value="'+escH(c)+'"'+(c===f.cat?' selected':'')+'>'+escH(titleCase(c))+'</option>';
             }).join('');
             item.innerHTML =
                 '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Category</div>'
-                + '<select class="edit-inp" id="ec-' + id + '">' + catOpts + '</select></div>'
+                + '<select class="edit-inp" id="ec-'+id+'">'+catOpts+'</select></div>'
                 + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Question</div>'
-                + '<input class="edit-inp" id="eq-' + id + '" type="text" value="' + escH(f.q) + '" style="text-transform:capitalize;"/></div>'
+                + '<input class="edit-inp" id="eq-'+id+'" type="text" value="'+escH(f.q)+'" /></div>'
                 + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:4px;">Answer</div>'
-                + '<textarea class="edit-inp" id="ea-' + id + '">' + escH(f.a) + '</textarea></div>'
+                + '<textarea class="edit-inp" id="ea-'+id+'">'+escH(f.a)+'</textarea></div>'
                 + '<div style="margin-bottom:6px;"><div class="field-lbl" style="margin-bottom:6px;">Visible to</div>'
                 + '<div style="display:flex;gap:16px;">'
-                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Consumer"' + (f.userType==='Consumer'?' checked':'') + ' style="accent-color:#1a1a1a;"/> Consumer</label>'
-                    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
-                        + '<input type="radio" name="eut-' + id + '" value="Seller"' + (f.userType==='Seller'?' checked':'') + ' style="accent-color:#1a1a1a;"/> Seller</label>'
+                +   '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                +     '<input type="radio" name="eut-'+id+'" value="Consumer"'+(f.userType==='Consumer'?' checked':'')+' style="accent-color:#1a1a1a;"/> Consumer</label>'
+                +   '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'
+                +     '<input type="radio" name="eut-'+id+'" value="Seller"'+(f.userType==='Seller'?' checked':'')+' style="accent-color:#1a1a1a;"/> Seller</label>'
                 + '</div></div>'
                 + '<div class="edit-foot">'
-                    + '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit(' + id + ')">Save</button>'
-                    + '<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
+                +   '<button class="pbtn" style="font-size:10px;padding:5px 12px;" onclick="saveEdit('+id+')">Save</button>'
+                +   '<button class="pbtn out" style="font-size:10px;padding:5px 12px;" onclick="renderFaqs()">Cancel</button>'
                 + '</div>';
         }
 
         function saveEdit(id) {
-            var qRaw = document.getElementById('eq-' + id).value.trim();
-            var a    = document.getElementById('ea-' + id).value.trim();
-            var c    = document.getElementById('ec-' + id).value;
-            var ut   = document.querySelector('input[name="eut-' + id + '"]:checked').value;
+            var qRaw = document.getElementById('eq-'+id).value.trim();
+            var a    = document.getElementById('ea-'+id).value.trim();
+            var c    = document.getElementById('ec-'+id).value;
+            var ut   = document.querySelector('input[name="eut-'+id+'"]:checked').value;
             var q    = titleCase(qRaw);
             if (!q || !a) { showToast('Both fields are required.'); return; }
             postJson('/Admin/FaqUpdate', { id: id, question: q, answer: a, category: c, userType: ut })
-            .then(function(data) {
-                if (data.success) {
-                    var f = FAQS.find(function(x){ return x.id === id; });
-                    if (f) { f.q = q; f.a = a; f.cat = c; f.userType = ut; }
-                    renderFaqs();
-                    showToast('FAQ updated!');
-                } else { showToast(data.message || 'Update failed — please try again.'); }
-            })
-            .catch(function() { showToast('Could not reach server.'); });
+                .then(function(data) {
+                    if (data.success) {
+                        var f = FAQS.find(function(x){ return x.id === id; });
+                        if (f) { f.q = q; f.a = a; f.cat = c; f.userType = ut; }
+                        renderFaqs();
+                        showToast('FAQ updated!');
+                    } else { showToast(data.message || 'Update failed.'); }
+                })
+                .catch(function() { showToast('Could not reach server.'); });
         }
 
         function filterFaqs(v) { faqSearch = v.toLowerCase(); renderFaqs(); }
@@ -1753,25 +1912,30 @@
             if (!filtered.length) { list.innerHTML = '<div class="faq-empty">No FAQs found.</div>'; return; }
             filtered.forEach(function(f) {
                 var d = document.createElement('div');
-                d.className = 'faq-item'; d.id = 'faq-' + f.id;
+                d.className = 'faq-item'; d.id = 'faq-'+f.id;
                 d.innerHTML =
                     '<div class="faq-item-hd">'
-                        + '<div class="faq-q">' + escH(titleCase(f.q)) + '</div>'
-                        + '<div class="faq-actions">'
-                            + '<button class="faq-act" onclick="editFaq(' + f.id + ')" title="Edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                            + '<button class="faq-act del" onclick="deleteFaq(' + f.id + ')" title="Delete"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
-                        + '</div>'
+                    +   '<div class="faq-q">'+escH(titleCase(f.q))+'</div>'
+                    +   '<div class="faq-actions">'
+                    +     '<button class="faq-act" onclick="editFaq('+f.id+')" title="Edit">'
+                    +       '<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>'
+                    +       '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                    +     '<button class="faq-act del" onclick="deleteFaq('+f.id+')" title="Deactivate">'
+                    +       '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/>'
+                    +       '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                    +       '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>'
+                    +   '</div>'
                     + '</div>'
-                    + '<div class="faq-a">' + escH(f.a) + '</div>'
+                    + '<div class="faq-a">'+escH(f.a)+'</div>'
                     + '<div class="faq-meta">'
-                        + '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">' + escH(titleCase(f.cat)) + '</span>'
-                        + '<span class="faq-cat-badge ' + (f.userType === 'Seller' ? 'ut-seller' : 'ut-consumer') + '">' + escH(f.userType || 'Consumer') + '</span>'
+                    +   '<span class="faq-cat-badge" style="background:#f0f0f0;color:#555;">'+escH(titleCase(f.cat))+'</span>'
+                    +   '<span class="faq-cat-badge '+(f.userType==='Seller'?'ut-seller':'ut-consumer')+'">'+escH(f.userType||'Consumer')+'</span>'
                     + '</div>';
                 list.appendChild(d);
             });
         }
 
-        /* ── CONFIRM MODAL ── */
+        // ── MODAL ──────────────────────────────────────────────────────────
         var _modalCallback = null;
         function showModal(title, msg, onConfirm) {
             document.getElementById('nhModalTitle').textContent = title;
@@ -1784,7 +1948,9 @@
             _modalCallback = null;
         }
 
+        // ── INIT ──────────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function() {
+            initPortal();
             document.getElementById('nhModalConfirm').onclick = function() {
                 var cb = _modalCallback; closeModal(); if (cb) cb();
             };
@@ -1795,7 +1961,10 @@
             if (afEl) AF_TOKEN = afEl.value;
         });
 
-        /* ── TICK ── */
+        // Run initPortal immediately too in case DOMContentLoaded already fired
+        initPortal();
+
+        // ── TICK — increment wait timers every second ─────────────────────
         setInterval(function(){ SESSIONS.forEach(function(s){ s.waitSec++; }); renderQueue(); }, 1000);
 
         renderQueue();

@@ -42,8 +42,9 @@ namespace NextHorizon.Data
                 entity.Property(e => e.AgentId).HasColumnName("AgentId");
                 entity.Property(e => e.Status).HasColumnName("Status");
                 entity.Property(e => e.CreatedAt).HasColumnName("CreatedAt");
+                entity.Property(e => e.StartTime).HasColumnName("StartTime");
+                entity.Property(e => e.EndTime).HasColumnName("EndTime");
             });
-
             // ── Agents ────────────────────────────────────────────────────
             modelBuilder.Entity<Agent>(entity =>
             {

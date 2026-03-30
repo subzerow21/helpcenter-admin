@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace NextHorizon.Models
+namespace NextHorizon.Models   // ← must match what AppDbContext uses
 {
     [Table("SupportFAQs", Schema = "dbo")]
     public class HelpSession
@@ -16,5 +16,7 @@ namespace NextHorizon.Models
         public int? AgentId { get; set; }
         public string? Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
     }
 }
