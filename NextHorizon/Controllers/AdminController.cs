@@ -1650,7 +1650,7 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                         TotalOrders = reader.IsDBNull(reader.GetOrdinal("total_orders")) ? (int?)null : Convert.ToInt32(reader["total_orders"]),
                                         DeliveredOrders = reader.IsDBNull(reader.GetOrdinal("delivered_orders")) ? (int?)null : Convert.ToInt32(reader["delivered_orders"]),
                                         Last30DaysOrders = reader.IsDBNull(reader.GetOrdinal("last_30_days_orders")) ? (int?)null : Convert.ToInt32(reader["last_30_days_orders"])
-                                    };
+                                        };
                                     
                                     // Handle Base64 image
                                     if (!reader.IsDBNull(reader.GetOrdinal("logo_base64")))
@@ -1735,23 +1735,23 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                 {
                                     basicMetrics = new LogisticsPerformanceDetails
                                     {
-                                        LogisticsId = Convert.ToInt32(reader["logistics_id"]),
-                                        CourierName = reader["courier_name"].ToString(),
+                                        LogisticsId = reader.IsDBNull(reader.GetOrdinal("logistics_id")) ? 0 : Convert.ToInt32(reader["logistics_id"]),
+                                        CourierName = reader.IsDBNull(reader.GetOrdinal("courier_name")) ? null : reader["courier_name"].ToString(),
                                         ServiceType = reader.IsDBNull(reader.GetOrdinal("service_type")) ? null : reader["service_type"].ToString(),
-                                        TotalOrders = Convert.ToInt32(reader["total_orders"]),
-                                        DeliveredOrders = Convert.ToInt32(reader["delivered_orders"]),
-                                        CancelledOrders = Convert.ToInt32(reader["cancelled_orders"]),
-                                        FailedOrders = Convert.ToInt32(reader["failed_orders"]),
-                                        PendingOrders = Convert.ToInt32(reader["pending_orders"]),
-                                        InTransitOrders = Convert.ToInt32(reader["in_transit_orders"]),
-                                        // Use Convert.ToDecimal for success_rate and avg_delivery_days
-                                        SuccessRate = Convert.ToDecimal(reader["success_rate"]),
-                                        AvgDeliveryDays = Convert.ToDecimal(reader["avg_delivery_days"]),
+                                        TotalOrders = reader.IsDBNull(reader.GetOrdinal("total_orders")) ? 0 : Convert.ToInt32(reader["total_orders"]),
+                                        DeliveredOrders = reader.IsDBNull(reader.GetOrdinal("delivered_orders")) ? 0 : Convert.ToInt32(reader["delivered_orders"]),
+                                        CancelledOrders = reader.IsDBNull(reader.GetOrdinal("cancelled_orders")) ? 0 : Convert.ToInt32(reader["cancelled_orders"]),
+                                        FailedOrders = reader.IsDBNull(reader.GetOrdinal("failed_orders")) ? 0 : Convert.ToInt32(reader["failed_orders"]),
+                                        PendingOrders = reader.IsDBNull(reader.GetOrdinal("pending_orders")) ? 0 : Convert.ToInt32(reader["pending_orders"]),
+                                        InTransitOrders = reader.IsDBNull(reader.GetOrdinal("in_transit_orders")) ? 0 : Convert.ToInt32(reader["in_transit_orders"]),
+                                        // Handle NULL for success_rate and avg_delivery_days
+                                        SuccessRate = reader.IsDBNull(reader.GetOrdinal("success_rate")) ? 0 : Convert.ToDecimal(reader["success_rate"]),
+                                        AvgDeliveryDays = reader.IsDBNull(reader.GetOrdinal("avg_delivery_days")) ? 0 : Convert.ToDecimal(reader["avg_delivery_days"]),
                                         MinDeliveryDays = reader.IsDBNull(reader.GetOrdinal("min_delivery_days")) ? (decimal?)null : Convert.ToDecimal(reader["min_delivery_days"]),
                                         MaxDeliveryDays = reader.IsDBNull(reader.GetOrdinal("max_delivery_days")) ? (decimal?)null : Convert.ToDecimal(reader["max_delivery_days"]),
-                                        Last7DaysOrders = Convert.ToInt32(reader["last_7_days_orders"]),
-                                        Last30DaysOrders = Convert.ToInt32(reader["last_30_days_orders"]),
-                                        Last90DaysOrders = Convert.ToInt32(reader["last_90_days_orders"]),
+                                        Last7DaysOrders = reader.IsDBNull(reader.GetOrdinal("last_7_days_orders")) ? 0 : Convert.ToInt32(reader["last_7_days_orders"]),
+                                        Last30DaysOrders = reader.IsDBNull(reader.GetOrdinal("last_30_days_orders")) ? 0 : Convert.ToInt32(reader["last_30_days_orders"]),
+                                        Last90DaysOrders = reader.IsDBNull(reader.GetOrdinal("last_90_days_orders")) ? 0 : Convert.ToInt32(reader["last_90_days_orders"]),
                                         ConfiguredMinDays = reader.IsDBNull(reader.GetOrdinal("configured_min_days")) ? (int?)null : Convert.ToInt32(reader["configured_min_days"]),
                                         ConfiguredMaxDays = reader.IsDBNull(reader.GetOrdinal("configured_max_days")) ? (int?)null : Convert.ToInt32(reader["configured_max_days"])
                                     };
@@ -1763,13 +1763,13 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                 {
                                     monthlyTrend.Add(new MonthlyPerformance
                                     {
-                                        Year = Convert.ToInt32(reader["year"]),
-                                        Month = Convert.ToInt32(reader["month"]),
-                                        MonthName = reader["month_name"].ToString(),
-                                        TotalOrders = Convert.ToInt32(reader["total_orders"]),
-                                        DeliveredOrders = Convert.ToInt32(reader["delivered_orders"]),
-                                        SuccessRate = Convert.ToDecimal(reader["success_rate"]),
-                                        AvgDeliveryDays = Convert.ToDecimal(reader["avg_delivery_days"])
+                                        Year = reader.IsDBNull(reader.GetOrdinal("year")) ? 0 : Convert.ToInt32(reader["year"]),
+                                        Month = reader.IsDBNull(reader.GetOrdinal("month")) ? 0 : Convert.ToInt32(reader["month"]),
+                                        MonthName = reader.IsDBNull(reader.GetOrdinal("month_name")) ? "Unknown" : reader["month_name"].ToString(),
+                                        TotalOrders = reader.IsDBNull(reader.GetOrdinal("total_orders")) ? 0 : Convert.ToInt32(reader["total_orders"]),
+                                        DeliveredOrders = reader.IsDBNull(reader.GetOrdinal("delivered_orders")) ? 0 : Convert.ToInt32(reader["delivered_orders"]),
+                                        SuccessRate = reader.IsDBNull(reader.GetOrdinal("success_rate")) ? 0 : Convert.ToDecimal(reader["success_rate"]),
+                                        AvgDeliveryDays = reader.IsDBNull(reader.GetOrdinal("avg_delivery_days")) ? 0 : Convert.ToDecimal(reader["avg_delivery_days"])
                                     });
                                 }
                             }
@@ -1782,7 +1782,7 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                 {
                     return Json(new { success = false, error = ex.Message });
                 }
-            }  
+            }
                     
             // Save logistics partner (UPDATED - removed manual performance fields)
             [HttpPost]
