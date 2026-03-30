@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Load all pending lists
     loadPendingPayouts();
-    loadPendingProductApprovals(); 
+    //loadPendingProductApprovals(); 
     loadGlobalPromotions();
 
     // Delegation for Promo Buttons
@@ -28,62 +28,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// PRODUCT APPROVALS
-async function loadPendingProductApprovals() {
-    try {
-        const response = await fetch('/Admin/GetPendingProducts');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        const products = Array.isArray(result) ? result : (result.data || []);
-        
-        const tbody = document.querySelector('#pendingProductsTable tbody');
-        if (!tbody) return;
-        
-        if (products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No products awaiting approval.</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = products.map(p => `
-            <tr>
-                <td class="ps-4">
-                    <div class="d-flex align-items-center">
-                        <img src="${p.mainImage || '/images/placeholder.png'}" class="rounded-3 me-2" style="width: 40px; height: 40px; object-fit: cover;">
-                        <div>
-                            <span class="d-block fw-bold small">${escapeHtml(p.productName)}</span>
-                            <span class="text-muted tiny">Category: ${escapeHtml(p.category)}</span>
-                        </div>
-                    </div>
-                </td>
-                <td><span class="fw-bold">₱${(p.price || 0).toLocaleString()}</span></td>
-                <td><span class="small fw-bold">${escapeHtml(p.sellerName)}</span></td>
-                <td class="small text-muted">${p.submittedAt ? new Date(p.submittedAt).toLocaleDateString() : 'N/A'}</td>
-                <td class="text-center">
-                    <div class="d-flex justify-content-center gap-1">
-                        <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" 
-                                onclick="openProductApproveModal('${p.productId}', '${escapeHtml(p.productName).replace(/'/g, "\\'")}')">Approve</button>
-                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" 
-                                onclick="openProductRejectModalWithModal('${p.productId}', '${escapeHtml(p.productName).replace(/'/g, "\\'")}')">Reject</button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    } catch (err) {
-        console.error("Error loading products:", err);
-        const tbody = document.querySelector('#pendingProductsTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Error loading products. Please refresh the page.</td></tr>';
-        }
-        showToast('Error loading products: ' + err.message, true);
-    }
-}
-
 // Product Approval Modal Functions
-function openProductApproveModal(productId, productName) {
+function openProductApproveModal(productId, productName, productImage, productPrice, productCategory) {
+    console.log('Product Image received:', productImage ? `Length: ${productImage.length}, Starts with: ${productImage.substring(0, 50)}` : 'No image');
+    
     currentProductId = productId;
     
     // Hide reject content, show approve content
@@ -92,17 +40,48 @@ function openProductApproveModal(productId, productName) {
     document.getElementById('productConfirmApproveBtn').style.display = 'block';
     document.getElementById('productConfirmRejectBtn').style.display = 'none';
     document.getElementById('productActionTitle').innerText = 'Approve Product';
+    
+    // Use the image directly - it already has the data:image prefix from C#
+    const imageSrc = productImage && productImage !== '' && productImage !== 'null' ? productImage : null;
+    
+    console.log('Image src to use:', imageSrc ? imageSrc.substring(0, 100) : 'null');
+    
+    // Create modern product preview HTML
     document.getElementById('productApproveMessage').innerHTML = `
-        Are you sure you want to approve <strong>${escapeHtml(productName)}</strong>?
-        <br><br>
-        This product will become visible to customers immediately.
+        <div class="product-preview-modern">
+            <div class="product-image-container text-center mb-4">
+                ${imageSrc ? 
+                    `<img src="${imageSrc}" alt="${escapeHtml(productName)}" class="product-preview-image rounded-3 shadow-sm" style="width: 100%; max-height: 200px; object-fit: cover;" 
+                         onerror="console.log('Image load error'); this.src='/images/challenge-placeholder.jpg'">` : 
+                    `<div class="product-placeholder bg-light rounded-3 d-flex flex-column align-items-center justify-content-center" style="height: 150px;">
+                        <i class="bi bi-image fs-1 text-muted"></i>
+                        <span class="small text-muted mt-2">No Image Available</span>
+                    </div>`
+                }
+            </div>
+            <div class="product-details text-center">
+                <h5 class="fw-bold mb-2">${escapeHtml(productName)}</h5>
+                ${productCategory ? `<p class="text-muted small mb-2"><i class="bi bi-tag me-1"></i>${escapeHtml(productCategory)}</p>` : ''}
+                ${productPrice ? `<p class="h5 text-success fw-bold mb-3">₱${parseFloat(productPrice).toLocaleString()}</p>` : ''}
+                <div class="alert alert-success rounded-3 d-flex align-items-center justify-content-center gap-2 mb-3">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span class="small">Are you sure you want to approve this product?</span>
+                </div>
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle"></i>
+                    This product will become visible to customers immediately upon approval.
+                </p>
+            </div>
+        </div>
     `;
     
     const modal = new bootstrap.Modal(document.getElementById('productActionModal'));
     modal.show();
 }
 
-function openProductRejectModalWithModal(productId, productName) {
+function openProductRejectModalWithModal(productId, productName, productImage, productPrice, productCategory) {
+    console.log('Reject modal - Product Image received:', productImage ? `Length: ${productImage.length}, Starts with: ${productImage.substring(0, 50)}` : 'No image');
+    
     currentProductId = productId;
     
     // Hide approve content, show reject content
@@ -111,15 +90,43 @@ function openProductRejectModalWithModal(productId, productName) {
     document.getElementById('productConfirmApproveBtn').style.display = 'none';
     document.getElementById('productConfirmRejectBtn').style.display = 'block';
     document.getElementById('productActionTitle').innerText = 'Reject Product';
+    
+    // Use the image directly - it already has the data:image prefix from C#
+    const imageSrc = productImage && productImage !== '' && productImage !== 'null' ? productImage : null;
+    
+    console.log('Reject modal - Image src to use:', imageSrc ? imageSrc.substring(0, 100) : 'null');
+    
+    // Create modern product preview for reject modal
     document.getElementById('productRejectMessage').innerHTML = `
-        Please provide a reason for rejecting <strong>${escapeHtml(productName)}</strong>:
+        <div class="product-preview-modern">
+            <div class="product-image-container text-center mb-4">
+                ${imageSrc ? 
+                    `<img src="${imageSrc}" alt="${escapeHtml(productName)}" class="product-preview-image rounded-3 shadow-sm" style="width: 100%; max-height: 200px; object-fit: cover;" 
+                         onerror="console.log('Image load error'); this.src='/images/challenge-placeholder.jpg'">` : 
+                    `<div class="product-placeholder bg-light rounded-3 d-flex flex-column align-items-center justify-content-center" style="height: 150px;">
+                        <i class="bi bi-image fs-1 text-muted"></i>
+                        <span class="small text-muted mt-2">No Image Available</span>
+                    </div>`
+                }
+            </div>
+            <div class="product-details text-center">
+                <h5 class="fw-bold mb-2">${escapeHtml(productName)}</h5>
+                ${productCategory ? `<p class="text-muted small mb-2"><i class="bi bi-tag me-1"></i>${escapeHtml(productCategory)}</p>` : ''}
+                ${productPrice ? `<p class="h5 text-success fw-bold mb-3">₱${parseFloat(productPrice).toLocaleString()}</p>` : ''}
+                <div class="alert alert-warning rounded-3 d-flex align-items-center justify-content-center gap-2 mb-3">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="small">Please provide a reason for rejecting this product:</span>
+                </div>
+            </div>
+        </div>
     `;
+    
+    // Clear previous reason
     document.getElementById('productRejectReason').value = '';
     
     const modal = new bootstrap.Modal(document.getElementById('productActionModal'));
     modal.show();
 }
-
 // Core approval function
 async function processProductApproval(productId, status, reason = "") {
     showToast('Updating product status...');
@@ -505,7 +512,7 @@ async function loadGlobalPromotions() {
 
         list.innerHTML = promotions.map(promo => `
             <div class="bg-light p-3 rounded-4 border mb-2 d-flex align-items-center">
-                <img src="${promo.bannerImageBase64 || '/images/placeholder.png'}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                <img src="${promo.bannerImageBase64 || '/images/challenge-placeholder.jpg'}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
                 <div class="flex-grow-1">
                     <div class="fw-bold small">${escapeHtml(promo.name)} (-${promo.discountPercent}%)</div>
                     <div class="tiny text-muted">Start: ${new Date(promo.startDate).toLocaleDateString()}</div>

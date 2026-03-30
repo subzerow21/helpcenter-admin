@@ -273,7 +273,8 @@ public async Task<IActionResult> Analytics()
                         ProductName = reader["ProductName"]?.ToString() ?? "",
                         Category    = reader["Category"]?.ToString()    ?? "",
                         UnitsSold   = reader.GetInt32(reader.GetOrdinal("UnitsSold")),
-                        Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue"))
+                        Revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue")),
+                        SellerName  = reader["ShopName"]?.ToString() ?? ""
                     });
 
                 // Result Set 5: Peak Engagement
@@ -1370,6 +1371,7 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     }
                     viewModel.TotalPendingDiscountsCount = viewModel.PendingDiscounts.Count;
                 }
+
                 // 3. Get pending products
                 using (var cmd = new SqlCommand("sp_GetPendingProducts", connection))
                 {
@@ -1379,6 +1381,14 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     {
                         while (await reader.ReadAsync())
                         {
+                            // Convert binary image to Base64 string
+                            string imageBase64 = null;
+                            if (!reader.IsDBNull(reader.GetOrdinal("ImagePath")))
+                            {
+                                byte[] imageBytes = (byte[])reader["ImagePath"];
+                                imageBase64 = Convert.ToBase64String(imageBytes);
+                            }
+                            
                             viewModel.PendingProducts.Add(new ProductViewModel
                             {
                                 ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
@@ -1386,7 +1396,7 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                 SellerName = reader.GetString(reader.GetOrdinal("SellerName")),
                                 Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "Uncategorized" : reader.GetString(reader.GetOrdinal("Category")),
                                 Price = reader.IsDBNull(reader.GetOrdinal("Price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Price")),
-                                MainImage = reader.IsDBNull(reader.GetOrdinal("ImagePath")) ? null : reader.GetString(reader.GetOrdinal("ImagePath")),
+                                MainImage = imageBase64 != null ? $"data:image/jpeg;base64,{imageBase64}" : null,
                                 Status = reader.GetString(reader.GetOrdinal("Status"))
                             });
                         }

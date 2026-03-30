@@ -40,6 +40,7 @@ namespace NextHorizon.Models.Admin_Models
         public decimal Revenue { get; set; }
         public int Stock { get; set; }
         public int SalesCount { get; set; }
+        public string SellerName { get; set; } = string.Empty;
 
         public int UnitsSold
         {

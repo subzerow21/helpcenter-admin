@@ -167,3 +167,105 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
     }
+
+
+
+/* Product Preview Modern Styles */
+.product-preview-modern {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.product-preview-image {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-preview-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.product-placeholder {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transition: all 0.3s ease;
+}
+
+.product-details {
+    animation: slideInUp 0.3s ease-out;
+}
+
+/* Modal Enhancements */
+#productActionModal .modal-content {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+#productActionModal .modal-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+}
+
+#productActionModal .modal-body {
+    padding: 1.5rem;
+}
+
+#productActionModal .modal-footer {
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Alert Styles */
+.alert-success {
+    background-color: #d1fae5;
+    border: none;
+    color: #065f46;
+}
+
+.alert-warning {
+    background-color: #fed7aa;
+    border: none;
+    color: #9b2c1d;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Textarea Styling */
+#productRejectReason {
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+#productRejectReason:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    outline: none;
+}
