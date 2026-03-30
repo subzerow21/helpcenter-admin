@@ -440,39 +440,61 @@ function triggerSellerToast(msg, isError = false) {
 }
 
 
+/**
+ * --- UPDATED DOCUMENT & LOGO VIEWER ---
+ */
 async function viewNewDocumentViewer(sellerId) {
     const container = document.getElementById('docContainer');
-    const baseUrl   = window.location.origin;
+    const baseUrl = window.location.origin;
 
-    container.innerHTML = `<div class="text-center p-4"><div class="spinner-border" role="status"></div><p class="mt-2 text-muted">Loading documents...</p></div>`;
+    // Show loading spinner
+    container.innerHTML = `
+        <div class="text-center p-4">
+            <div class="spinner-border" role="status"></div>
+            <p class="mt-2 text-muted">Loading documents...</p>
+        </div>`;
+    
     new bootstrap.Modal(document.getElementById('documentViewerModal')).show();
 
     try {
-        const res  = await fetch(`/Admin/GetSellerDocumentInfo?sellerId=${sellerId}`);
+        const res = await fetch(`/Admin/GetSellerDocumentInfo?sellerId=${sellerId}`);
         const info = await res.json();
 
         if (info.format === 'binary_multi') {
-            // New format — DTI, BIR, Permit, Additional tabs
-            const tabs = info.docs.map((d, i) =>
+            // 1. Generate standard document buttons
+            let tabsHtml = info.docs.map((d, i) =>
                 `<button onclick="switchBinaryDoc(${sellerId}, '${d.type}', ${i})" id="doc-tab-${i}"
                     style="padding:6px 14px; border:1px solid #ccc;
-                    background:${i===0?'#111':'white'}; color:${i===0?'white':'#111'};
+                    background:${i === 0 ? '#111' : 'white'}; color:${i === 0 ? 'white' : '#111'};
                     cursor:pointer; font-size:12px; border-radius:4px; margin-right:4px;">
                     ${d.label}
                 </button>`).join('');
 
+            // 2. Add the Shop Logo button at the end
+            const logoIndex = info.docs.length;
+            tabsHtml += `
+                <button onclick="showLogoPreview(${sellerId}, ${logoIndex})" id="doc-tab-${logoIndex}"
+                    style="padding:6px 14px; border:1px solid #ccc; background:white; color:#111;
+                    cursor:pointer; font-size:12px; border-radius:4px; margin-right:4px;">
+                    <i class="bi bi-image me-1"></i>Shop Logo
+                </button>`;
+
+            // 3. Render container with a wrapper div for swapping view types
             container.innerHTML = `
-                <div style="padding:8px; background:#f5f5f5; border-bottom:1px solid #ddd;">${tabs}</div>
-                <iframe id="binary-doc-frame" src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${info.docs[0].type}"
-                    style="width:100%; height:440px; border:none;"></iframe>`;
+                <div style="padding:8px; background:#f5f5f5; border-bottom:1px solid #ddd;">${tabsHtml}</div>
+                <div id="viewer-display-area" style="width:100%; height:440px; background:#eee; overflow:hidden;">
+                    <iframe src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${info.docs[0].type}"
+                        style="width:100%; height:100%; border:none;"></iframe>
+                </div>`;
 
         } else if (info.format === 'binary_single') {
-            // Middle format — single binary document
-            container.innerHTML = `<iframe src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=single"
-                style="width:100%; height:500px; border:none;"></iframe>`;
+            container.innerHTML = `
+                <div id="viewer-display-area" style="width:100%; height:500px;">
+                    <iframe src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=single"
+                        style="width:100%; height:100%; border:none;"></iframe>
+                </div>`;
 
         } else if (info.format === 'path') {
-            // Old format — file paths via Google Docs viewer
             if (info.paths.length === 1) {
                 const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl + info.paths[0])}&embedded=true`;
                 container.innerHTML = `<iframe src="${viewerUrl}" style="width:100%; height:500px; border:none;"></iframe>`;
@@ -480,7 +502,7 @@ async function viewNewDocumentViewer(sellerId) {
                 const tabs = info.paths.map((p, i) =>
                     `<button onclick="switchDoc(${i})" id="doc-tab-${i}"
                         style="padding:6px 14px; border:1px solid #ccc;
-                        background:${i===0?'#111':'white'}; color:${i===0?'white':'#111'};
+                        background:${i === 0 ? '#111' : 'white'}; color:${i === 0 ? 'white' : '#111'};
                         cursor:pointer; font-size:12px; border-radius:4px; margin-right:4px;">
                         Doc ${i + 1}
                     </button>`).join('');
@@ -488,8 +510,8 @@ async function viewNewDocumentViewer(sellerId) {
                 const iframes = info.paths.map((p, i) => {
                     const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(baseUrl + p)}&embedded=true`;
                     return `<iframe id="doc-frame-${i}"
-                        src="${i===0 ? viewerUrl : ''}" data-src="${viewerUrl}"
-                        style="width:100%; height:440px; border:none; display:${i===0?'block':'none'};"></iframe>`;
+                        src="${i === 0 ? viewerUrl : ''}" data-src="${viewerUrl}"
+                        style="width:100%; height:440px; border:none; display:${i === 0 ? 'block' : 'none'};"></iframe>`;
                 }).join('');
 
                 container.innerHTML = `
@@ -501,14 +523,77 @@ async function viewNewDocumentViewer(sellerId) {
         }
 
     } catch (e) {
+        console.error(e);
         container.innerHTML = `<p class="text-center text-danger p-4">Failed to load documents.</p>`;
     }
 }
 
+/**
+ * Switch back to PDF Iframe view
+ */
 function switchBinaryDoc(sellerId, docType, index) {
-    document.getElementById('binary-doc-frame').src = `/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${docType}`;
+    const displayArea = document.getElementById('viewer-display-area');
+    
+    // Put the iframe back for PDF viewing
+    displayArea.innerHTML = `
+        <iframe src="/Admin/GetSellerDocument?sellerId=${sellerId}&docType=${docType}"
+            style="width:100%; height:100%; border:none;"></iframe>`;
+
+    // Handle button highlights
     document.querySelectorAll('[id^="doc-tab-"]').forEach((tab, i) => {
         tab.style.background = i === index ? '#111' : 'white';
-        tab.style.color      = i === index ? 'white' : '#111';
+        tab.style.color = i === index ? 'white' : '#111';
     });
+}
+
+function showLogoPreview(sellerId, index) {
+    const displayArea = document.getElementById('viewer-display-area');
+    
+    // Show loading state first
+    displayArea.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f8f9fa; padding:20px;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading logo...</span>
+            </div>
+            <p class="mt-3 text-muted mb-0">Loading shop logo...</p>
+        </div>`;
+
+    // Load logo with error handling
+    const img = new Image();
+    img.onload = function() {
+        displayArea.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; padding:20px; gap:15px;">
+                <img src="/Admin/GetSellerLogo?sellerId=${sellerId}" 
+                     style="max-width:90%; max-height:80%; object-fit:contain; border:2px solid #dee2e6; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" 
+                     alt="Shop Logo" id="logoImg" />
+                <div class="text-center">
+                    <small class="text-muted">Logo loaded successfully</small>
+                </div>
+            </div>`;
+        
+        // Update tab highlighting
+        updateTabHighlight(index);
+    };
+    
+    img.onerror = function() {
+        displayArea.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f8f9fa; padding:40px; text-align:center;">
+                <i class="bi bi-image text-muted fs-1 mb-3" style="opacity:0.5;"></i>
+                <h5 class="text-muted mb-1">No logo available</h5>
+                <small class="text-muted">Logo data not found or invalid format</small>
+            </div>`;
+        
+        updateTabHighlight(index);
+    };
+    
+    // Trigger image load
+    img.src = `/Admin/GetSellerLogo?sellerId=${sellerId}`;
+    
+    // Helper function for tab highlighting
+    function updateTabHighlight(activeIndex) {
+        document.querySelectorAll('[id^="doc-tab-"]').forEach((tab, i) => {
+            tab.style.background = i === activeIndex ? '#111' : 'white';
+            tab.style.color = i === activeIndex ? 'white' : '#111';
+        });
+    }
 }
