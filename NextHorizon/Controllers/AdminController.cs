@@ -319,15 +319,21 @@ public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDa
     try
     {
         DateTime start, end;
-        end = DateTime.Now;
 
         if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
         {
-            start = DateTime.Parse(startDate);
-            end   = DateTime.Parse(endDate).AddDays(1);
+            if (!DateTime.TryParse(startDate, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out start)
+             || !DateTime.TryParse(endDate, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out end))
+            {
+                return Json(new { error = "Invalid date format." });
+            }
+            end = end.AddDays(1);
         }
         else
         {
+            end   = DateTime.Now;
             start = days switch
             {
                 7  => DateTime.Now.AddDays(-7),
@@ -336,8 +342,9 @@ public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDa
             };
         }
 
-        var trends   = new List<object>();
-        var peakData = new List<object>();
+        var trends      = new List<object>();
+        var peakData    = new List<object>();
+        var topProducts = new List<object>();
         int totalOrders = 0;
         decimal totalRevenue = 0, avgOrder = 0;
 
@@ -381,11 +388,22 @@ public async Task<IActionResult> GetAnalyticsData(int days = 30, string? startDa
                             purchaseCount     = reader.GetInt32(reader.GetOrdinal("PurchaseCount")),
                             activitySyncCount = reader.GetInt32(reader.GetOrdinal("ActivitySyncCount"))
                         });
+
+                    // Result Set 4: Top Products
+                    await reader.NextResultAsync();
+                    while (await reader.ReadAsync())
+                        topProducts.Add(new
+                        {
+                            productName = reader["ProductName"]?.ToString() ?? "",
+                            unitsSold   = reader.GetInt32(reader.GetOrdinal("UnitsSold")),
+                            revenue     = reader.GetDecimal(reader.GetOrdinal("Revenue")),
+                            sellerName  = reader["ShopName"]?.ToString() ?? ""
+                        });
                 }
             }
         }
 
-        return Json(new { trends, peakData, totalOrders, totalRevenue, avgOrderValue = avgOrder });
+        return Json(new { trends, peakData, topProducts, totalOrders, totalRevenue, avgOrderValue = avgOrder });
     }
     catch (Exception ex) { return Json(new { error = ex.Message }); }
 }

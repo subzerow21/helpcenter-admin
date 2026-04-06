@@ -11,31 +11,68 @@ async function fetchAndUpdateCharts(days, startDate, endDate) {
 
         // Update Avg Order Value card
         const avgEl = document.getElementById('avgOrderValue');
-        if (avgEl) avgEl.innerText = '₱' + Number(data.avgOrderValue).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        if (avgEl) avgEl.innerText = '₱' + Number(data.avgOrderValue ?? 0)
+            .toLocaleString('en-PH', { minimumFractionDigits: 2 });
 
-        // Update main chart
-        if (mainChart && data.trends && data.trends.length > 0) {
-            mainChart.data.labels                  = data.trends.map(t => t.dateLabel);
-            mainChart.data.datasets[0].data        = data.trends.map(t => t.challengeParticipants);
-            mainChart.data.datasets[1].data        = data.trends.map(t => t.totalRevenue);
+        // Update main chart — always clear and redraw
+        if (mainChart) {
+            const hasData = data.trends && data.trends.length > 0;
+            mainChart.data.labels           = hasData ? data.trends.map(t => t.dateLabel) : ['No Data'];
+            mainChart.data.datasets[0].data = hasData ? data.trends.map(t => t.challengeParticipants) : [0];
+            mainChart.data.datasets[1].data = hasData ? data.trends.map(t => t.totalRevenue) : [0];
             mainChart.update();
         }
 
-        // Update peak chart
-        if (peakChart && data.peakData && data.peakData.length > 0) {
-            peakChart.data.labels           = data.peakData.map(h => {
-                const ampm = h.hour >= 12 ? 'PM' : 'AM';
-                const hour = h.hour % 12 || 12;
-                return hour + ampm;
-            });
-            peakChart.data.datasets[0].data = data.peakData.map(h => h.activitySyncCount);
-            peakChart.data.datasets[1].data = data.peakData.map(h => h.purchaseCount);
+        // Update peak chart — always clear and redraw
+        if (peakChart) {
+            const hasPeak = data.peakData && data.peakData.length > 0;
+            peakChart.data.labels           = hasPeak
+                ? data.peakData.map(h => {
+                    const ampm = h.hour >= 12 ? 'PM' : 'AM';
+                    const hour = h.hour % 12 || 12;
+                    return hour + ampm;
+                })
+                : ['No Data'];
+            peakChart.data.datasets[0].data = hasPeak ? data.peakData.map(h => h.activitySyncCount) : [0];
+            peakChart.data.datasets[1].data = hasPeak ? data.peakData.map(h => h.purchaseCount)     : [0];
             peakChart.update();
+        }
+
+        // Update top products list
+        const productList = document.querySelector('.product-list');
+        if (productList) {
+            if (data.topProducts && data.topProducts.length > 0) {
+                productList.innerHTML = data.topProducts.map(p => `
+                    <div class="product-item d-flex align-items-center gap-3 mb-3 p-2 rounded-3 border-bottom pb-3">
+                        <div class="avatar-placeholder bg-soft-primary rounded-3 d-flex align-items-center justify-content-center"
+                             style="width: 45px; height: 45px; flex-shrink: 0;">
+                            <i class="bi bi-box-seam text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="mb-0 fw-bold small">${escapeHtml(p.productName)}</p>
+                            <p class="text-muted tiny mb-0">${p.unitsSold} Units Sold</p>
+                            <p class="text-muted tiny mb-0">${escapeHtml(p.sellerName)}</p>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-800 text-dark d-block">₱${Number(p.revenue).toLocaleString('en-PH', { minimumFractionDigits: 0 })}</span>
+                            <span class="tiny text-uppercase fw-bold text-muted">SALES</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                productList.innerHTML = '<p class="text-muted small fst-italic">No product data available for this period.</p>';
+            }
         }
 
     } catch(e) {
         console.error('Failed to fetch analytics data', e);
     }
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str ?? ''));
+    return div.innerHTML;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
