@@ -237,8 +237,6 @@ public async Task<IActionResult> Analytics()
                     totalConsumers = reader.GetInt32(reader.GetOrdinal("TotalConsumers"));
                     totalSellers   = reader.GetInt32(reader.GetOrdinal("TotalSellers"));
                     totalOrders    = reader.GetInt32(reader.GetOrdinal("TotalOrders"));
-                    var rev        = await Task.FromResult(reader["TotalRevenue"]);
-                    totalRevenue   = rev != DBNull.Value ? Convert.ToDecimal(rev) : 0;
                     var avg        = await Task.FromResult(reader["AvgOrderValue"]);
                     avgOrderValue  = avg != DBNull.Value ? Convert.ToDecimal(avg) : 0;
                 }
