@@ -28,9 +28,38 @@ namespace NextHorizon.Controllers
             return View(model);
         }
 
-        // ─────────────────────────────────────────────
-        // HELP CENTER
-        // ─────────────────────────────────────────────
+        public IActionResult Analytics() => View();
+        public IActionResult SellerPerformance() => View();
+        public IActionResult Consumers() => View();
+        public IActionResult Sellers() => View();
+        public IActionResult Logistics() => View();
+        public IActionResult Tasks() => View();
+        public IActionResult ChallengeDetails() => View();
+        public IActionResult Settings() => View();
+        public IActionResult Notifications() => View();
+        public IActionResult Logout() => RedirectToAction("Dashboard");
+
+        public IActionResult FinanceRequest()
+        {
+            var viewModel = new FinanceRequestsViewModel
+            {
+                PendingPayouts = new List<PayoutRequest>
+                {
+                    new PayoutRequest { Id="1001", ShopName="TechGear Hub",  SellerEmail="owner@techgear.com", Amount=15500.50m, BankName="GCash", SellerNote="Funds Transfer", DateRequested=DateTime.Now.AddDays(-2) },
+                    new PayoutRequest { Id="1002", ShopName="Luxe Apparel",  SellerEmail="sales@luxe.ph",     Amount=42000.00m, BankName="BDO",   SellerNote="Withdrawal",     DateRequested=DateTime.Now.AddDays(-1) }
+                },
+                PendingDiscounts = new List<DiscountRequest>
+                {
+                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub",    ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now,            EndDate=DateTime.Now.AddDays(7)  },
+                    new DiscountRequest { Id="D-56", ShopName="Home Essentials", ProductName="Ergonomic Chair",      OriginalPrice=8999, DiscountPercent=50, StartDate=DateTime.Now.AddDays(2), EndDate=DateTime.Now.AddDays(5)  }
+                }
+            };
+            return View("FinanceRequest", viewModel);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // HELP CENTER — page load
+        // ═══════════════════════════════════════════════════════════════════
         public IActionResult HelpCenter()
         {
             var faqs = _context.FAQs
@@ -63,7 +92,6 @@ namespace NextHorizon.Controllers
             {
                 var isSeller = (s.UserType ?? "").Trim()
                     .Equals("Seller", StringComparison.OrdinalIgnoreCase);
-
                 return new QueueSession
                 {
                     Id = s.Id,
@@ -80,69 +108,8 @@ namespace NextHorizon.Controllers
                 };
             }).ToList();
 
-            // ── Active agent slots ────────────────────────────────────────
-            // A slot is active when:
-            //   ChatStatus = Active  AND  EndTime IS NULL  AND  ConversationID IS NOT NULL
-            // ConversationID stores the SupportFAQs.Id that was assigned to this slot.
-            var activeAgentRows = _context.Agents
-                .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
-                         && a.EndTime == null
-                         && a.ConversationID != null)
-                .ToList();
+            var agents = BuildAgentViewModels();
 
-            var allAgentNames = _context.Agents
-                .Select(a => a.AgentName ?? "Unknown")
-                .Distinct()
-                .OrderBy(n => n)
-                .ToList();
-
-            var avatarColors = new[] { "#1a1a1a", "#444", "#666", "#888", "#999" };
-
-            var agents = allAgentNames.Select((name, idx) =>
-            {
-                // Read this agent's current status from their latest row
-                var firstRow = _context.Agents.FirstOrDefault(a => a.AgentName == name);
-                var rawStatus = (firstRow?.AgentStatus ?? "available").ToLower().Trim();
-                var mappedStatus = rawStatus switch
-                {
-                    "available" => "online",
-                    "busy" => "busy",
-                    "away" => "away",
-                    "offline" => "offline",
-                    _ => "online"
-                };
-
-                var initials = string.Concat(
-                    name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                        .Take(2)
-                        .Select(w => char.ToUpper(w[0]).ToString()));
-
-                // Build slots from active (non-resolved) rows only
-                // ConversationID = SupportFAQs.Id → shown as Conv# in the panel
-                var slots = activeAgentRows
-                    .Where(a => a.AgentName == name)
-                    .OrderBy(a => a.ChatSlot)
-                    .Select(a => new AgentSlot
-                    {
-                        ConversationId = a.ConversationID ?? 0,  // SupportFAQs.Id
-                        ClientName = a.ClientName,
-                        Category = a.Category,
-                        SlotNumber = a.ChatSlot ?? 0
-                    })
-                    .ToList();
-
-                return new AgentStatusViewModel
-                {
-                    Name = name,
-                    Initials = initials,
-                    Status = mappedStatus,
-                    ActiveSessions = slots.Count,
-                    MaxSessions = 3,
-                    Slots = slots
-                };
-            }).ToList();
-
-            // ── Stats ─────────────────────────────────────────────────────
             var resolvedToday = _context.HelpSessions
                 .Count(s => s.Status == "Resolved" && s.CreatedAt.Date == DateTime.Today);
             var activeCount = _context.HelpSessions.Count(s => s.Status == "Active");
@@ -170,154 +137,145 @@ namespace NextHorizon.Controllers
             return View(viewModel);
         }
 
-        // ─────────────────────────────────────────────
-        // QUEUE ASSIGN
-        // ─────────────────────────────────────────────
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
+        // ── Shared helper — builds agent view models ─────────────────────
+        private List<AgentStatusViewModel> BuildAgentViewModels()
         {
-            if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
-                return BadRequest(new { success = false, message = "Invalid request." });
-
-            // Get agent's UserID
-            var agentRow = _context.Agents
-                .FirstOrDefault(a => a.AgentName == model.AgentName);
-
-            if (agentRow == null)
-                return Json(new { success = false, message = "Agent not found." });
-
-            var agentUserId = agentRow.UserID;
-
-            // Count only non-resolved active slots for this agent
-            // A real slot = Active + EndTime IS NULL + ConversationID IS NOT NULL
-            var usedSlots = _context.Agents
-                .Where(a => a.AgentName == model.AgentName
-                         && (a.ChatStatus == "Active" || a.ChatStatus == "active")
+            // Only truly active slots:
+            // ChatStatus = Active, EndTime IS NULL, ConversationID IS NOT NULL
+            // Resolved = resolved/freed slot — excluded here
+            var activeAgentRows = _context.Agents
+                .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
+                         && a.ChatStatus != "Resolved"
                          && a.EndTime == null
                          && a.ConversationID != null)
-                .Select(a => (int)(a.ChatSlot ?? 0))
                 .ToList();
 
-            int nextSlot = Enumerable.Range(1, 3)
-                .FirstOrDefault(s => !usedSlots.Contains(s));
-
-            if (nextSlot == 0)
-                return Json(new { success = false, message = "Agent has no available slots." });
-
-            // Fetch session from SupportFAQs
-            var session = _context.HelpSessions.Find(model.SessionId);
-            if (session == null)
-                return Json(new { success = false, message = "Session not found." });
-
-            var isSeller = (session.UserType ?? "").Trim()
-                .Equals("Seller", StringComparison.OrdinalIgnoreCase);
-            var clientName = (isSeller ? "Seller #" : "Customer #") + session.Id;
-            var category = session.Category ?? "General";
-            var previewQ = session.Question ?? "";
-
-            // Mark SupportFAQs row as Active
-            _context.Database.ExecuteSqlRaw(
-                @"UPDATE dbo.SupportFAQs
-                  SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId
-                  WHERE Id = @Id",
-                new SqlParameter("@AgentId", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value),
-                new SqlParameter("@Id", model.SessionId));
-
-            // Insert agent slot row
-            // ConversationID = SupportFAQs.Id — this is the link used for resolve/display
-            _context.Database.ExecuteSqlRaw(
-                @"INSERT INTO dbo.Agents
-                    (ConversationID, AgentName, ClientName, Category, PreviewQuestion,
-                     ChatSlot, ChatStatus, StartTime, AgentStatus, UserID)
-                  VALUES
-                    (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion,
-                     @ChatSlot, 'Active', GETDATE(), 'available', @UserID)",
-                new SqlParameter("@ConversationID", model.SessionId),   // ← SupportFAQs.Id
-                new SqlParameter("@AgentName", model.AgentName),
-                new SqlParameter("@ClientName", clientName),
-                new SqlParameter("@Category", category),
-                new SqlParameter("@PreviewQuestion", previewQ),
-                new SqlParameter("@ChatSlot", Convert.ToByte(nextSlot)),
-                new SqlParameter("@UserID", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value));
-
-            return Json(new
-            {
-                success = true,
-                sessionId = model.SessionId,
-                agent = model.AgentName,
-                slot = nextSlot
-            });
-        }
-
-        // ─────────────────────────────────────────────
-        // END SESSION
-        // ─────────────────────────────────────────────
-        [HttpPost]
-        public IActionResult QueueEndSession([FromBody] QueueSessionActionRequest model)
-        {
-            if (model == null || model.SessionId <= 0)
-                return BadRequest(new { success = false });
-
-            // Mark SupportFAQs row as Resolved
-            _context.Database.ExecuteSqlRaw(
-                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
-                new SqlParameter("@Id", model.SessionId));
-
-            // Free the agent slot — match by ConversationID = SessionId
-            _context.Database.ExecuteSqlRaw(
-                @"UPDATE dbo.Agents
-                  SET ChatStatus='Resolved', EndTime=GETDATE()
-                  WHERE ConversationID = @ConvId
-                    AND ChatStatus = 'Active'
-                    AND EndTime IS NULL",
-                new SqlParameter("@ConvId", model.SessionId));
-
-            return Json(new { success = true, sessionId = model.SessionId });
-        }
-
-        // ─────────────────────────────────────────────
-        // RESOLVE
-        // ─────────────────────────────────────────────
-        [HttpPost]
-        public IActionResult QueueResolve([FromBody] QueueSessionActionRequest model)
-        {
-            if (model == null || model.SessionId <= 0)
-                return BadRequest(new { success = false });
-
-            // Mark SupportFAQs row as Resolved
-            _context.Database.ExecuteSqlRaw(
-                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
-                new SqlParameter("@Id", model.SessionId));
-
-            // Free the agent slot — match by ConversationID = SessionId
-            _context.Database.ExecuteSqlRaw(
-                @"UPDATE dbo.Agents
-                  SET ChatStatus='Resolved', EndTime=GETDATE()
-                  WHERE ConversationID = @ConvId
-                    AND ChatStatus = 'Active'
-                    AND EndTime IS NULL",
-                new SqlParameter("@ConvId", model.SessionId));
-
-            return Json(new { success = true, sessionId = model.SessionId });
-        }
-
-        // ─────────────────────────────────────────────
-        // AVAILABLE AGENTS FOR DROPDOWN
-        // ─────────────────────────────────────────────
-        [HttpGet]
-        public IActionResult GetAvailableAgents()
-        {
             var allAgentNames = _context.Agents
                 .Select(a => a.AgentName ?? "Unknown")
                 .Distinct()
+                .OrderBy(n => n)
                 .ToList();
 
-            // Only count real active slots
+            return allAgentNames.Select(name =>
+            {
+                var firstRow = _context.Agents.FirstOrDefault(a => a.AgentName == name);
+                var rawStatus = (firstRow?.AgentStatus ?? "available").ToLower().Trim();
+                var mappedStatus = rawStatus switch
+                {
+                    "available" => "online",
+                    "busy" => "busy",
+                    "away" => "away",
+                    "offline" => "offline",
+                    _ => "online"
+                };
+
+                var initials = string.Concat(
+                    name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Take(2)
+                        .Select(w => char.ToUpper(w[0]).ToString()));
+
+                var slots = activeAgentRows
+                    .Where(a => a.AgentName == name)
+                    .OrderBy(a => a.ChatSlot)
+                    .Select(a => new AgentSlot
+                    {
+                        ConversationId = a.ConversationID ?? 0,
+                        ClientName = a.ClientName,
+                        Category = a.Category,
+                        SlotNumber = (int)(a.ChatSlot ?? 0)
+                    })
+                    .ToList();
+
+                return new AgentStatusViewModel
+                {
+                    Name = name,
+                    Initials = initials,
+                    Status = mappedStatus,
+                    ActiveSessions = slots.Count,
+                    MaxSessions = 3,
+                    Slots = slots
+                };
+            }).ToList();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GET AGENT STATUS — called by JS for live refresh
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public IActionResult GetAgentStatus()
+        {
+            var activeAgentRows = _context.Agents
+                .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
+                         && a.ChatStatus != "Resolved"
+                         && a.EndTime == null
+                         && a.ConversationID != null)
+                .ToList();
+
+            var allAgentNames = _context.Agents
+                .Select(a => a.AgentName ?? "Unknown")
+                .Distinct()
+                .OrderBy(n => n)
+                .ToList();
+
+            var result = allAgentNames.Select(name =>
+            {
+                var firstRow = _context.Agents.FirstOrDefault(a => a.AgentName == name);
+                var rawStatus = (firstRow?.AgentStatus ?? "available").ToLower().Trim();
+                var mappedStatus = rawStatus switch
+                {
+                    "available" => "online",
+                    "busy" => "busy",
+                    "away" => "away",
+                    "offline" => "offline",
+                    _ => "online"
+                };
+
+                var initials = string.Concat(
+                    name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Take(2)
+                        .Select(w => char.ToUpper(w[0]).ToString()));
+
+                var slots = activeAgentRows
+                    .Where(a => a.AgentName == name)
+                    .OrderBy(a => a.ChatSlot)
+                    .Select(a => new {
+                        convId = a.ConversationID ?? 0,
+                        client = a.ClientName,
+                        cat = a.Category,
+                        slotNum = (int)(a.ChatSlot ?? 0)
+                    })
+                    .ToList();
+
+                return new
+                {
+                    name = name,
+                    initials = initials,
+                    status = mappedStatus,
+                    sessions = slots.Count,
+                    max = 3,
+                    slots = (object)slots
+                };
+            }).ToList();
+
+            return Json(result);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GET AVAILABLE AGENTS — for assign dropdown
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public IActionResult GetAvailableAgents()
+        {
             var activeRows = _context.Agents
                 .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
+                         && a.ChatStatus != "Resolved"
                          && a.EndTime == null
-                         && a.ConversationID != null)   // ← consistent with assign/resolve
+                         && a.ConversationID != null)
+                .ToList();
+
+            var allAgentNames = _context.Agents
+                .Select(a => a.AgentName ?? "Unknown")
+                .Distinct()
                 .ToList();
 
             var result = allAgentNames.Select(name =>
@@ -325,7 +283,6 @@ namespace NextHorizon.Controllers
                 var agentRow = _context.Agents.FirstOrDefault(a => a.AgentName == name);
                 var rawStatus = (agentRow?.AgentStatus ?? "available").ToLower().Trim();
                 var activeCount = activeRows.Count(a => a.AgentName == name);
-
                 return new
                 {
                     name = name,
@@ -342,9 +299,139 @@ namespace NextHorizon.Controllers
             return Json(result);
         }
 
-        // ─────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        // QUEUE ASSIGN
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult QueueAssign([FromBody] AssignSessionRequest model)
+        {
+            if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
+                return BadRequest(new { success = false, message = "Invalid request." });
+
+            var agentRow = _context.Agents.FirstOrDefault(a => a.AgentName == model.AgentName);
+            if (agentRow == null)
+                return Json(new { success = false, message = "Agent not found." });
+
+            var agentUserId = agentRow.UserID;
+
+            // Count only real active slots — exclude Resolved and null ConversationID
+            var usedSlots = _context.Agents
+                .Where(a => a.AgentName == model.AgentName
+                         && (a.ChatStatus == "Active" || a.ChatStatus == "active")
+                         && a.ChatStatus != "Resolved"
+                         && a.EndTime == null
+                         && a.ConversationID != null)
+                .Select(a => (int)(a.ChatSlot ?? 0))
+                .ToList();
+
+            int nextSlot = Enumerable.Range(1, 3).FirstOrDefault(s => !usedSlots.Contains(s));
+            if (nextSlot == 0)
+                return Json(new { success = false, message = "Agent has no available slots." });
+
+            var session = _context.HelpSessions.Find(model.SessionId);
+            if (session == null)
+                return Json(new { success = false, message = "Session not found." });
+
+            var isSeller = (session.UserType ?? "").Trim().Equals("Seller", StringComparison.OrdinalIgnoreCase);
+            var clientName = (isSeller ? "Seller #" : "Customer #") + session.Id;
+            var category = session.Category ?? "General";
+            var previewQ = session.Question ?? "";
+
+            // Mark SupportFAQs session as Active
+            _context.Database.ExecuteSqlRaw(
+                @"UPDATE dbo.SupportFAQs
+                  SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId
+                  WHERE Id = @Id",
+                new SqlParameter("@AgentId", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value),
+                new SqlParameter("@Id", model.SessionId));
+
+            // Insert new agent slot row
+            // ConversationID = SupportFAQs.Id — used to match on resolve
+            _context.Database.ExecuteSqlRaw(
+                @"INSERT INTO dbo.Agents
+                    (ConversationID, AgentName, ClientName, Category, PreviewQuestion,
+                     ChatSlot, ChatStatus, StartTime, AgentStatus, UserID)
+                  VALUES
+                    (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion,
+                     @ChatSlot, 'Active', GETDATE(), 'available', @UserID)",
+                new SqlParameter("@ConversationID", model.SessionId),
+                new SqlParameter("@AgentName", model.AgentName),
+                new SqlParameter("@ClientName", clientName),
+                new SqlParameter("@Category", category),
+                new SqlParameter("@PreviewQuestion", previewQ),
+                new SqlParameter("@ChatSlot", Convert.ToByte(nextSlot)),
+                new SqlParameter("@UserID", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value));
+
+            return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName, slot = nextSlot });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // END SESSION — sets Agents row to Resolved so slot is freed
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public IActionResult QueueEndSession([FromBody] QueueSessionActionRequest model)
+        {
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            // Mark session resolved
+            _context.Database.ExecuteSqlRaw(
+                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
+                new SqlParameter("@Id", model.SessionId));
+
+            // Free the agent slot — set to Resolved so it no longer shows as occupied
+            _context.Database.ExecuteSqlRaw(
+                @"UPDATE dbo.Agents
+                  SET ChatStatus = 'Resolved', EndTime = GETDATE()
+                  WHERE ConversationID = @ConvId
+                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')
+                    AND EndTime IS NULL",
+                new SqlParameter("@ConvId", model.SessionId));
+
+            return Json(new { success = true, sessionId = model.SessionId });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RESOLVE — same as EndSession
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public IActionResult QueueResolve([FromBody] QueueSessionActionRequest model)
+        {
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            // Mark session resolved
+            _context.Database.ExecuteSqlRaw(
+                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
+                new SqlParameter("@Id", model.SessionId));
+
+            // Free the agent slot — set to Resolved so it no longer shows as occupied
+            _context.Database.ExecuteSqlRaw(
+                @"UPDATE dbo.Agents
+                  SET ChatStatus = 'Resolved', EndTime = GETDATE()
+                  WHERE ConversationID = @ConvId
+                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')
+                    AND EndTime IS NULL",
+                new SqlParameter("@ConvId", model.SessionId));
+
+            return Json(new { success = true, sessionId = model.SessionId });
+        }
+
+        [HttpPost]
+        public IActionResult QueueSend([FromBody] QueueSendRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Message))
+                return BadRequest(new { success = false });
+            return Json(new { success = true, message = model.Message, isNote = model.IsNote, timestamp = DateTime.Now.ToString("h:mm tt") });
+        }
+
+        [HttpPost]
+        public IActionResult QueueAutoAssign() => Json(new { success = true });
+
+        // ═══════════════════════════════════════════════════════════════════
         // FAQ ENDPOINTS
-        // ─────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         [HttpPost]
         public IActionResult FaqAdd([FromBody] AddFaqRequest model)
         {
@@ -397,7 +484,7 @@ namespace NextHorizon.Controllers
                 return BadRequest(new { success = false });
 
             var rows = _context.Database.ExecuteSqlRaw(
-                "UPDATE FAQs SET Status='Inactive', LastUpdated=GETDATE() WHERE FaqID=@FaqId",
+                "UPDATE FAQs SET Status='Resolved', LastUpdated=GETDATE() WHERE FaqID=@FaqId",
                 new SqlParameter("@FaqId", model.Id));
 
             return rows > 0
@@ -429,47 +516,15 @@ namespace NextHorizon.Controllers
 
             var name = model.Name.Trim();
             var rows = _context.Database.ExecuteSqlRaw(
-                "UPDATE FAQs SET Status='Inactive', LastUpdated=GETDATE() WHERE Category=@Category AND (Status='active' OR Status='Active')",
+                "UPDATE FAQs SET Status='Resolved', LastUpdated=GETDATE() WHERE Category=@Category AND (Status='active' OR Status='Active')",
                 new SqlParameter("@Category", name));
 
             return Json(new
             {
                 success = true,
                 deletedCount = rows,
-                message = rows > 0 ? $"{rows} FAQ(s) set to inactive." : "Category removed."
+                message = rows > 0 ? $"{rows} FAQ(s) set to Resolved." : "Category removed."
             });
-        }
-
-        // ─────────────────────────────────────────────
-        // OTHER ACTIONS
-        // ─────────────────────────────────────────────
-        public IActionResult Analytics() => View();
-        public IActionResult SellerPerformance() => View();
-        public IActionResult Consumers() => View();
-        public IActionResult Sellers() => View();
-        public IActionResult Logistics() => View();
-        public IActionResult Tasks() => View();
-        public IActionResult ChallengeDetails() => View();
-        public IActionResult Settings() => View();
-        public IActionResult Notifications() => View();
-        public IActionResult Logout() => RedirectToAction("Dashboard");
-
-        public IActionResult FinanceRequest()
-        {
-            var viewModel = new FinanceRequestsViewModel
-            {
-                PendingPayouts = new List<PayoutRequest>
-                {
-                    new PayoutRequest { Id="1001", ShopName="TechGear Hub",  SellerEmail="owner@techgear.com", Amount=15500.50m, BankName="GCash", SellerNote="Funds Transfer", DateRequested=DateTime.Now.AddDays(-2) },
-                    new PayoutRequest { Id="1002", ShopName="Luxe Apparel",  SellerEmail="sales@luxe.ph",     Amount=42000.00m, BankName="BDO",   SellerNote="Withdrawal",     DateRequested=DateTime.Now.AddDays(-1) }
-                },
-                PendingDiscounts = new List<DiscountRequest>
-                {
-                    new DiscountRequest { Id="D-55", ShopName="TechGear Hub",    ProductName="Wireless Earbuds Pro", OriginalPrice=2500, DiscountPercent=20, StartDate=DateTime.Now,            EndDate=DateTime.Now.AddDays(7) },
-                    new DiscountRequest { Id="D-56", ShopName="Home Essentials", ProductName="Ergonomic Chair",      OriginalPrice=8999, DiscountPercent=50, StartDate=DateTime.Now.AddDays(2), EndDate=DateTime.Now.AddDays(5) }
-                }
-            };
-            return View("FinanceRequest", viewModel);
         }
     }
 }

@@ -1417,7 +1417,7 @@
             <div class="nh-modal-msg" id="nhModalMsg">This action cannot be undone.</div>
             <div class="nh-modal-warn">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                This will be set to <strong>Inactive</strong> in the database.
+                This will be set to <strong>Resolved</strong> in the database.
             </div>
         </div>
         <div class="nh-modal-foot">
@@ -1767,7 +1767,7 @@
         function deleteCategory(cat) {
             var count = FAQS.filter(function(f){ return f.cat === cat; }).length;
             var msg   = count > 0
-                ? count + ' FAQ(s) under "'+titleCase(cat)+'" will also be set to Inactive.'
+                ? count + ' FAQ(s) under "'+titleCase(cat)+'" will also be set to Resolved.'
                 : '"'+titleCase(cat)+'" will be removed (no FAQs attached).';
             showModal('Deactivate Category "'+titleCase(cat)+'"?', msg, function() {
                 postJson('/Admin/FaqCategoryDelete', { name: cat })
@@ -1834,13 +1834,13 @@
         function deleteFaq(id) {
             var f = FAQS.find(function(x){ return x.id === id; });
             if (!f) return;
-            showModal('Deactivate FAQ?', '"'+escH(f.q)+'" will be set to Inactive.', function() {
+            showModal('Deactivate FAQ?', '"'+escH(f.q)+'" will be set to Resolved.', function() {
                 postJson('/Admin/FaqDelete', { id: id })
                     .then(function(data) {
                         if (data.success) {
                             FAQS = FAQS.filter(function(x){ return x.id !== id; });
                             updateFaqCounts(); renderFaqs();
-                            showToast('FAQ set to inactive.');
+                            showToast('FAQ set to Resolved.');
                         } else { showToast(data.message || 'Delete failed.'); }
                     })
                     .catch(function() { showToast('Could not reach server.'); });
@@ -1971,5 +1971,19 @@
         renderAgents();
         renderCatChips();
         renderFaqs();
+
+       
+        function refreshAgents() {
+            fetch('/Admin/GetAgentStatus')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    AGENTS = data;
+                    renderAgents();
+                })
+                .catch(function() { /* silent — keep last known state */ });
+        }
+
+        setInterval(refreshAgents, 10000);  // change to 5000 for 5s refresh
+    </script>
     </script>
 }
