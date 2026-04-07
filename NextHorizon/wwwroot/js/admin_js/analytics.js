@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+     fetchAndUpdateCharts(30);
 });
 
 function exportAnalyticsToExcel() {
