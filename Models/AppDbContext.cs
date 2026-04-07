@@ -58,11 +58,9 @@ namespace NextHorizon.Data
                 entity.Property(e => e.PreviewQuestion).HasColumnName("PreviewQuestion");
                 entity.Property(e => e.ChatSlot).HasColumnName("ChatSlot");
                 entity.Property(e => e.ChatStatus).HasColumnName("ChatStatus");
-                entity.Property(e => e.StartTime).HasColumnName("StartTime");
-                entity.Property(e => e.EndTime).HasColumnName("EndTime");
                 entity.Property(e => e.AgentStatus).HasColumnName("AgentStatus");
-                entity.Property(e => e.AgentID).HasColumnName("AgentID");  // ← new
-                entity.Property(e => e.UserID).HasColumnName("UserID");    // ← new
+                entity.Property(e => e.AgentID).HasColumnName("AgentID");  
+                entity.Property(e => e.UserID).HasColumnName("UserID");  
             });
         }
     }

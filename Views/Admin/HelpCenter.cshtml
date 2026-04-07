@@ -413,11 +413,6 @@
             }
 
         /* ── ASSIGN DROPDOWN PORTAL ── */
-        /*
-             * The portal is a single <div id="dd-portal"> placed at the very end of
-             * the page, outside all scroll containers. JS positions it using
-             * getBoundingClientRect() so it never gets clipped by overflow:hidden.
-             */
         #dd-portal {
             position: fixed;
             z-index: 9000;
@@ -1395,11 +1390,6 @@
     </div>
 </div>
 
-<!--
-    PORTAL for assign dropdown.
-    Placed outside ALL scroll containers so it is NEVER clipped by overflow:hidden.
-    JS positions it using getBoundingClientRect() on the button that was clicked.
--->
 <div id="dd-portal"></div>
 
 <!-- DELETE CONFIRMATION MODAL -->
@@ -1466,21 +1456,10 @@
 
         // ════════════════════════════════════════════════════════════════════
         // PORTAL-BASED DROPDOWN
-        // ────────────────────────────────────────────────────────────────────
-        // A single shared <div id="dd-portal"> is positioned via JS using
-        // getBoundingClientRect so it's never clipped by overflow:hidden parents.
-        //
-        // FIX 1 — dropdown closes instantly:
-        //   The _ddJustOpened flag prevents the document click listener from
-        //   firing in the SAME event cycle as the button click that opened it.
-        //
-        // FIX 2 — dropdown cut off at bottom:
-        //   After rendering we measure available space and flip the dropdown
-        //   upward if there isn't enough room below the button.
         // ════════════════════════════════════════════════════════════════════
         var _ddPortal     = null;
         var _ddSessionId  = null;
-        var _ddJustOpened = false;   // FIX 1
+        var _ddJustOpened = false;
 
         function initPortal() {
             _ddPortal = document.getElementById('dd-portal');
@@ -1491,36 +1470,30 @@
             _ddSessionId = null;
         }
 
-        // Outside-click handler — skips the tick that opened the dropdown
         document.addEventListener('click', function(e) {
-            if (_ddJustOpened) { _ddJustOpened = false; return; }   // FIX 1
+            if (_ddJustOpened) { _ddJustOpened = false; return; }
             if (_ddPortal && !_ddPortal.contains(e.target)) closeDropdown();
         });
 
-        // Close on any scroll so the portal doesn't float away from its button
         document.addEventListener('scroll', function() { closeDropdown(); }, true);
 
         function openAssignDropdown(sessionId, btnEl) {
-            // Toggle closed if same button clicked again
             if (_ddSessionId === sessionId && _ddPortal && _ddPortal.classList.contains('open')) {
                 closeDropdown(); return;
             }
 
-            _ddJustOpened = true;   // FIX 1 — block the immediately-following document click
+            _ddJustOpened = true;
             _ddSessionId  = sessionId;
 
-            // FIX 2 — Position portal using viewport coords of the button
             var rect       = btnEl.getBoundingClientRect();
             var ddWidth    = 220;
             var spaceBelow = window.innerHeight - rect.bottom - 8;
             var spaceAbove = rect.top - 8;
 
-            _ddPortal.style.width = ddWidth + 'px';
+            _ddPortal.style.width  = ddWidth + 'px';
             var left = rect.right - ddWidth;
             if (left < 8) left = 8;
-            _ddPortal.style.left = left + 'px';
-
-            // Default: open downward
+            _ddPortal.style.left   = left + 'px';
             _ddPortal.style.bottom = '';
             _ddPortal.style.top    = (rect.bottom + 4) + 'px';
 
@@ -1531,7 +1504,7 @@
             fetch('/Admin/GetAvailableAgents')
                 .then(function(r) { return r.json(); })
                 .then(function(agents) {
-                    if (_ddSessionId !== sessionId) return; // stale response
+                    if (_ddSessionId !== sessionId) return;
                     if (!agents || !agents.length) {
                         _ddPortal.innerHTML = '<div class="assign-dd-hd">Select Agent</div>'
                             + '<div class="assign-dd-empty">No agents available right now</div>';
@@ -1552,7 +1525,6 @@
                     });
                     _ddPortal.innerHTML = html;
 
-                    // FIX 2b — flip upward if not enough space below after content renders
                     var portalH   = _ddPortal.offsetHeight;
                     var needsFlip = (rect.bottom + 4 + portalH > window.innerHeight - 8) && (spaceAbove >= portalH);
                     if (needsFlip) {
@@ -1577,14 +1549,10 @@
             postJson('/Admin/QueueAssign', { sessionId: sessionId, agentName: agentName })
                 .then(function(data) {
                     if (data.success) {
-                        // Remove from local queue — now Active in DB
                         SESSIONS = SESSIONS.filter(function(x){ return x.id !== sessionId; });
-                        // Optimistically bump agent slot count
-                        var ag = AGENTS.find(function(a){ return a.name === agentName; });
-                        if (ag) ag.sessions = Math.min(ag.sessions + 1, ag.max);
                         renderQueue();
-                        renderAgents();
                         showToast(titleCase(s.name) + ' assigned to ' + titleCase(agentName) + '.');
+                        refreshAgents();
                     } else {
                         showToast(data.message || 'Assignment failed.');
                     }
@@ -1593,7 +1561,7 @@
         }
 
         // ════════════════════════════════════════════════════════════════════
-        // QUEUE
+        // QUEUE RENDER
         // ════════════════════════════════════════════════════════════════════
         function renderQueue() {
             var body = document.getElementById('qBody');
@@ -1606,8 +1574,12 @@
                 var wc  = s.waitSec >= 300 ? 'q-wait over5' : 'q-wait';
                 var pc  = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
 
+                // TEMP: restriction disabled for testing — original checked a.sessions < a.max (max = 3)
+                // var hasAvail = AGENTS.some(function(a) {
+                //     return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
+                // });
                 var hasAvail = AGENTS.some(function(a) {
-                    return (a.status === 'online' || a.status === 'busy') && a.sessions < a.max;
+                    return (a.status === 'online' || a.status === 'busy');
                 });
 
                 var actionCell = hasAvail
@@ -1641,23 +1613,15 @@
         }
 
         // ════════════════════════════════════════════════════════════════════
-        // AGENT STATUS — 3-column grid showing real slot data
-        //
-        // Each column = Chat Slot 1 / 2 / 3.
-        // If a.slots contains an entry for that slot number → show client + ConvID.
-        // If not → show "Available" (slot is free / was resolved).
-        // Resolved slots have EndTime set in DB so they are excluded from
-        // activeAgentRows in the controller — the JS just shows Available.
+        // AGENT STATUS RENDER
         // ════════════════════════════════════════════════════════════════════
         function renderAgents() {
             var grid = document.getElementById('agentGrid');
             grid.innerHTML = '';
 
             for (var slotNum = 1; slotNum <= 3; slotNum++) {
-                var col     = document.createElement('div'); col.className = 'agent-col';
-                var hd      = document.createElement('div'); hd.className  = 'agent-col-hd';
-
-                // Dot is filled (dark) if at least one agent has this slot occupied
+                var col    = document.createElement('div'); col.className = 'agent-col';
+                var hd     = document.createElement('div'); hd.className  = 'agent-col-hd';
                 var anyFilled = AGENTS.some(function(a) {
                     return (a.slots||[]).some(function(sl){ return sl.slotNum === slotNum; });
                 });
@@ -1669,14 +1633,12 @@
                 AGENTS.forEach(function(a) {
                     var slots    = a.slots || [];
                     var slotData = slots.find(function(sl){ return sl.slotNum === slotNum; });
-
-                    var dotCls    = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
+                    var dotCls   = a.status === 'online' ? 'd-on' : a.status === 'busy' ? 'd-busy' : a.status === 'away' ? 'd-away' : 'd-off';
                     var statusCls = 'b-' + a.status;
-                    var avBg      = (a.status === 'offline') ? '#ccc' : '#1a1a1a';
-                    var d         = document.createElement('div');
+                    var avBg     = (a.status === 'offline') ? '#ccc' : '#1a1a1a';
+                    var d        = document.createElement('div');
 
                     if (a.status === 'offline') {
-                        // Offline agents: show only once (slot 1), greyed out
                         if (slotNum !== 1) return;
                         d.className = 'agent-slot';
                         d.innerHTML =
@@ -1690,7 +1652,6 @@
                             + '<span class="badge b-offline" style="font-size:9px;padding:1px 6px;">offline</span>';
 
                     } else if (slotData && slotData.convId && slotData.convId > 0) {
-                        // ── OCCUPIED SLOT — show client + ConversationID ──
                         d.className = 'agent-slot';
                         d.innerHTML =
                             '<div class="ag-av" style="background:'+avBg+';">'
@@ -1706,7 +1667,6 @@
                             + '<span class="badge b-occupied" style="font-size:9px;padding:1px 6px;">active</span>';
 
                     } else {
-                        // ── AVAILABLE SLOT (free or previously resolved) ──
                         d.className = 'empty-slot';
                         d.innerHTML =
                             '<div class="ag-av" style="background:'+avBg+';width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0;position:relative;">'
@@ -1961,29 +1921,49 @@
             if (afEl) AF_TOKEN = afEl.value;
         });
 
-        // Run initPortal immediately too in case DOMContentLoaded already fired
         initPortal();
 
-        // ── TICK — increment wait timers every second ─────────────────────
-        setInterval(function(){ SESSIONS.forEach(function(s){ s.waitSec++; }); renderQueue(); }, 1000);
+        // ── TICK — increment wait timers every second (display only) ─────
+        setInterval(function () {
+            SESSIONS.forEach(function (s) { s.waitSec++; });
+            renderQueue();
+        }, 1000);
+
+        // ════════════════════════════════════════════════════════════════════
+        // LIVE POLLS
+        // ════════════════════════════════════════════════════════════════════
+        function refreshQueue() {
+            fetch('/Admin/GetQueueSessions')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var existing = {};
+                    SESSIONS.forEach(function (s) { existing[s.id] = s.waitSec; });
+                    SESSIONS = data.map(function (s) {
+                        if (existing[s.id] !== undefined) s.waitSec = existing[s.id];
+                        return s;
+                    });
+                    renderQueue();
+                })
+                .catch(function () { /* silent */ });
+        }
+
+        function refreshAgents() {
+            fetch('/Admin/GetAgentStatus')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    AGENTS = data;
+                    renderAgents();
+                    renderQueue();
+                })
+                .catch(function () { /* silent */ });
+        }
+
+        setInterval(refreshQueue,  5000);
+        setInterval(refreshAgents, 3000);
 
         renderQueue();
         renderAgents();
         renderCatChips();
         renderFaqs();
-
-       
-        function refreshAgents() {
-            fetch('/Admin/GetAgentStatus')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    AGENTS = data;
-                    renderAgents();
-                })
-                .catch(function() { /* silent — keep last known state */ });
-        }
-
-        setInterval(refreshAgents, 10000);  // change to 5000 for 5s refresh
-    </script>
     </script>
 }

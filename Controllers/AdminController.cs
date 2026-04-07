@@ -82,7 +82,6 @@ namespace NextHorizon.Controllers
                 .OrderBy(c => c)
                 .ToList();
 
-            // Only Waiting sessions show in the queue
             var dbSessions = _context.HelpSessions
                 .Where(s => s.Status == "Waiting")
                 .OrderBy(s => s.CreatedAt)
@@ -137,16 +136,47 @@ namespace NextHorizon.Controllers
             return View(viewModel);
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // GET QUEUE SESSIONS
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public IActionResult GetQueueSessions()
+        {
+            var dbSessions = _context.HelpSessions
+                .Where(s => s.Status == "Waiting")
+                .OrderBy(s => s.CreatedAt)
+                .ToList();
+
+            var result = dbSessions.Select((s, i) =>
+            {
+                var isSeller = (s.UserType ?? "").Trim()
+                    .Equals("Seller", StringComparison.OrdinalIgnoreCase);
+                return new
+                {
+                    id = s.Id,
+                    no = "NH-" + s.Id.ToString("D5"),
+                    name = (isSeller ? "Seller" : "Customer") + " #" + s.Id,
+                    email = (string)null,
+                    role = isSeller ? "Seller" : "Consumer",
+                    av = isSeller ? "SE" : "CU",
+                    bg = "#1a1a1a",
+                    waitSec = (int)(DateTime.Now - s.CreatedAt).TotalSeconds,
+                    pos = i + 1,
+                    status = "waiting",
+                    cat = s.Category ?? "General",
+                    agent = "Unassigned"
+                };
+            }).ToList();
+
+            return Json(result);
+        }
+
         // ── Shared helper — builds agent view models ─────────────────────
         private List<AgentStatusViewModel> BuildAgentViewModels()
         {
-            // Only truly active slots:
-            // ChatStatus = Active, EndTime IS NULL, ConversationID IS NOT NULL
-            // Resolved = resolved/freed slot — excluded here
             var activeAgentRows = _context.Agents
                 .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
                          && a.ChatStatus != "Resolved"
-                         && a.EndTime == null
                          && a.ConversationID != null)
                 .ToList();
 
@@ -199,7 +229,7 @@ namespace NextHorizon.Controllers
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // GET AGENT STATUS — called by JS for live refresh
+        // GET AGENT STATUS
         // ═══════════════════════════════════════════════════════════════════
         [HttpGet]
         public IActionResult GetAgentStatus()
@@ -207,7 +237,6 @@ namespace NextHorizon.Controllers
             var activeAgentRows = _context.Agents
                 .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
                          && a.ChatStatus != "Resolved"
-                         && a.EndTime == null
                          && a.ConversationID != null)
                 .ToList();
 
@@ -261,7 +290,7 @@ namespace NextHorizon.Controllers
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // GET AVAILABLE AGENTS — for assign dropdown
+        // GET AVAILABLE AGENTS
         // ═══════════════════════════════════════════════════════════════════
         [HttpGet]
         public IActionResult GetAvailableAgents()
@@ -269,7 +298,6 @@ namespace NextHorizon.Controllers
             var activeRows = _context.Agents
                 .Where(a => (a.ChatStatus == "Active" || a.ChatStatus == "active")
                          && a.ChatStatus != "Resolved"
-                         && a.EndTime == null
                          && a.ConversationID != null)
                 .ToList();
 
@@ -289,7 +317,9 @@ namespace NextHorizon.Controllers
                     activeSessions = activeCount,
                     maxSessions = 3,
                     status = rawStatus,
-                    hasSlot = activeCount < 3 && rawStatus != "offline"
+                    // TEMP: restriction disabled for testing — original was: activeCount < 3 && rawStatus != "offline"
+                    // hasSlot = activeCount < 3 && rawStatus != "offline"
+                    hasSlot = rawStatus != "offline"
                 };
             })
             .Where(a => a.hasSlot)
@@ -315,19 +345,19 @@ namespace NextHorizon.Controllers
 
             var agentUserId = agentRow.UserID;
 
-            // Count only real active slots — exclude Resolved and null ConversationID
             var usedSlots = _context.Agents
                 .Where(a => a.AgentName == model.AgentName
                          && (a.ChatStatus == "Active" || a.ChatStatus == "active")
                          && a.ChatStatus != "Resolved"
-                         && a.EndTime == null
                          && a.ConversationID != null)
                 .Select(a => (int)(a.ChatSlot ?? 0))
                 .ToList();
 
-            int nextSlot = Enumerable.Range(1, 3).FirstOrDefault(s => !usedSlots.Contains(s));
-            if (nextSlot == 0)
-                return Json(new { success = false, message = "Agent has no available slots." });
+            // TEMP: restriction disabled for testing — original limit was 3 slots
+            // int nextSlot = Enumerable.Range(1, 3).FirstOrDefault(s => !usedSlots.Contains(s));
+            // if (nextSlot == 0)
+            //     return Json(new { success = false, message = "Agent has no available slots." });
+            int nextSlot = Enumerable.Range(1, 99).FirstOrDefault(s => !usedSlots.Contains(s));
 
             var session = _context.HelpSessions.Find(model.SessionId);
             if (session == null)
@@ -338,23 +368,20 @@ namespace NextHorizon.Controllers
             var category = session.Category ?? "General";
             var previewQ = session.Question ?? "";
 
-            // Mark SupportFAQs session as Active
             _context.Database.ExecuteSqlRaw(
-                @"UPDATE dbo.SupportFAQs
+              @"UPDATE dbo.SupportFAQs
                   SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId
                   WHERE Id = @Id",
-                new SqlParameter("@AgentId", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value),
-                new SqlParameter("@Id", model.SessionId));
+              new SqlParameter("@AgentId", agentUserId.HasValue ? (object)agentUserId.Value : DBNull.Value),
+              new SqlParameter("@Id", model.SessionId));
 
-            // Insert new agent slot row
-            // ConversationID = SupportFAQs.Id — used to match on resolve
             _context.Database.ExecuteSqlRaw(
                 @"INSERT INTO dbo.Agents
                     (ConversationID, AgentName, ClientName, Category, PreviewQuestion,
-                     ChatSlot, ChatStatus, StartTime, AgentStatus, UserID)
+                     ChatSlot, ChatStatus, AgentStatus, UserID)
                   VALUES
                     (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion,
-                     @ChatSlot, 'Active', GETDATE(), 'available', @UserID)",
+                     @ChatSlot, 'Active', 'available', @UserID)",
                 new SqlParameter("@ConversationID", model.SessionId),
                 new SqlParameter("@AgentName", model.AgentName),
                 new SqlParameter("@ClientName", clientName),
@@ -367,7 +394,7 @@ namespace NextHorizon.Controllers
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // END SESSION — sets Agents row to Resolved so slot is freed
+        // END SESSION
         // ═══════════════════════════════════════════════════════════════════
         [HttpPost]
         public IActionResult QueueEndSession([FromBody] QueueSessionActionRequest model)
@@ -375,25 +402,22 @@ namespace NextHorizon.Controllers
             if (model == null || model.SessionId <= 0)
                 return BadRequest(new { success = false });
 
-            // Mark session resolved
             _context.Database.ExecuteSqlRaw(
-                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
+                "UPDATE dbo.SupportFAQs SET Status='Resolved' WHERE Id=@Id",
                 new SqlParameter("@Id", model.SessionId));
 
-            // Free the agent slot — set to Resolved so it no longer shows as occupied
             _context.Database.ExecuteSqlRaw(
                 @"UPDATE dbo.Agents
-                  SET ChatStatus = 'Resolved', EndTime = GETDATE()
+                  SET ChatStatus = 'Resolved'
                   WHERE ConversationID = @ConvId
-                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')
-                    AND EndTime IS NULL",
+                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')",
                 new SqlParameter("@ConvId", model.SessionId));
 
             return Json(new { success = true, sessionId = model.SessionId });
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // RESOLVE — same as EndSession
+        // RESOLVE
         // ═══════════════════════════════════════════════════════════════════
         [HttpPost]
         public IActionResult QueueResolve([FromBody] QueueSessionActionRequest model)
@@ -401,18 +425,15 @@ namespace NextHorizon.Controllers
             if (model == null || model.SessionId <= 0)
                 return BadRequest(new { success = false });
 
-            // Mark session resolved
             _context.Database.ExecuteSqlRaw(
-                "UPDATE dbo.SupportFAQs SET Status='Resolved', EndTime=GETDATE() WHERE Id=@Id",
+                "UPDATE dbo.SupportFAQs SET Status='Resolved' WHERE Id=@Id",
                 new SqlParameter("@Id", model.SessionId));
 
-            // Free the agent slot — set to Resolved so it no longer shows as occupied
             _context.Database.ExecuteSqlRaw(
                 @"UPDATE dbo.Agents
-                  SET ChatStatus = 'Resolved', EndTime = GETDATE()
+                  SET ChatStatus = 'Resolved'
                   WHERE ConversationID = @ConvId
-                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')
-                    AND EndTime IS NULL",
+                    AND (ChatStatus = 'Active' OR ChatStatus = 'active')",
                 new SqlParameter("@ConvId", model.SessionId));
 
             return Json(new { success = true, sessionId = model.SessionId });

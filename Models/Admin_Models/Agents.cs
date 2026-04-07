@@ -16,10 +16,9 @@ namespace NextHorizon.Models
         public string PreviewQuestion { get; set; } = string.Empty;
         public byte? ChatSlot { get; set; }
         public string ChatStatus { get; set; } = string.Empty;
-        public DateTime? StartTime { get; set; }
-        public DateTime? EndTime { get; set; }
+ 
         public string AgentStatus { get; set; } = string.Empty;
-        public int? AgentID { get; set; }    // ← maps to UserID column
-        public int? UserID { get; set; }     // ← the agent's user account ID
+        public int? AgentID { get; set; }    
+        public int? UserID { get; set; }     
     }
 }
