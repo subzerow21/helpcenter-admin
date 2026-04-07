@@ -1,4 +1,4 @@
-﻿// Global variables
+﻿﻿// Global variables
 let currentRequestId = "";
 let currentAction = "";
 let currentAmount = 0;
@@ -7,13 +7,75 @@ let currentProductId = ""; // Added for Product Approvals
 let currentEditingPromoId = null;
 let selectedImageFile = null;
 let imageBase64Data = null;
+let bannerImageName = null;
+let bannerImageContentType = null;
+
+document.getElementById('promoImage')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        bannerImageName = file.name;
+        bannerImageContentType = file.type;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            imageBase64Data = event.target.result;
+            const preview = document.getElementById('promoPreview');
+            const container = document.getElementById('promoPreviewContainer');
+            if (preview && container) {
+                preview.src = event.target.result;
+                preview.setAttribute('data-base64', event.target.result);
+                container.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Toggle end date field based on checkbox
+function initPromoFormToggle() {
+    const noEndDateCheckbox = document.getElementById('noEndDate');
+    const promoEndInput = document.getElementById('promoEnd');
+    
+    if (noEndDateCheckbox && promoEndInput) {
+        // Initial state
+        promoEndInput.disabled = noEndDateCheckbox.checked;
+        
+        // Remove required attribute when checkbox is checked
+        if (noEndDateCheckbox.checked) {
+            promoEndInput.removeAttribute('required');
+        } else {
+            promoEndInput.setAttribute('required', 'required');
+        }
+        
+        // Toggle on change
+        noEndDateCheckbox.addEventListener('change', function() {
+            promoEndInput.disabled = this.checked;
+            if (this.checked) {
+                promoEndInput.value = '';
+                promoEndInput.classList.remove('is-invalid');
+                promoEndInput.removeAttribute('required');
+            } else {
+                promoEndInput.setAttribute('required', 'required');
+                promoEndInput.focus();
+            }
+        });
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
-
+    // Initialize promo form toggle
+    initPromoFormToggle();
+    
     // Load all pending lists
     loadPendingPayouts();
-    //loadPendingProductApprovals(); 
     loadGlobalPromotions();
+    
+    // Set min date for date inputs to today
+    const today = new Date().toISOString().split('T')[0];
+    const promoStart = document.getElementById('promoStart');
+    const promoEnd = document.getElementById('promoEnd');
+    if (promoStart) promoStart.min = today;
+    if (promoEnd) promoEnd.min = today;
 
     // Delegation for Promo Buttons
     document.addEventListener('click', function (e) {
@@ -127,6 +189,7 @@ function openProductRejectModalWithModal(productId, productName, productImage, p
     const modal = new bootstrap.Modal(document.getElementById('productActionModal'));
     modal.show();
 }
+
 // Core approval function
 async function processProductApproval(productId, status, reason = "") {
     showToast('Updating product status...');
@@ -393,44 +456,6 @@ async function confirmDiscountReject() {
     }
 }
 
-// Keep the approve discount function as is
-async function approveDiscount() {
-    if (!currentReviewId) return;
-    
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('discountReviewModal'));
-    modal.hide();
-    
-    showToast('Processing discount approval...');
-    
-    try {
-        const response = await fetch('/Admin/ProcessDiscount', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                discountId: currentReviewId, 
-                action: 'approve',
-                reason: ''
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(data.message);
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showToast(data.message || 'Error approving discount', true);
-        }
-        
-    } catch (err) {
-        console.error('Error approving discount:', err);
-        showToast('Error approving discount: ' + err.message, true);
-    }
-}
-
 // Update openDiscountReviewModal to store the ID and add Reject button with modal
 function openDiscountReviewModal(discountId, productName, discountPercent, newPrice, createdAt, productImage) {
     currentReviewId = discountId;
@@ -459,20 +484,88 @@ function openDiscountReviewModal(discountId, productName, discountPercent, newPr
     modal.show();
 }
 
-
-// GLOBAL PROMO LOGIC
+// GLOBAL PROMO LOGIC - UPDATED WITH VALIDATION
 async function handleGlobalPromoSubmission(event) {
     event.preventDefault();
+    
+    // Get elements with null checks
+    const noEndDateCheckbox = document.getElementById('noEndDate');
+    const promoEndInput = document.getElementById('promoEnd');
+    const promoPreview = document.getElementById('promoPreview');
+    const promoTitle = document.getElementById('promoTitle');
+    const promoPercent = document.getElementById('promoPercent');
+    const promoStart = document.getElementById('promoStart');
+    
+    const isIndefinite = noEndDateCheckbox ? noEndDateCheckbox.checked : false;
+    const endDate = (!isIndefinite && promoEndInput && promoEndInput.value) ? promoEndInput.value : null;
+    
+    // Validate end date if not indefinite
+    if (!isIndefinite && (!endDate || endDate === '')) {
+        showToast('Please select an end date or check "No end date" for permanent promotion', true);
+        if (promoEndInput) {
+            promoEndInput.classList.add('is-invalid');
+            promoEndInput.focus();
+        }
+        return;
+    }
+    
+    // Remove invalid class if valid
+    if (promoEndInput) {
+        promoEndInput.classList.remove('is-invalid');
+    }
+    
     const requestData = {
         id: currentEditingPromoId,
-        name: document.getElementById('promoTitle').value.trim(),
-        description: document.getElementById('promoDesc').value.trim(),
-        discountPercent: parseFloat(document.getElementById('promoPercent').value),
-        startDate: document.getElementById('promoStart').value,
-        endDate: document.getElementById('noEndDate').checked ? null : document.getElementById('promoEnd').value,
-        isIndefinite: document.getElementById('noEndDate').checked,
-        bannerImageBase64: imageBase64Data || document.getElementById('promoPreview').getAttribute('data-base64')
+        name: promoTitle ? promoTitle.value.trim() : '',
+        description: document.getElementById('promoDesc')?.value.trim() || '',
+        discountPercent: promoPercent ? parseFloat(promoPercent.value) : 0,
+        startDate: promoStart ? promoStart.value : '',
+        endDate: endDate,
+        isIndefinite: isIndefinite,
+        bannerImageBase64: imageBase64Data || (promoPreview ? promoPreview.getAttribute('data-base64') : null),
+        bannerImageName: bannerImageName || null,
+        bannerImageContentType: bannerImageContentType || null
     };
+    
+    // Validation
+    if (!requestData.name) {
+        showToast('Please enter promotion title', true);
+        if (promoTitle) promoTitle.focus();
+        return;
+    }
+    
+    if (!requestData.discountPercent || requestData.discountPercent <= 0) {
+        showToast('Please enter valid discount percentage', true);
+        if (promoPercent) promoPercent.focus();
+        return;
+    }
+    
+    if (requestData.discountPercent > 100) {
+        showToast('Discount percentage cannot exceed 100%', true);
+        if (promoPercent) promoPercent.focus();
+        return;
+    }
+    
+    if (!requestData.startDate) {
+        showToast('Please select start date', true);
+        if (promoStart) promoStart.focus();
+        return;
+    }
+    
+    // Validate that end date is after start date
+    if (!isIndefinite && endDate) {
+        const startDateObj = new Date(requestData.startDate);
+        const endDateObj = new Date(endDate);
+        
+        if (endDateObj <= startDateObj) {
+            showToast('End date must be after start date', true);
+            if (promoEndInput) {
+                promoEndInput.classList.add('is-invalid');
+                promoEndInput.focus();
+            }
+            return;
+        }
+    }
 
     showToast('Saving promotion...');
     
@@ -491,6 +584,7 @@ async function handleGlobalPromoSubmission(event) {
             showToast(res.message || 'Error saving promotion', true);
         }
     } catch (e) { 
+        console.error('Error:', e);
         showToast('Error saving promo', true); 
     }
 }
@@ -515,7 +609,9 @@ async function loadGlobalPromotions() {
                 <img src="${promo.bannerImageBase64 || '/images/challenge-placeholder.jpg'}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
                 <div class="flex-grow-1">
                     <div class="fw-bold small">${escapeHtml(promo.name)} (-${promo.discountPercent}%)</div>
+                    <div class="small text-muted">${escapeHtml(promo.description || '')}</div>
                     <div class="tiny text-muted">Start: ${new Date(promo.startDate).toLocaleDateString()}</div>
+                    ${promo.isIndefinite ? '<span class="badge bg-info small">Permanent</span>' : ''}
                 </div>
                 <div class="d-flex gap-1">
                     <button class="btn btn-sm btn-white border rounded-pill edit-promo-btn" data-promo-id="${promo.id}">Edit</button>
@@ -526,6 +622,81 @@ async function loadGlobalPromotions() {
     } catch (error) {
         console.error('Error loading promotions:', error);
         showToast('Error loading promotions', true);
+    }
+}
+
+// Edit promotion function
+function editPromo(promo) {
+    currentEditingPromoId = promo.id;
+    
+    // Fill form fields
+    document.getElementById('promoTitle').value = promo.name;
+    document.getElementById('promoDesc').value = promo.description || '';
+    document.getElementById('promoPercent').value = promo.discountPercent;
+    document.getElementById('promoStart').value = promo.startDate.split('T')[0];
+    
+    const noEndDateCheckbox = document.getElementById('noEndDate');
+    const promoEndInput = document.getElementById('promoEnd');
+    
+    if (promo.isIndefinite) {
+        if (noEndDateCheckbox) noEndDateCheckbox.checked = true;
+        if (promoEndInput) {
+            promoEndInput.disabled = true;
+            promoEndInput.value = '';
+            promoEndInput.removeAttribute('required');
+        }
+    } else {
+        if (noEndDateCheckbox) noEndDateCheckbox.checked = false;
+        if (promoEndInput) {
+            promoEndInput.disabled = false;
+            promoEndInput.value = promo.endDate ? promo.endDate.split('T')[0] : '';
+            promoEndInput.setAttribute('required', 'required');
+        }
+    }
+    
+    // Set image preview if exists
+    if (promo.bannerImageBase64) {
+        const preview = document.getElementById('promoPreview');
+        const container = document.getElementById('promoPreviewContainer');
+        if (preview && container) {
+            preview.src = promo.bannerImageBase64;
+            preview.setAttribute('data-base64', promo.bannerImageBase64);
+            container.style.display = 'block';
+            imageBase64Data = promo.bannerImageBase64;
+        }
+    }
+    
+    // Update form title
+    const formTitle = document.getElementById('adminPromoFormTitle');
+    if (formTitle) formTitle.innerText = 'Edit Global Promotion';
+    
+    // Scroll to form
+    document.getElementById('admin-discounts')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Delete promotion function
+async function deletePromo(promoId) {
+    if (!confirm('Are you sure you want to end this promotion? This action cannot be undone.')) return;
+    
+    showToast('Ending promotion...');
+    
+    try {
+        const response = await fetch('/Admin/DeleteGlobalPromotion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: promoId })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message);
+            loadGlobalPromotions();
+        } else {
+            showToast(result.message || 'Error ending promotion', true);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Error ending promotion', true);
     }
 }
 
@@ -575,7 +746,45 @@ function escapeHtml(text) {
 function resetPromoForm() {
     currentEditingPromoId = null;
     imageBase64Data = null;
-    document.getElementById('adminDiscountForm').reset();
-    const preview = document.getElementById('promoPreview');
-    if (preview) preview.classList.add('d-none');
+    bannerImageName = null;
+    bannerImageContentType = null;
+    
+    // Reset form fields
+    const form = document.getElementById('adminDiscountForm');
+    if (form) form.reset();
+    
+    // Reset checkbox and end date field
+    const noEndDateCheckbox = document.getElementById('noEndDate');
+    const promoEndInput = document.getElementById('promoEnd');
+    
+    if (noEndDateCheckbox) {
+        noEndDateCheckbox.checked = false;
+    }
+    
+    if (promoEndInput) {
+        promoEndInput.disabled = false;
+        promoEndInput.classList.remove('is-invalid');
+        promoEndInput.setAttribute('required', 'required');
+    }
+    
+    // Reset image preview
+    const promoPreview = document.getElementById('promoPreview');
+    const promoPreviewContainer = document.getElementById('promoPreviewContainer');
+    if (promoPreview) {
+        promoPreview.src = '';
+        promoPreview.removeAttribute('data-base64');
+    }
+    if (promoPreviewContainer) {
+        promoPreviewContainer.style.display = 'none';
+    }
+    
+    // Reset file input
+    const fileInput = document.getElementById('promoImage');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    // Update form title
+    const formTitle = document.getElementById('adminPromoFormTitle');
+    if (formTitle) formTitle.innerText = 'Launch Global Promotion';
 }

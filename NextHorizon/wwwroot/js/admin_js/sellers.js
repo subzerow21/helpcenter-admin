@@ -248,7 +248,7 @@ function submitDecision() {
     fetch('/Admin/UpdateSellerStatus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sellerId: currentSellerId, status })
+        body: JSON.stringify({ sellerId: currentSellerId, status, note: noteValue  })
     })
     .then(r => r.json())
     .then(data => {
@@ -291,7 +291,7 @@ function confirmSuspension() {
     fetch('/Admin/UpdateSellerStatus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sellerId: currentSellerId, status: 'Suspended' })
+        body: JSON.stringify({ sellerId: currentSellerId, status: 'Suspended', note: reasonValue })
     })
     .then(r => r.json())
     .then(data => {
@@ -324,7 +324,7 @@ function openConfirmModal(type, shopName, sellerId) {
             fetch('/Admin/UpdateSellerStatus', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sellerId: currentSellerId, status: 'Active' })
+                body: JSON.stringify({ sellerId: currentSellerId, status: 'Active', note: '' })
             })
             .then(r => r.json())
             .then(data => {

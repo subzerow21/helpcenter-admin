@@ -5,6 +5,7 @@
     using Microsoft.Data.SqlClient;
     using Microsoft.AspNetCore.Identity;
     using NextHorizon.Services.AdminServices;
+    using NextHorizon.Services;
     using System.Data;
     using System.Threading.Tasks;
     using System;
@@ -21,15 +22,17 @@
             private readonly IConfiguration _configuration;
             private readonly string _connectionString;
             private readonly IPasswordHasher<object> _passwordHasher;
+            private readonly IEmailService _emailService;
 
 
             //tanginamo
             // Constructor to inject configuration
-            public AdminController(IConfiguration configuration)
+            public AdminController(IConfiguration configuration, IEmailService emailService)
             {
                 _configuration = configuration;
                 _connectionString = _configuration.GetConnectionString("DefaultConnection");
                 _passwordHasher = new PasswordHasher<object>();;
+                _emailService = emailService;
 
             }
 
@@ -585,6 +588,30 @@ public async Task<IActionResult> GetSellerPerformance()
                     
                     using (var connection = new SqlConnection(_connectionString))
                     {
+                        await connection.OpenAsync();
+                        
+                        // Get consumer info
+                        string consumerEmail = "";
+                        string consumerName = "";
+                        
+                        using (var cmd = new SqlCommand(@"
+                            SELECT u.email, CONCAT(c.first_name, ' ', ISNULL(c.middle_name + ' ', ''), c.last_name) as full_name
+                            FROM consumers c
+                            LEFT JOIN users u ON c.user_id = u.user_id
+                            WHERE c.consumer_id = @ConsumerId", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@ConsumerId", request.ConsumerId);
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    consumerEmail = reader["email"].ToString();
+                                    consumerName = reader["full_name"].ToString();
+                                }
+                            }
+                        }
+                        
+                        // Perform deletion
                         using (var command = new SqlCommand("sp_DeleteConsumer", connection))
                         {
                             command.CommandType = CommandType.StoredProcedure;
@@ -592,14 +619,19 @@ public async Task<IActionResult> GetSellerPerformance()
                             command.Parameters.AddWithValue("@StaffId", staffId);
                             command.Parameters.AddWithValue("@AdminName", adminName);
                             
-                            await connection.OpenAsync();
-                            
                             using (var reader = await command.ExecuteReaderAsync())
                             {
                                 if (await reader.ReadAsync())
                                 {
                                     var status = reader["Status"].ToString();
                                     var message = reader["Message"].ToString();
+                                    
+                                    if (status == "Success" && !string.IsNullOrEmpty(consumerEmail))
+                                    {
+                                        // Only send email if deletion was successful
+                                        await _emailService.SendAccountDeletionEmailAsync(consumerEmail, consumerName, adminName);
+                                        message += " Email notification sent to consumer.";
+                                    }
                                     
                                     return Json(new { success = status == "Success", message = message });
                                 }
@@ -640,8 +672,27 @@ public async Task<IActionResult> GetSellerPerformance()
                                 {
                                     var status = reader["Status"].ToString();
                                     var message = reader["Message"].ToString();
+                                    var email = reader["Email"]?.ToString();
+                                    var fullName = reader["FullName"]?.ToString();
                                     
-                                    return Json(new { success = status == "Success", message = message });
+                                    string responseMessage = message;
+                                    
+                                    // Send email notification if restoration was successful
+                                    if (status == "Success" && !string.IsNullOrEmpty(email))
+                                    {
+                                        bool emailSent = await _emailService.SendAccountRestoreEmailAsync(email, fullName, adminName);
+                                        
+                                        if (emailSent)
+                                        {
+                                            responseMessage += " Email notification sent to consumer.";
+                                        }
+                                        else
+                                        {
+                                            responseMessage += " Warning: Email notification failed to send.";
+                                        }
+                                    }
+                                    
+                                    return Json(new { success = status == "Success", message = responseMessage });
                                 }
                             }
                         }
@@ -904,25 +955,188 @@ public async Task<IActionResult> GetSellerLogo(int sellerId)
 
 
 
-            [HttpPost]
-            public async Task<IActionResult> UpdateSellerStatus([FromBody] UpdateSellerStatusRequest request)
+    [HttpPost]
+    public async Task<IActionResult> UpdateSellerStatus([FromBody] UpdateSellerStatusRequest request)
+    {
+        try
+        {
+            var adminName = HttpContext.Session.GetString("Username") ?? "System";
+            
+            using (var connection = new SqlConnection(_connectionString))
             {
-                try
+                await connection.OpenAsync();
+                
+                // First, get seller info before update (email, business name, current status)
+                string sellerEmail = "";
+                string businessName = "";
+                string currentStatus = "";
+                
+                using (var cmd = new SqlCommand(@"
+                    SELECT s.seller_status, s.business_name, u.email 
+                    FROM Sellers s
+                    INNER JOIN users u ON s.user_id = u.user_id
+                    WHERE s.seller_id = @SellerId", connection))
                 {
-                    using (var connection = new SqlConnection(_connectionString))
+                    cmd.Parameters.AddWithValue("@SellerId", request.SellerId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        await connection.OpenAsync();
-                        using (var cmd = new SqlCommand("UPDATE Sellers SET seller_status = @Status WHERE seller_id = @SellerId", connection))
+                        if (await reader.ReadAsync())
+                        {
+                            currentStatus = reader["seller_status"]?.ToString() ?? "";
+                            businessName = reader["business_name"]?.ToString() ?? "Seller";
+                            sellerEmail = reader["email"]?.ToString() ?? "";
+                        }
+                    }
+                }
+                
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        // Update seller status
+                        using (var cmd = new SqlCommand("UPDATE Sellers SET seller_status = @Status WHERE seller_id = @SellerId", connection, transaction))
                         {
                             cmd.Parameters.AddWithValue("@Status", request.Status);
                             cmd.Parameters.AddWithValue("@SellerId", request.SellerId);
                             await cmd.ExecuteNonQueryAsync();
                         }
+                        
+                        // Insert notification based on status transition
+                        string notificationMessage = "";
+                        string category = "";
+                        string emailStatus = ""; // For email template
+                        
+                        // Handle Pending → Active (Approval)
+                        if (currentStatus == "Pending" && request.Status == "Active")
+                        {
+                            notificationMessage = $"Your seller application for '{businessName}' has been approved! Welcome aboard!";
+                            if (!string.IsNullOrEmpty(request.Note))
+                            {
+                                notificationMessage += $"\n\nMessage from admin: {request.Note}";
+                            }
+                            category = "SellerApproval";
+                            emailStatus = "Approved";
+                        }
+                        // Handle Active → Suspended
+                        else if (currentStatus == "Active" && request.Status == "Suspended")
+                        {
+                            notificationMessage = $"Your seller account '{businessName}' has been suspended.";
+                            if (!string.IsNullOrEmpty(request.Note))
+                            {
+                                notificationMessage += $"\n\nReason for suspension: {request.Note}";
+                            }
+                            else
+                            {
+                                notificationMessage += " Please contact support for more information.";
+                            }
+                            category = "SellerSuspension";
+                            emailStatus = "Suspended";
+                        }
+                        // Handle Suspended → Active (Restore)
+                        else if (currentStatus == "Suspended" && request.Status == "Active")
+                        {
+                            notificationMessage = $"Great news! Your seller account '{businessName}' has been reactivated.";
+                            if (!string.IsNullOrEmpty(request.Note))
+                            {
+                                notificationMessage += $"\n\nNote from admin: {request.Note}";
+                            }
+                            notificationMessage += "\n\nYou can now resume selling on Next Horizon.";
+                            category = "SellerRestoration";
+                            emailStatus = "Restored";
+                        }
+                        // Handle Pending → Rejected
+                        else if (currentStatus == "Pending" && request.Status == "Rejected")
+                        {
+                            notificationMessage = $"We regret to inform you that your seller application for '{businessName}' has been rejected.";
+                            if (!string.IsNullOrEmpty(request.Note))
+                            {
+                                notificationMessage += $"\n\nReason: {request.Note}";
+                            }
+                            else
+                            {
+                                notificationMessage += " Please contact support for more information.";
+                            }
+                            category = "SellerRejection";
+                            emailStatus = "Rejected";
+                        }
+                        // Handle any other status changes
+                        else
+                        {
+                            notificationMessage = $"Your seller account '{businessName}' status has been changed to {request.Status}.";
+                            if (!string.IsNullOrEmpty(request.Note))
+                            {
+                                notificationMessage += $"\n\nNote: {request.Note}";
+                            }
+                            category = "SellerStatusChange";
+                            emailStatus = request.Status;
+                        }
+                        
+                        // Insert notification into database
+                        using (var cmd = new SqlCommand(@"
+                            INSERT INTO Notifications 
+                            (RecipientType, RecipientId, OrderId, Message, IsRead, CreatedAt, Category) 
+                            VALUES 
+                            ('Seller', @RecipientId, NULL, @Message, 0, @CreatedAt, @Category)", 
+                            connection, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@RecipientId", request.SellerId);
+                            cmd.Parameters.AddWithValue("@Message", notificationMessage);
+                            cmd.Parameters.AddWithValue("@CreatedAt", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@Category", category);
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                        
+                        transaction.Commit();
+                        
+                        // Send email notification if we have the seller's email
+                        bool emailSent = false;
+                        if (!string.IsNullOrEmpty(sellerEmail) && !string.IsNullOrEmpty(emailStatus))
+                        {
+                            emailSent = await _emailService.SendSellerStatusUpdateEmailAsync(
+                                sellerEmail, 
+                                businessName, 
+                                emailStatus, 
+                                request.Note ?? "", 
+                                adminName
+                            );
+                        }
+                        
+                        string successMessage = "";
+                        if (currentStatus == "Pending" && request.Status == "Active")
+                            successMessage = "Seller approved successfully.";
+                        else if (currentStatus == "Active" && request.Status == "Suspended")
+                            successMessage = "Seller suspended successfully.";
+                        else if (currentStatus == "Suspended" && request.Status == "Active")
+                            successMessage = "Seller restored successfully.";
+                        else if (currentStatus == "Pending" && request.Status == "Rejected")
+                            successMessage = "Seller application rejected successfully.";
+                        else
+                            successMessage = $"Seller status updated to {request.Status} successfully.";
+                        
+                        if (emailSent)
+                        {
+                            successMessage += " Email notification sent to seller.";
+                        }
+                        else if (!string.IsNullOrEmpty(sellerEmail))
+                        {
+                            successMessage += " Warning: Email notification failed to send.";
+                        }
+                        
+                        return Json(new { success = true, message = successMessage });
                     }
-                    return Json(new { success = true, message = $"Seller {request.Status} successfully." });
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
-                catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
             }
+        }
+        catch (Exception ex) 
+        { 
+            return Json(new { success = false, message = ex.Message }); 
+        }
+    }
 
 [HttpPost]
 public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoRequest request)
@@ -1254,6 +1468,22 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
             {
                 try
                 {
+                    // Add validation
+                    if (!request.IsIndefinite && string.IsNullOrEmpty(request.EndDate?.ToString()))
+                    {
+                        return Json(new { success = false, message = "End date is required for non-permanent promotions" });
+                    }
+                    
+                    if (request.DiscountPercent <= 0 || request.DiscountPercent > 100)
+                    {
+                        return Json(new { success = false, message = "Discount percentage must be between 1 and 100" });
+                    }
+                    
+                    if (request.StartDate > request.EndDate && !request.IsIndefinite && request.EndDate.HasValue)
+                    {
+                        return Json(new { success = false, message = "End date must be after start date" });
+                    }
+                    
                     var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
                     var adminName = HttpContext.Session.GetString("Username") ?? "System";
                     
@@ -1320,7 +1550,7 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     return Json(new { success = false, message = ex.Message });
                 }
             }
-            
+
             // DELETE: End/Delete a global promotion
             [HttpPost]
             public async Task<IActionResult> DeleteGlobalPromotion([FromBody] DeleteGlobalPromotionRequest request)
@@ -3516,6 +3746,20 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     
                     using (var connection = new SqlConnection(_connectionString))
                     {
+                        await connection.OpenAsync();
+                        
+                        // First, check if email already exists
+                        using (var checkCmd = new SqlCommand("SELECT COUNT(*) FROM users WHERE email = @Email", connection))
+                        {
+                            checkCmd.Parameters.AddWithValue("@Email", request.Email);
+                            int emailCount = (int)await checkCmd.ExecuteScalarAsync();
+                            
+                            if (emailCount > 0)
+                            {
+                                return Json(new { success = false, message = "Email already exists in the system" });
+                            }
+                        }
+                        
                         using (var command = new SqlCommand("sp_AddAdmin", connection))
                         {
                             command.CommandType = CommandType.StoredProcedure;
@@ -3529,8 +3773,6 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                             command.Parameters.AddWithValue("@UserType", request.UserType);
                             command.Parameters.AddWithValue("@AddedBy", staffId);
                             
-                            await connection.OpenAsync();
-                            
                             using (var reader = await command.ExecuteReaderAsync())
                             {
                                 if (await reader.ReadAsync())
@@ -3541,18 +3783,32 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                     
                                     if (status == "Success")
                                     {
+                                        // Send email notification to the new admin
+                                        bool emailSent = await _emailService.SendAdminCredentialsEmailAsync(
+                                            request.Email,
+                                            request.FirstName,
+                                            request.LastName,
+                                            username,
+                                            password,
+                                            request.UserType,
+                                            adminName
+                                        );
+                                        
+                                        string emailStatus = emailSent ? " Email notification sent to new admin." : " Warning: Email notification failed to send.";
+                                        
                                         // Log the action
                                         await LogAdminAction(staffId, adminName, "Add Admin",
                                             $"{request.FirstName} {request.LastName} ({request.UserType})",
                                             "Success",
-                                            $"Username: {username}, Password: {(isPasswordAutoGenerated ? password : "[User Provided]")}");
+                                            $"Username: {username}, Password: {(isPasswordAutoGenerated ? password : "[User Provided]")}, Email sent: {emailSent}");
                                         
                                         return Json(new { 
                                             success = true, 
-                                            message = message, 
+                                            message = message + emailStatus,
                                             username = username,
                                             password = isPasswordAutoGenerated ? password : null,
-                                            isPasswordAutoGenerated = isPasswordAutoGenerated
+                                            isPasswordAutoGenerated = isPasswordAutoGenerated,
+                                            emailSent = emailSent
                                         });
                                     }
                                     else
@@ -3661,16 +3917,43 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     var staffId = HttpContext.Session.GetInt32("StaffId") ?? 0;
                     var adminName = HttpContext.Session.GetString("Username") ?? "System";
                     
+                    // First, get admin details before revoking
+                    string adminEmail = "";
+                    string adminFirstName = "";
+                    string adminLastName = "";
+                    string adminUserType = "";
+                    
                     using (var connection = new SqlConnection(_connectionString))
                     {
+                        await connection.OpenAsync();
+                        
+                        // Get admin info for email
+                        using (var cmd = new SqlCommand(@"
+                            SELECT u.email, s.first_name, s.last_name, u.user_type
+                            FROM staff_info s
+                            INNER JOIN users u ON s.user_id = u.user_id
+                            WHERE s.staff_id = @StaffId", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@StaffId", request.StaffId);
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    adminEmail = reader["email"]?.ToString() ?? "";
+                                    adminFirstName = reader["first_name"]?.ToString() ?? "";
+                                    adminLastName = reader["last_name"]?.ToString() ?? "";
+                                    adminUserType = reader["user_type"]?.ToString() ?? "";
+                                }
+                            }
+                        }
+                        
+                        // Revoke admin access
                         using (var command = new SqlCommand("sp_RevokeAdmin", connection))
                         {
                             command.CommandType = CommandType.StoredProcedure;
                             command.Parameters.AddWithValue("@StaffId", request.StaffId);
                             command.Parameters.AddWithValue("@Reason", request.Reason ?? (object)DBNull.Value);
                             command.Parameters.AddWithValue("@RevokedBy", staffId);
-                            
-                            await connection.OpenAsync();
                             
                             using (var reader = await command.ExecuteReaderAsync())
                             {
@@ -3682,12 +3965,28 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                                     
                                     if (status == "Success")
                                     {
+                                        // Send email notification to the revoked admin
+                                        bool emailSent = false;
+                                        if (!string.IsNullOrEmpty(adminEmail))
+                                        {
+                                            emailSent = await _emailService.SendAdminRevokedEmailAsync(
+                                                adminEmail,
+                                                adminFirstName,
+                                                adminLastName,
+                                                adminUserType,
+                                                request.Reason ?? "No reason provided",
+                                                adminName
+                                            );
+                                        }
+                                        
+                                        string emailStatus = emailSent ? " Email notification sent to revoked admin." : " Warning: Email notification failed to send.";
+                                        
                                         await LogAdminAction(staffId, adminName, "Revoke Admin Access",
                                             adminNameRevoked,
                                             "Success",
-                                            $"Reason: {request.Reason}");
+                                            $"Reason: {request.Reason}, Email sent: {emailSent}");
                                         
-                                        return Json(new { success = true, message = message });
+                                        return Json(new { success = true, message = message + emailStatus });
                                     }
                                     else
                                     {
@@ -3919,7 +4218,8 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
         public class UpdateSellerStatusRequest   
         { 
             public int SellerId { get; set; }
-            public string Status { get; set; } = ""; 
+            public string Status { get; set; } = "";
+            public string Note { get; set; } = "";
         }
         public class UpdateSellerInfoRequest     
         { 
