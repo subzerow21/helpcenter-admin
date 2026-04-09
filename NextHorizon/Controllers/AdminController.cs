@@ -3530,18 +3530,654 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
 
         #endregion
 
-            // HelpCenter - Accessible by all admin roles
-            public IActionResult HelpCenter()
+        // HelpCenter - Accessible by all admin roles
+        // ═══════════════════════════════════════════════════════════════════
+        // HELP CENTER — page load
+        // ═══════════════════════════════════════════════════════════════════
+        public async Task<IActionResult> HelpCenter()
+        {
+            var redirect = RedirectToLoginIfNotAuthenticated();
+            if (redirect != null) return redirect;
+
+            var faqs = new List<FaqItem>();
+            var categories = new List<string>();
+            var sessions = new List<QueueSession>();
+            var agents = new List<AgentStatusViewModel>();
+
+            using (var connection = new SqlConnection(_connectionString))
             {
-                var redirect = RedirectToLoginIfNotAuthenticated();
-                if (redirect != null) return redirect;
+                await connection.OpenAsync();
 
-                var unauthorized = RedirectIfUnauthorized(new[] { "Support Agent" });
-                if (unauthorized != null) return unauthorized;
+                // Get FAQs
+                using (var cmd = new SqlCommand(@"
+                    SELECT FaqID, Question, Answer, Category, UserType, DateAdded 
+                    FROM FAQs 
+                    WHERE Status = 'Active' 
+                    ORDER BY DateAdded DESC", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            faqs.Add(new FaqItem
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("FaqID")),
+                                Question = reader.GetString(reader.GetOrdinal("Question")),
+                                Answer = reader.GetString(reader.GetOrdinal("Answer")),
+                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "General" : reader.GetString(reader.GetOrdinal("Category")),
+                                UserType = reader.IsDBNull(reader.GetOrdinal("UserType")) ? "All" : reader.GetString(reader.GetOrdinal("UserType"))
+                            });
+                        }
+                    }
+                }
 
-                ViewBag.UserRole = GetCurrentUserRole();
-                return View();
+                // Get categories
+                using (var cmd = new SqlCommand(@"
+                    SELECT DISTINCT Category 
+                    FROM FAQs 
+                    WHERE Status = 'Active' AND Category IS NOT NULL AND Category != '' 
+                    ORDER BY Category", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            categories.Add(reader.GetString(reader.GetOrdinal("Category")));
+                        }
+                    }
+                }
+
+                // Get waiting sessions
+                using (var cmd = new SqlCommand(@"
+                    SELECT Id, UserType, Category, Question, CreatedAt 
+                    FROM SupportFAQs 
+                    WHERE Status = 'Waiting' 
+                    ORDER BY CreatedAt ASC", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        int position = 1;
+                        while (await reader.ReadAsync())
+                        {
+                            var isSeller = (reader["UserType"]?.ToString() ?? "").Equals("Seller", StringComparison.OrdinalIgnoreCase);
+                            var createdAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"));
+                            
+                            sessions.Add(new QueueSession
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                SessionNo = "NH-" + reader.GetInt32(reader.GetOrdinal("Id")).ToString("D5"),
+                                CustomerName = (isSeller ? "Seller" : "Customer") + " #" + reader.GetInt32(reader.GetOrdinal("Id")),
+                                Role = isSeller ? "Seller" : "Consumer",
+                                Initials = isSeller ? "SE" : "CU",
+                                AvatarColor = "#1a1a1a",
+                                WaitSeconds = (int)(DateTime.Now - createdAt).TotalSeconds,
+                                QueuePosition = position++,
+                                Status = "waiting",
+                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "General" : reader.GetString(reader.GetOrdinal("Category")),
+                                Messages = new List<QueueMessage>()
+                            });
+                        }
+                    }
+                }
             }
+
+            // Get agents (simplified for now)
+            agents = await BuildAgentViewModels();
+
+            var resolvedToday = await GetResolvedTodayCount();
+            var activeCount = sessions.Count(s => s.Status == "waiting");
+            var agentsOnline = agents.Count(a => a.Status == "online" || a.Status == "busy");
+            var avgWaitTime = sessions.Any() 
+                ? TimeSpan.FromSeconds(sessions.Average(s => s.WaitSeconds)).ToString(@"m\:ss") 
+                : "0:00";
+
+            var viewModel = new HelpCenterV2ViewModel
+            {
+                Stats = new QueueDashboardStatsViewModel
+                {
+                    InQueue = sessions.Count,
+                    ActiveSessions = activeCount,
+                    AvgWaitTime = avgWaitTime,
+                    ResolvedToday = resolvedToday,
+                    AgentsOnline = agentsOnline
+                },
+                Sessions = sessions,
+                Agents = agents,
+                Faqs = faqs,
+                Categories = categories
+            };
+
+            ViewBag.UserRole = GetCurrentUserRole();
+            return View(viewModel);
+        }
+
+        private async Task<List<AgentStatusViewModel>> GetAgentViewModels()
+        {
+            var agents = new List<AgentStatusViewModel>();
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                
+                using (var cmd = new SqlCommand(@"
+                    SELECT DISTINCT AgentName, AgentStatus, UserID 
+                    FROM Agents 
+                    WHERE AgentName IS NOT NULL", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetString(reader.GetOrdinal("AgentName"));
+                            var rawStatus = reader.IsDBNull(reader.GetOrdinal("AgentStatus")) ? "available" : reader.GetString(reader.GetOrdinal("AgentStatus"));
+                            var mappedStatus = rawStatus.ToLower() switch
+                            {
+                                "available" => "online",
+                                "busy" => "busy",
+                                "away" => "away",
+                                "offline" => "offline",
+                                _ => "online"
+                            };
+                            
+                            var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                .Take(2)
+                                .Select(w => char.ToUpper(w[0]).ToString()));
+                            
+                            agents.Add(new AgentStatusViewModel
+                            {
+                                Name = name,
+                                Initials = initials,
+                                Status = mappedStatus,
+                                ActiveSessions = 0,
+                                MaxSessions = 3,
+                                Slots = new List<AgentSlot>()
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return agents;
+        }
+
+        private async Task<int> GetResolvedTodayCount()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    SELECT COUNT(*) 
+                    FROM SupportFAQs 
+                    WHERE Status = 'Resolved' AND CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE)", connection))
+                {
+                    return (int)await cmd.ExecuteScalarAsync();
+                }
+            }
+        }
+
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GET QUEUE SESSIONS
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public async Task<IActionResult> GetQueueSessions()
+        {
+            var sessions = new List<object>();
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    SELECT Id, UserType, Category, CreatedAt 
+                    FROM SupportFAQs 
+                    WHERE Status = 'Waiting' 
+                    ORDER BY CreatedAt ASC", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        int position = 1;
+                        while (await reader.ReadAsync())
+                        {
+                            var isSeller = (reader["UserType"]?.ToString() ?? "").Equals("Seller", StringComparison.OrdinalIgnoreCase);
+                            var createdAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"));
+                            
+                            sessions.Add(new
+                            {
+                                id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                no = "NH-" + reader.GetInt32(reader.GetOrdinal("Id")).ToString("D5"),
+                                name = (isSeller ? "Seller" : "Customer") + " #" + reader.GetInt32(reader.GetOrdinal("Id")),
+                                role = isSeller ? "Seller" : "Consumer",
+                                av = isSeller ? "SE" : "CU",
+                                bg = "#1a1a1a",
+                                waitSec = (int)(DateTime.Now - createdAt).TotalSeconds,
+                                pos = position++,
+                                status = "waiting",
+                                cat = reader.IsDBNull(reader.GetOrdinal("Category")) ? "General" : reader.GetString(reader.GetOrdinal("Category")),
+                                agent = "Unassigned"
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return Json(sessions);
+        }
+
+        // ── Shared helper — builds agent view models ─────────────────────
+        private async Task<List<AgentStatusViewModel>> BuildAgentViewModels()
+        {
+            var agents = new List<AgentStatusViewModel>();
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                
+                // Get active agents with their current conversations
+                var activeAgents = new Dictionary<string, List<AgentSlot>>();
+                
+                using (var cmd = new SqlCommand(@"
+                    SELECT AgentName, ConversationID, ClientName, Category, ChatSlot, ChatStatus
+                    FROM Agents 
+                    WHERE (ChatStatus = 'Active' OR ChatStatus = 'active')
+                    AND ChatStatus != 'Resolved'
+                    AND ConversationID IS NOT NULL", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var agentName = reader.GetString(reader.GetOrdinal("AgentName"));
+                            var slot = new AgentSlot
+                            {
+                                ConversationId = reader.IsDBNull(reader.GetOrdinal("ConversationID")) ? 0 : Convert.ToInt32(reader["ConversationID"]),
+                                ClientName = reader.IsDBNull(reader.GetOrdinal("ClientName")) ? "" : reader.GetString(reader.GetOrdinal("ClientName")),
+                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "General" : reader.GetString(reader.GetOrdinal("Category")),
+                                SlotNumber = reader.IsDBNull(reader.GetOrdinal("ChatSlot")) ? 0 : Convert.ToInt32(reader["ChatSlot"])
+                            };
+                            
+                            if (!activeAgents.ContainsKey(agentName))
+                                activeAgents[agentName] = new List<AgentSlot>();
+                            
+                            activeAgents[agentName].Add(slot);
+                        }
+                    }
+                }
+                
+                // Get all distinct agent names
+                using (var cmd = new SqlCommand(@"
+                    SELECT DISTINCT AgentName, AgentStatus 
+                    FROM Agents 
+                    WHERE AgentName IS NOT NULL", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetString(reader.GetOrdinal("AgentName"));
+                            var rawStatus = reader.IsDBNull(reader.GetOrdinal("AgentStatus")) ? "available" : reader.GetString(reader.GetOrdinal("AgentStatus"));
+                            var mappedStatus = rawStatus.ToLower() switch
+                            {
+                                "available" => "online",
+                                "busy" => "busy",
+                                "away" => "away",
+                                "offline" => "offline",
+                                _ => "online"
+                            };
+                            
+                            var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                .Take(2)
+                                .Select(w => char.ToUpper(w[0]).ToString()));
+                            
+                            var slots = activeAgents.ContainsKey(name) ? activeAgents[name] : new List<AgentSlot>();
+                            
+                            agents.Add(new AgentStatusViewModel
+                            {
+                                Name = name,
+                                Initials = initials,
+                                Status = mappedStatus,
+                                ActiveSessions = slots.Count,
+                                MaxSessions = 3,
+                                Slots = slots
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return agents;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GET AGENT STATUS
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public async Task<IActionResult> GetAgentStatus()
+        {
+            var agents = new List<object>();
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    SELECT DISTINCT AgentName, AgentStatus 
+                    FROM Agents 
+                    WHERE AgentName IS NOT NULL", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetString(reader.GetOrdinal("AgentName"));
+                            var rawStatus = reader.IsDBNull(reader.GetOrdinal("AgentStatus")) ? "available" : reader.GetString(reader.GetOrdinal("AgentStatus"));
+                            var mappedStatus = rawStatus.ToLower() switch
+                            {
+                                "available" => "online",
+                                "busy" => "busy",
+                                "away" => "away",
+                                "offline" => "offline",
+                                _ => "online"
+                            };
+                            
+                            var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                .Take(2)
+                                .Select(w => char.ToUpper(w[0]).ToString()));
+                            
+                            agents.Add(new
+                            {
+                                name = name,
+                                initials = initials,
+                                status = mappedStatus,
+                                sessions = 0,
+                                max = 3,
+                                slots = new List<object>()
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return Json(agents);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GET AVAILABLE AGENTS
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableAgents()
+        {
+            var agents = new List<object>();
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    SELECT DISTINCT AgentName, AgentStatus 
+                    FROM Agents 
+                    WHERE AgentName IS NOT NULL AND (AgentStatus = 'available' OR AgentStatus = 'online')", connection))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var name = reader.GetString(reader.GetOrdinal("AgentName"));
+                            var rawStatus = reader.IsDBNull(reader.GetOrdinal("AgentStatus")) ? "available" : reader.GetString(reader.GetOrdinal("AgentStatus"));
+                            
+                            agents.Add(new
+                            {
+                                name = name,
+                                activeSessions = 0,
+                                maxSessions = 3,
+                                status = rawStatus,
+                                hasSlot = rawStatus != "offline"
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return Json(agents);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // QUEUE ASSIGN
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public async Task<IActionResult> QueueAssign([FromBody] AssignSessionRequest model)
+        {
+            if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
+                return BadRequest(new { success = false, message = "Invalid request." });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                
+                // Update session status to Active
+                using (var cmd = new SqlCommand(@"
+                    UPDATE SupportFAQs 
+                    SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId 
+                    WHERE Id = @Id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@AgentId", model.AgentName);
+                    cmd.Parameters.AddWithValue("@Id", model.SessionId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                
+                // Get session details
+                string clientName = "";
+                string category = "";
+                string previewQ = "";
+                
+                using (var cmd = new SqlCommand(@"
+                    SELECT UserType, Category, Question 
+                    FROM SupportFAQs 
+                    WHERE Id = @Id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", model.SessionId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var isSeller = (reader["UserType"]?.ToString() ?? "").Equals("Seller", StringComparison.OrdinalIgnoreCase);
+                            clientName = (isSeller ? "Seller #" : "Customer #") + model.SessionId;
+                            category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "General" : reader.GetString(reader.GetOrdinal("Category"));
+                            previewQ = reader.IsDBNull(reader.GetOrdinal("Question")) ? "" : reader.GetString(reader.GetOrdinal("Question"));
+                        }
+                    }
+                }
+                
+                // Insert into Agents
+                using (var cmd = new SqlCommand(@"
+                    INSERT INTO Agents (ConversationID, AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, AgentStatus)
+                    VALUES (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', 'available')", connection))
+                {
+                    cmd.Parameters.AddWithValue("@ConversationID", model.SessionId);
+                    cmd.Parameters.AddWithValue("@AgentName", model.AgentName);
+                    cmd.Parameters.AddWithValue("@ClientName", clientName);
+                    cmd.Parameters.AddWithValue("@Category", category);
+                    cmd.Parameters.AddWithValue("@PreviewQuestion", previewQ);
+                    cmd.Parameters.AddWithValue("@ChatSlot", 1);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            
+            return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName, slot = 1 });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // END SESSION
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public async Task<IActionResult> QueueEndSession([FromBody] QueueSessionActionRequest model)
+        {
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                
+                using (var cmd = new SqlCommand(@"
+                    UPDATE SupportFAQs SET Status = 'Resolved' WHERE Id = @Id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", model.SessionId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                
+                using (var cmd = new SqlCommand(@"
+                    UPDATE Agents SET ChatStatus = 'Resolved' WHERE ConversationID = @ConvId", connection))
+                {
+                    cmd.Parameters.AddWithValue("@ConvId", model.SessionId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            
+            return Json(new { success = true, sessionId = model.SessionId });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RESOLVE
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public async Task<IActionResult> QueueResolve([FromBody] QueueSessionActionRequest model)
+        {
+            if (model == null || model.SessionId <= 0)
+                return BadRequest(new { success = false });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                
+                using (var cmd = new SqlCommand(@"
+                    UPDATE SupportFAQs SET Status = 'Resolved' WHERE Id = @Id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", model.SessionId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                
+                using (var cmd = new SqlCommand(@"
+                    UPDATE Agents SET ChatStatus = 'Resolved' WHERE ConversationID = @ConvId", connection))
+                {
+                    cmd.Parameters.AddWithValue("@ConvId", model.SessionId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            
+            return Json(new { success = true, sessionId = model.SessionId });
+        }
+
+        [HttpPost]
+        public IActionResult QueueSend([FromBody] QueueSendRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Message))
+                return BadRequest(new { success = false });
+            return Json(new { success = true, message = model.Message, isNote = model.IsNote, timestamp = DateTime.Now.ToString("h:mm tt") });
+        }
+
+        [HttpPost]
+        public IActionResult QueueAutoAssign() => Json(new { success = true }); 
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FAQ ENDPOINTS
+        // ═══════════════════════════════════════════════════════════════════
+        [HttpPost]
+        public async Task<IActionResult> FaqAdd([FromBody] AddFaqRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Question) || string.IsNullOrWhiteSpace(model.Answer))
+                return BadRequest(new { success = false, message = "Question and answer are required." });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    INSERT INTO FAQs (Question, Answer, Category, UserType, Status, user_id, DateAdded, LastUpdated)
+                    VALUES (@Question, @Answer, @Category, @UserType, 'Active', @UserId, GETDATE(), GETDATE());
+                    SELECT SCOPE_IDENTITY();", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Question", model.Question);
+                    cmd.Parameters.AddWithValue("@Answer", model.Answer);
+                    cmd.Parameters.AddWithValue("@Category", model.Category ?? "");
+                    cmd.Parameters.AddWithValue("@UserType", model.UserType ?? "Consumer");
+                    cmd.Parameters.AddWithValue("@UserId", 1);
+                    
+                    var newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Json(new { success = true, id = newId });
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> FaqUpdate([FromBody] UpdateFaqRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { success = false });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    UPDATE FAQs SET Question=@Question, Answer=@Answer, Category=@Category,
+                    UserType=@UserType, LastUpdated=GETDATE() WHERE FaqID=@FaqId", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Question", model.Question);
+                    cmd.Parameters.AddWithValue("@Answer", model.Answer);
+                    cmd.Parameters.AddWithValue("@Category", model.Category ?? "");
+                    cmd.Parameters.AddWithValue("@UserType", model.UserType ?? "Consumer");
+                    cmd.Parameters.AddWithValue("@FaqId", model.Id);
+                    
+                    int rows = await cmd.ExecuteNonQueryAsync();
+                    return rows > 0 ? Json(new { success = true }) : Json(new { success = false, message = "Update failed." });
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> FaqDelete([FromBody] DeleteFaqRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { success = false });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    UPDATE FAQs SET Status='Resolved', LastUpdated=GETDATE() WHERE FaqID=@FaqId", connection))
+                {
+                    cmd.Parameters.AddWithValue("@FaqId", model.Id);
+                    int rows = await cmd.ExecuteNonQueryAsync();
+                    return rows > 0 ? Json(new { success = true }) : Json(new { success = false, message = "Failed to deactivate." });
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> FaqCategoryAdd([FromBody] AddCategoryRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { success = false });
+
+            // Just return success since categories are derived from FAQs
+            return Json(new { success = true, name = model.Name.Trim() });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> FaqCategoryDelete([FromBody] DeleteCategoryRequest model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { success = false });
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var cmd = new SqlCommand(@"
+                    UPDATE FAQs SET Status='Resolved', LastUpdated=GETDATE() WHERE Category=@Category AND Status='Active'", connection))
+                {
+                    cmd.Parameters.AddWithValue("@Category", model.Name.Trim());
+                    int rows = await cmd.ExecuteNonQueryAsync();
+                    return Json(new { success = true, deletedCount = rows, message = rows > 0 ? $"{rows} FAQ(s) set to Resolved." : "Category removed." });
+                }
+            }
+        }
+
 
             // Settings - Accessible ONLY by SuperAdmin
             #region Settings
