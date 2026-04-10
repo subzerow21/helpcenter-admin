@@ -172,6 +172,7 @@ namespace NextHorizon.Models.Admin_Models
     public class AssignSessionRequest
     {
         public int SessionId { get; set; }
+        public int AgentId { get; set; }
         public string AgentName { get; set; } = string.Empty;
     }
 

@@ -3911,9 +3911,17 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
             {
                 await connection.OpenAsync();
                 using (var cmd = new SqlCommand(@"
-                    SELECT DISTINCT AgentName, AgentStatus 
+                    SELECT DISTINCT AgentName, AgentStatus, COALESCE(AgentID, UserID) AS AgentID 
                     FROM Agents 
-                    WHERE AgentName IS NOT NULL AND (AgentStatus = 'available' OR AgentStatus = 'online')", connection))
+                    WHERE AgentName IS NOT NULL
+                    AND COALESCE(AgentID, UserID) IS NOT NULL
+                    AND (AgentStatus = 'available' OR AgentStatus = 'online')
+                    AND EXISTS (
+                        SELECT 1
+                        FROM users u
+                        WHERE u.user_id = COALESCE(Agents.AgentID, Agents.UserID)
+                        AND u.user_type = 'Support Agent'
+                    )", connection))
                 {
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
@@ -3921,9 +3929,11 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                         {
                             var name = reader.GetString(reader.GetOrdinal("AgentName"));
                             var rawStatus = reader.IsDBNull(reader.GetOrdinal("AgentStatus")) ? "available" : reader.GetString(reader.GetOrdinal("AgentStatus"));
+                            var agentId = reader.GetInt32(reader.GetOrdinal("AgentID"));
                             
                             agents.Add(new
                             {
+                                id = agentId,
                                 name = name,
                                 activeSessions = 0,
                                 maxSessions = 3,
@@ -3944,20 +3954,31 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
         [HttpPost]
         public async Task<IActionResult> QueueAssign([FromBody] AssignSessionRequest model)
         {
-            if (model == null || model.SessionId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
+            if (model == null || model.SessionId <= 0 || model.AgentId <= 0 || string.IsNullOrWhiteSpace(model.AgentName))
                 return BadRequest(new { success = false, message = "Invalid request." });
 
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                
-                // Update session status to Active
+
                 using (var cmd = new SqlCommand(@"
-                    UPDATE SupportFAQs 
-                    SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId 
+                    SELECT COUNT(1)
+                    FROM users
+                    WHERE user_id = @UserId
+                    AND user_type = 'Support Agent'", connection))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", model.AgentId);
+                    var supportAgentCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    if (supportAgentCount <= 0)
+                        return Json(new { success = false, message = "Selected support agent was not found." });
+                }
+
+                using (var cmd = new SqlCommand(@"
+                    UPDATE SupportFAQs
+                    SET Status = 'Active', StartTime = GETDATE(), AgentId = @AgentId
                     WHERE Id = @Id", connection))
                 {
-                    cmd.Parameters.AddWithValue("@AgentId", model.AgentName);
+                    cmd.Parameters.AddWithValue("@AgentId", model.AgentId);
                     cmd.Parameters.AddWithValue("@Id", model.SessionId);
                     await cmd.ExecuteNonQueryAsync();
                 }
@@ -3987,8 +4008,8 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                 
                 // Insert into Agents
                 using (var cmd = new SqlCommand(@"
-                    INSERT INTO Agents (ConversationID, AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, AgentStatus)
-                    VALUES (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', 'available')", connection))
+                    INSERT INTO Agents (ConversationID, AgentName, ClientName, Category, PreviewQuestion, ChatSlot, ChatStatus, AgentStatus, AgentID, UserID)
+                    VALUES (@ConversationID, @AgentName, @ClientName, @Category, @PreviewQuestion, @ChatSlot, 'Active', 'available', @AgentID, @UserID)", connection))
                 {
                     cmd.Parameters.AddWithValue("@ConversationID", model.SessionId);
                     cmd.Parameters.AddWithValue("@AgentName", model.AgentName);
@@ -3996,11 +4017,13 @@ public async Task<IActionResult> UpdateSellerInfo([FromBody] UpdateSellerInfoReq
                     cmd.Parameters.AddWithValue("@Category", category);
                     cmd.Parameters.AddWithValue("@PreviewQuestion", previewQ);
                     cmd.Parameters.AddWithValue("@ChatSlot", 1);
+                    cmd.Parameters.AddWithValue("@AgentID", model.AgentId);
+                    cmd.Parameters.AddWithValue("@UserID", model.AgentId);
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
             
-            return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName, slot = 1 });
+            return Json(new { success = true, sessionId = model.SessionId, agent = model.AgentName, agentId = model.AgentId, slot = 1 });
         }
 
         // ═══════════════════════════════════════════════════════════════════

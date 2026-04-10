@@ -1513,10 +1513,11 @@
                     var html = '<div class="assign-dd-hd">Select Agent</div>';
                     agents.forEach(function(a) {
                         var dotCls   = a.status === 'available' ? 'on' : a.status === 'busy' ? 'busy' : 'away';
+                        var agentId  = Number(a.id) || 0;
                         var initials = (a.name||'').split(' ').filter(Boolean).slice(0,2)
                                         .map(function(w){ return w[0].toUpperCase(); }).join('');
                         var safeName = escH(a.name).replace(/'/g,"&#39;");
-                        html += '<div class="assign-agent-opt" onclick="confirmAssign('+sessionId+',\''+safeName+'\')">'
+                        html += '<div class="assign-agent-opt" onclick="confirmAssign('+sessionId+','+agentId+',\''+safeName+'\')">'
                               + '<div class="aao-av">'+initials+'<div class="aao-dot '+dotCls+'"></div></div>'
                               + '<div class="aao-info">'
                               +   '<div class="aao-name">'+escH(titleCase(a.name))+'</div>'
@@ -1541,12 +1542,16 @@
                 });
         }
 
-        function confirmAssign(sessionId, agentName) {
+        function confirmAssign(sessionId, agentId, agentName) {
             closeDropdown();
             var s = SESSIONS.find(function(x){ return x.id === sessionId; });
             if (!s) return;
+            if (!agentId || agentId <= 0) {
+                showToast('Selected agent has no valid ID.');
+                return;
+            }
 
-            postJson('/Admin/QueueAssign', { sessionId: sessionId, agentName: agentName })
+            postJson('/Admin/QueueAssign', { sessionId: sessionId, agentId: agentId, agentName: agentName })
                 .then(function(data) {
                     if (data.success) {
                         SESSIONS = SESSIONS.filter(function(x){ return x.id !== sessionId; });
